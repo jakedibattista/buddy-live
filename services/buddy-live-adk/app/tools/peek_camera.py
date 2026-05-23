@@ -45,7 +45,7 @@ def _get_peek_url(session_id: str) -> str | None:
     if not snap.exists:
         return None
     data = snap.to_dict() or {}
-    return data.get("peek_url") or data.get("peekUrl")
+    return data.get("peek_url")
 
 
 def peek_camera(question: str, tool_context: ToolContext) -> dict[str, Any]:

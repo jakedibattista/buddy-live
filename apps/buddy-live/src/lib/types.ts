@@ -36,10 +36,8 @@ export interface RepDoc {
     | "stub_queued"
     | "analyze_error";
   storage_path?: string;
-  storagePath?: string;
   storage_url?: string;
   job_id?: string;
-  jobId?: string;
   queued_at?: string;
   created_at?: string;
   error?: string;

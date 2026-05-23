@@ -134,7 +134,7 @@ def analyze_rep(
     if not snap.exists:
         return {"status": "no_rep_doc", "rep_id": rep_id}
     rep = snap.to_dict() or {}
-    storage_path = rep.get("storage_path") or rep.get("storagePath")
+    storage_path = rep.get("storage_path")
     if not storage_path:
         return {"status": "no_clip", "rep_id": rep_id}
 

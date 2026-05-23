@@ -38,6 +38,24 @@ Firebase Storage                                                              â”
 
 You need Node 20+, Python 3.12+, and a Firebase project with Auth + Firestore + Storage enabled.
 
+### The Fast Way (Root Orchestrator)
+
+We provide a root-level `Makefile` to install and run both frontend and backend services concurrently.
+
+```bash
+# 1. Onboard your environment variables first (see "Setup" below)
+
+# 2. Install all dependencies for both services at once
+make install
+
+# 3. Start Next.js, FastAPI, and ngrok concurrently
+make dev
+```
+
+### The Manual Way (Step-by-Step)
+
+If you prefer starting services individually, do the following:
+
 ```bash
 # 1. ADK service
 cd services/buddy-live-adk

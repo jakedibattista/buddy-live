@@ -15,6 +15,7 @@ from google.adk.agents import Agent
 from google.adk.runners import Runner
 from google.adk.sessions import BaseSessionService, InMemorySessionService
 
+from app.firestore_client import session_ref
 from app.prompts import COACH_SETH_LIVE_PROMPT
 from app.tools import (
     analyze_rep,
@@ -28,6 +29,8 @@ from app.tools import (
 _logger = logging.getLogger(__name__)
 
 APP_NAME = "buddy-live"
+_VALID_FOCUS_DRILLS = {"wristshot", "slapshot", "backhand"}
+_DEFAULT_FOCUS_DRILL = "wristshot"
 
 _agent: Agent | None = None
 _runner: Runner | None = None
@@ -77,11 +80,29 @@ def get_runner() -> Runner:
     return _runner
 
 
+def _lookup_focus_drill(session_id: str) -> str:
+    """Read the chosen focus_drill from the Firestore session doc, or default."""
+    ref = session_ref(session_id)
+    if ref is None:
+        return _DEFAULT_FOCUS_DRILL
+    try:
+        snap = ref.get()
+    except Exception:
+        _logger.warning("focus_drill lookup failed for session=%s", session_id, exc_info=True)
+        return _DEFAULT_FOCUS_DRILL
+    if not snap.exists:
+        return _DEFAULT_FOCUS_DRILL
+    raw = (snap.to_dict() or {}).get("focus_drill")
+    candidate = (raw or "").lower().strip()
+    return candidate if candidate in _VALID_FOCUS_DRILLS else _DEFAULT_FOCUS_DRILL
+
+
 async def ensure_session(session_id: str, user_id: str = "player") -> str:
     """Get-or-create an ADK session and return its id.
 
-    Also seeds the session state with `session_id` so tools can look up the
-    matching Firestore live_sessions document.
+    Also seeds the session state with `session_id` and `focus_drill` (the one
+    drill the player picked on the landing page) so tools can look up the
+    matching Firestore live_sessions document and the prompt can specialize.
     """
     svc = get_session_service()
     try:
@@ -92,10 +113,15 @@ async def ensure_session(session_id: str, user_id: str = "player") -> str:
         session = None
 
     if session is None:
+        focus_drill = _lookup_focus_drill(session_id)
         session = await svc.create_session(
             app_name=APP_NAME,
             user_id=user_id,
             session_id=session_id,
-            state={"session_id": session_id, "user_id": user_id},
+            state={
+                "session_id": session_id,
+                "user_id": user_id,
+                "focus_drill": focus_drill,
+            },
         )
     return session.id

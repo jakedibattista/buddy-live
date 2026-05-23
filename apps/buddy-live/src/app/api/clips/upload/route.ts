@@ -63,8 +63,8 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     ok: true,
-    storagePath,
-    storageUrl: signedUrl,
+    storage_path: storagePath,
+    storage_url: signedUrl,
     bytes: buf.byteLength,
   });
 }
