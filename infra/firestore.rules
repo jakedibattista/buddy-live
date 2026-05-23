@@ -1,0 +1,35 @@
+// ⚠️  Buddy Live ONLY — NOT safe to deploy standalone.
+//
+// The puck-buddy Firestore rules include a catch-all DENY at the bottom.
+// Deploying this file alone would lock out jobs/, users/, scoreboards/, etc.
+//
+// Use firestore.rules.merged instead:
+//   cp infra/firestore.rules.merged /path/to/modelforpuckbuddy/firebase/firestore.rules
+//   firebase deploy --only firestore:rules --project puck-buddy
+//
+// See docs/FIRESTORE_RULES.md for the full merge + deploy guide.
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /live_sessions/{sessionId} {
+      allow read, write: if request.auth != null;
+
+      match /reps/{repId} {
+        allow read, write: if request.auth != null;
+      }
+
+      match /commands/{cmdId} {
+        allow read, write: if request.auth != null;
+      }
+
+      match /coach_log/{logId} {
+        allow read, write: if request.auth != null;
+      }
+
+      match /ambient_notes/{noteId} {
+        allow read, write: if request.auth != null;
+      }
+    }
+  }
+}

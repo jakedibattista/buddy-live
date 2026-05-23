@@ -1,0 +1,21 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Puck Buddy (existing) — user-owned paths
+    match /users/{uid}/{allPaths=**} {
+      // Only authenticated users can access their own files
+      // Note: Signed URLs bypass these rules entirely - they have their own security
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Buddy Live — session clips + peek frames
+    // Most uploads go through Vercel API routes (Admin SDK) today; these rules
+    // cover client-direct access if added later.
+    match /live_sessions/{sessionId}/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+                   && request.resource.size < 30 * 1024 * 1024;
+    }
+  }
+}
