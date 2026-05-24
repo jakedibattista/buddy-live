@@ -1,0 +1,32 @@
+name: Deploy ADK Backend
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'services/buddy-live-adk/**'
+      - 'infra/**'
+      - '.github/workflows/deploy-backend.yml'
+
+jobs:
+  deploy:
+    name: Build & Deploy Backend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy to Cloud Run via Cloud Build
+        run: |
+          gcloud builds submit \
+            --config infra/cloudbuild.yaml \
+            --substitutions=_RUNTIME_SERVICE_ACCOUNT=buddy-live-adk@puck-buddy.iam.gserviceaccount.com \
+            --project=puck-buddy

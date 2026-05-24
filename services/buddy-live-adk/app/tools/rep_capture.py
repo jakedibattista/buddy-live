@@ -55,6 +55,18 @@ def _normalize_drill(drill_id: str) -> str:
     return _DRILL_ID_MAP.get((drill_id or "").lower().strip(), drill_id)
 
 
+def _build_auth_headers() -> dict[str, str]:
+    """Build headers for modelforpuckbuddy. Accepts either a static API key
+    (preferred for service-to-service) or a Bearer token. The API returns 401
+    on every call without one of these."""
+    headers: dict[str, str] = {"Content-Type": "application/json"}
+    if auth_token := os.getenv("MODELFORPUCKBUDDY_BEARER_TOKEN"):
+        headers["Authorization"] = f"Bearer {auth_token}"
+    if api_key := os.getenv("MODELFORPUCKBUDDY_API_KEY"):
+        headers["X-API-Key"] = api_key
+    return headers
+
+
 def start_rep_capture(
     drill_id: str,
     hint: str,
@@ -152,12 +164,7 @@ def analyze_rep(
         )
         return {"status": "queued_stub", "rep_id": rep_id, "job_id": None}
 
-    auth_token = os.getenv("MODELFORPUCKBUDDY_BEARER_TOKEN")
-    headers = {"Content-Type": "application/json"}
-    if auth_token:
-        headers["Authorization"] = f"Bearer {auth_token}"
-    if api_key := os.getenv("MODELFORPUCKBUDDY_API_KEY"):
-        headers["X-API-Key"] = api_key
+    headers = _build_auth_headers()
 
     try:
         with httpx.Client(timeout=15.0) as client:
@@ -224,8 +231,9 @@ def get_rep_result(rep_id: str, tool_context: ToolContext) -> dict[str, Any]:
     api_url = os.getenv("MODELFORPUCKBUDDY_API_URL", "").rstrip("/")
     if api_url:
         try:
+            headers = _build_auth_headers()
             with httpx.Client(timeout=10.0) as client:
-                resp = client.get(f"{api_url}/api/job-status/{job_id}")
+                resp = client.get(f"{api_url}/api/job-status/{job_id}", headers=headers)
                 if resp.status_code == 200:
                     job = resp.json()
                     job_status = job.get("status")
@@ -244,6 +252,7 @@ def get_rep_result(rep_id: str, tool_context: ToolContext) -> dict[str, Any]:
 
 
 _SHOOTING_METRIC_LABELS = {
+    # Wristshot + snapshot (per-shot API returns camelCase; session_insights uses snake_case)
     "front_knee_bend": "front knee bend",
     "frontKneeBend": "front knee bend",
     "weight_transfer": "weight transfer",
@@ -256,9 +265,37 @@ _SHOOTING_METRIC_LABELS = {
     "topHand": "top hand",
     "puck_starting_position": "puck starting position",
     "puckStartingPosition": "puck starting position",
-    "stick_bend": "stick bend",
-    "stickBend": "stick bend",
+    "puck_position_at_contact": "puck position at contact",
+    "puckPositionAtContact": "puck position at contact",
+    "stick_bend": "stick flex",
+    "stickBend": "stick flex",
     "stance": "stance",
+    # Slapshot form
+    "stance_and_base": "stance and base",
+    "stanceAndBase": "stance and base",
+    "wind_up": "wind up",
+    "windUp": "wind up",
+    "front_knee_bend_at_impact": "front knee bend at impact",
+    "frontKneeBendAtImpact": "front knee bend at impact",
+    "power_sequence": "power sequence",
+    "powerSequence": "power sequence",
+    "stick_mechanics": "stick mechanics",
+    "stickMechanics": "stick mechanics",
+    "follow_through": "follow through",
+    "followThrough": "follow through",
+    "arm_mechanics": "arm mechanics",
+    "armMechanics": "arm mechanics",
+    # Backhand
+    "posture_and_balance": "posture and balance",
+    "postureAndBalance": "posture and balance",
+    "extension_through_release": "extension through release",
+    "extensionThroughRelease": "extension through release",
+    "puck_control_roll": "puck control roll",
+    "puckControlRoll": "puck control roll",
+    "top_hand_control": "top hand control",
+    "topHandControl": "top hand control",
+    "blade_angle": "blade angle",
+    "bladeAngle": "blade angle",
 }
 
 

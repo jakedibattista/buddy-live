@@ -12,6 +12,7 @@ _logger = logging.getLogger(__name__)
 
 
 _DRILL_RECOMMENDATIONS: dict[str, dict[str, str]] = {
+    # --- Wristshot / snapshot ---
     "front knee bend": {
         "title": "Deep knee bend wristshot drill",
         "url": "https://www.youtube.com/results?search_query=hockey+knee+bend+shooting+drill",
@@ -42,15 +43,87 @@ _DRILL_RECOMMENDATIONS: dict[str, dict[str, str]] = {
         "url": "https://www.youtube.com/results?search_query=hockey+puck+position+stance",
         "cue": "Start the puck closer to your back foot for a quicker release.",
     },
+    "puck position at contact": {
+        "title": "Puck contact-point drill",
+        "url": "https://www.youtube.com/results?search_query=hockey+puck+contact+point+shooting",
+        "cue": "Make contact off your front foot -- not your back foot.",
+    },
+    "stick flex": {
+        "title": "Stick-load drill",
+        "url": "https://www.youtube.com/results?search_query=hockey+stick+flex+loading",
+        "cue": "Push down into the floor to load the stick before the snap.",
+    },
     "stick bend": {
         "title": "Stick-load drill",
         "url": "https://www.youtube.com/results?search_query=hockey+stick+flex+loading",
-        "cue": "Push down into the ice to load the stick before the snap.",
+        "cue": "Push down into the floor to load the stick before the snap.",
     },
     "stance": {
         "title": "Athletic stance basics",
         "url": "https://www.youtube.com/results?search_query=hockey+shooting+stance",
-        "cue": "Shoulder-width feet, knees bent, head over puck.",
+        "cue": "Shoulder-width feet, knees bent, head over the puck.",
+    },
+    # --- Slapshot form ---
+    "stance and base": {
+        "title": "Slapshot stance drill",
+        "url": "https://www.youtube.com/results?search_query=hockey+slapshot+stance+base",
+        "cue": "Feet wider than your shoulders, weight on the back leg before the wind-up.",
+    },
+    "wind up": {
+        "title": "Slapshot wind-up drill",
+        "url": "https://www.youtube.com/results?search_query=hockey+slapshot+wind+up",
+        "cue": "Stick to waist height, not over your head -- short and snappy.",
+    },
+    "front knee bend at impact": {
+        "title": "Slapshot knee bend drill",
+        "url": "https://www.youtube.com/results?search_query=hockey+slapshot+knee+bend",
+        "cue": "Bend your front knee as the stick hits the floor -- drive through it.",
+    },
+    "power sequence": {
+        "title": "Slapshot kinetic-chain drill",
+        "url": "https://www.youtube.com/results?search_query=hockey+slapshot+power+sequence",
+        "cue": "Hips first, then shoulders, then arms -- chain it together.",
+    },
+    "stick mechanics": {
+        "title": "Slapshot stick flex drill",
+        "url": "https://www.youtube.com/results?search_query=hockey+slapshot+stick+flex",
+        "cue": "Hit the floor an inch behind the puck so the stick flexes into the shot.",
+    },
+    "follow through": {
+        "title": "Slapshot follow-through drill",
+        "url": "https://www.youtube.com/results?search_query=hockey+slapshot+follow+through",
+        "cue": "Point the blade where you want the puck to go after release.",
+    },
+    "arm mechanics": {
+        "title": "Slapshot arm extension drill",
+        "url": "https://www.youtube.com/results?search_query=hockey+slapshot+arm+extension",
+        "cue": "Keep your top arm straighter through the swing -- don't collapse the elbow.",
+    },
+    # --- Backhand ---
+    "posture and balance": {
+        "title": "Backhand balance drill",
+        "url": "https://www.youtube.com/results?search_query=hockey+backhand+balance+posture",
+        "cue": "Stay tall through the shot -- don't lean back as you release.",
+    },
+    "extension through release": {
+        "title": "Backhand follow-through drill",
+        "url": "https://www.youtube.com/results?search_query=hockey+backhand+follow+through",
+        "cue": "Push your hands up and across your body after release -- full extension.",
+    },
+    "puck control roll": {
+        "title": "Backhand cup-and-roll drill",
+        "url": "https://www.youtube.com/results?search_query=hockey+backhand+cup+roll",
+        "cue": "Roll the puck from the back of the blade to the front as you sweep.",
+    },
+    "top hand control": {
+        "title": "Backhand top hand drill",
+        "url": "https://www.youtube.com/results?search_query=hockey+backhand+top+hand",
+        "cue": "Keep your top hand away from your body so the stick can travel freely.",
+    },
+    "blade angle": {
+        "title": "Backhand blade angle drill",
+        "url": "https://www.youtube.com/results?search_query=hockey+backhand+blade+angle",
+        "cue": "Cup the puck on release -- closed blade lifts it for the upper corners.",
     },
 }
 

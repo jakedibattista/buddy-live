@@ -13,6 +13,7 @@ import { TranscriptPanel } from "@/components/TranscriptPanel";
 import { useLiveSession } from "@/hooks/useLiveSession";
 import { usePeekFrameUploader } from "@/hooks/usePeekFrameUploader";
 import { useRepCapture } from "@/hooks/useRepCapture";
+import { useRepResultsPolling } from "@/hooks/useRepResultsPolling";
 import type { FocusDrill, TranscriptEntry } from "@/lib/types";
 
 const AGENT_ID = process.env.NEXT_PUBLIC_ELEVENLABS_AGENT_ID;
@@ -64,6 +65,8 @@ function CoachPageInner() {
     videoRef,
     enabled: coachStatus === "connected",
   });
+
+  useRepResultsPolling({ sessionId: live.sessionId, reps: live.reps });
 
   useEffect(() => {
     let active = true;
