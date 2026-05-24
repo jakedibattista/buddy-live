@@ -76,8 +76,13 @@ export default function CoachPage() {
     [live.reps],
   );
 
-  const displayedDrillId = capture.activeDrillId;
-  const displayedHint = capture.hint;
+  const focusDrill = live.session?.focus_drill ?? null;
+  const displayedDrillId = capture.activeDrillId ?? focusDrill;
+  const displayedHint = capture.activeDrillId
+    ? capture.hint
+    : focusDrill
+      ? `Today: 5 ${focusDrill}s, one at a time.`
+      : null;
 
   return (
     <main className="relative flex min-h-screen flex-col bg-zinc-950 text-white">

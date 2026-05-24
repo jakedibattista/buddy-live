@@ -21,6 +21,7 @@ from app.tools import (
     get_rep_result,
     peek_camera,
     recommend_drill,
+    set_focus_drill,
     start_rep_capture,
 )
 
@@ -42,6 +43,7 @@ def _build_agent() -> Agent:
         instruction=COACH_SETH_LIVE_PROMPT,
         tools=[
             peek_camera,
+            set_focus_drill,
             start_rep_capture,
             analyze_rep,
             get_rep_result,

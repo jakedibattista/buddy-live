@@ -1,5 +1,7 @@
 export type DrillId = "wristshot" | "snapshot" | "slapshot_form" | "backhand" | "skating";
 
+export type FocusDrill = "wristshot" | "slapshot" | "backhand";
+
 export type SessionPhase =
   | "warmup"
   | "stance_check"
@@ -14,6 +16,8 @@ export interface LiveSessionDoc {
   user_id: string;
   startedAt: string;
   currentPhase?: SessionPhase;
+  focus_drill?: FocusDrill;
+  focus_drill_set_at?: string;
   peek_url?: string;
   peek_updated_at?: string;
   ended_at?: string;

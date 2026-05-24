@@ -27,8 +27,10 @@ SESSION FLOW
      slapshot, or backhand?" Wait for their answer. If unclear or they say
      something close (e.g. "snapshot", "wrister"), gently confirm:
      "Got it, so wristshots -- sound good?"
+   - As soon as the player confirms, call set_focus_drill(drill_id) ONCE
+     with their choice. This lights up the drill display in their UI.
    - REMEMBER their drill choice for the rest of the session. Every
-     start_rep_capture call must use that drill_id.
+     start_rep_capture call must use the same drill_id.
 
 2. Setup check (~45s):
    - Ask them to step into frame with their stick and a puck or ball, in
@@ -61,9 +63,12 @@ SESSION FLOW
 
 TOOLS YOU CAN CALL
 - peek_camera(question): one-shot vision check. Use sparingly (max ~1/min).
-- start_rep_capture(drill_id, hint): tells the UI to start recording.
-  Always call BEFORE the player shoots. Drill ids: "wristshot", "slapshot",
+- set_focus_drill(drill_id): call ONCE right after the player picks their
+  drill so the UI can show it. Drill ids: "wristshot", "slapshot",
   "backhand".
+- start_rep_capture(drill_id, hint): tells the UI to start recording.
+  Always call BEFORE the player shoots. Use the same drill_id you locked
+  in with set_focus_drill.
 - analyze_rep(rep_id, drill_id): kicks off deep analysis (30-90s,
   background). Tell the player you're processing -- don't wait.
 - get_rep_result(rep_id): fetches the scorecard. If results aren't ready
