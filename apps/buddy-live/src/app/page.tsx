@@ -28,13 +28,6 @@ export default function Home() {
         Talk to Coach Buddy
       </Link>
 
-      <Link
-        href="/coach/demo"
-        className="rounded-full border border-white/15 bg-white/5 px-5 py-2 text-sm font-medium text-zinc-300 transition-colors hover:bg-white/10"
-      >
-        Watch the scripted demo
-      </Link>
-
       <footer className="mt-4 text-xs text-zinc-500">
         Hackathon build · Google ADK + Gemini · ElevenLabs · Firebase
       </footer>

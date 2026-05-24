@@ -85,7 +85,7 @@ npm run dev
 # → http://localhost:3000
 ```
 
-Hit **Start session** and start talking. If you want to record the demo video without depending on live network, use **/coach/demo** -- it replays a scripted session through the same UI.
+Hit **Start session** and start talking.
 
 ## Deploy
 
@@ -126,7 +126,7 @@ The hackathon judging criterion. Beyond that, ADK gives us a clean `Agent` + `Ru
 
 ## Devpost submission checklist
 
-- [ ] 3-min demo video (use **/coach/demo** as scripted backup)
+- [ ] 3-min demo video
 - [ ] Architecture diagram (see above)
 - [ ] Built with: **Google ADK, Gemini Flash, Gemini Live (peek only), Firebase, Cloud Run, ElevenLabs, Next.js, Vercel**
 - [ ] Public GitHub repo
