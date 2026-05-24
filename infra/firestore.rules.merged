@@ -3,59 +3,89 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // -------------------------------------------------------------------------
-    // Puck Buddy (existing) — DO NOT MODIFY without reviewing modelforpuckbuddy
-    // Source: github.com/jakedibattista/modelforpuckbuddy/firebase/firestore.rules
+    // Puck Buddy (existing) — kept verbatim from the live deployed rules.
+    // Source of truth: github.com/jakedibattista/modelforpuckbuddy/firebase/firestore.rules
+    // Last synced from live console: 2026-05-24
     // -------------------------------------------------------------------------
 
-    // Jobs: users create for themselves, read their own status.
-    // All state changes handled by backend worker (Admin SDK).
-    match /jobs/{jobId} {
-      allow create: if request.auth != null
-                    && request.resource.data.userId == request.auth.uid;
-      allow read:   if request.auth != null
-                    && resource.data.userId == request.auth.uid;
-      allow update, delete: if false;
-    }
-
-    // Jobs (dev) — same rules, separate collection
-    match /jobs_dev/{jobId} {
-      allow create: if request.auth != null
-                    && request.resource.data.userId == request.auth.uid;
-      allow read:   if request.auth != null
-                    && resource.data.userId == request.auth.uid;
-      allow update, delete: if false;
-    }
-
-    // User profiles and subcollections (my_stats, video).
     match /users/{userId} {
-      allow read, write: if request.auth != null
-                         && request.auth.uid == userId;
+      // Allow authenticated users to read any profile (needed for username uniqueness check)
+      // Write only allowed to own profile
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
 
-      match /my_stats/{statId} {
-        allow read, write: if request.auth != null
-                           && request.auth.uid == userId;
+      // Allow create: validate uid matches
+      allow create: if request.auth != null
+        && request.auth.uid == request.resource.data.id;
+
+      // Single-current-video metadata document
+      match /video/{docId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+
+        // Allow create/update/delete for authenticated owner
+        // Note: Cloud Functions use Admin SDK which bypasses these rules
+        // for writing server-owned fields like analysisResults, jobStatus, etc.
+        allow create, update, delete: if request.auth != null && request.auth.uid == userId;
       }
 
-      match /video/{docId} {
-        allow read, write: if request.auth != null
-                           && request.auth.uid == userId;
+      // User-curated stats subcollection (my_stats)
+      match /my_stats/{dateKey} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      // Daily activity history for streaks / habit tracking.
+      match /activity_days/{dateKey} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
       }
     }
 
-    // Scoreboards — public read, server-written.
-    // Users can delete their own entry and update rankings (account deletion).
-    match /scoreboards/{dateKey} {
-      match /rankings/{gender} {
-        allow read: if request.auth != null;
-        allow update: if request.auth != null;
-        allow create, delete: if false;
-      }
+    // Analytics events - allow authenticated users to write events
+    match /analytics_events/{eventId} {
+      allow create: if request.auth != null;
+      allow read: if false;
+    }
 
-      match /genders/{gender}/entries/{entryUserId} {
-        allow read: if request.auth != null;
-        allow delete: if request.auth != null
-                      && request.auth.uid == entryUserId;
-        allow create, update: if false;
+    // Completed analysis jobs. Users can read only their own historical
+    // results; writes stay backend-only through the Admin SDK.
+    match /jobs/{jobId} {
+      allow get, list: if request.auth != null
+        && resource.data.userId == request.auth.uid;
+      allow write: if false;
+    }
+
+    // Preview/dev API writes completed analysis jobs here.
+    match /jobs_dev/{jobId} {
+      allow get, list: if request.auth != null
+        && resource.data.userId == request.auth.uid;
+      allow write: if false;
+    }
+
+    // ========== SCOREBOARD COLLECTIONS ==========
+    // Daily scoreboards - read-only for authenticated users
+    // Cloud Functions (Admin SDK) handle all writes
+    match /scoreboards/{dateKey}/genders/{gender}/entries/{entryId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // Pre-computed rankings - read-only for authenticated users
+    match /scoreboards/{dateKey}/rankings/{gender} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // App config (force-update gate) — readable by anyone, even unauthenticated
+    match /config/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Promo codes — all writes handled by Cloud Function (Admin SDK bypasses rules)
+    // Client has no direct read/write access
+    match /promo_codes/{code} {
+      allow read, write: if false;
+      match /redemptions/{userId} {
+        allow read, write: if false;
       }
     }
 
@@ -106,15 +136,7 @@ service cloud.firestore {
       }
     }
 
-    // -------------------------------------------------------------------------
-    // Catch-all deny. Admin SDK bypasses these rules.
-    //
-    // Admin-only collections (no client rule defined on purpose):
-    //   - failed_jobs
-    //   - statschat_sessions
-    //   - api_keys
-    //   - users/{uid}/revenuecat_events
-    // -------------------------------------------------------------------------
+    // Deny all other access
     match /{document=**} {
       allow read, write: if false;
     }
