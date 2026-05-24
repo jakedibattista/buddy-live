@@ -1,8 +1,7 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { CameraView } from "@/components/CameraView";
 import { CoachConversation } from "@/components/CoachConversation";
@@ -14,46 +13,18 @@ import { useLiveSession } from "@/hooks/useLiveSession";
 import { usePeekFrameUploader } from "@/hooks/usePeekFrameUploader";
 import { useRepCapture } from "@/hooks/useRepCapture";
 import { useRepResultsPolling } from "@/hooks/useRepResultsPolling";
-import type { FocusDrill, TranscriptEntry } from "@/lib/types";
+import type { TranscriptEntry } from "@/lib/types";
 
 const AGENT_ID = process.env.NEXT_PUBLIC_ELEVENLABS_AGENT_ID;
 
-const VALID_FOCUS_DRILLS: ReadonlySet<FocusDrill> = new Set<FocusDrill>([
-  "wristshot",
-  "slapshot",
-  "backhand",
-]);
-
-const FOCUS_DRILL_HINT: Record<FocusDrill, string> = {
-  wristshot: "We'll do 5 wristshots, one at a time.",
-  slapshot: "We'll do 5 slapshots, one at a time.",
-  backhand: "We'll do 5 backhands, one at a time.",
-};
-
-function normalizeFocusDrill(raw: string | null): FocusDrill {
-  const candidate = (raw ?? "").toLowerCase().trim() as FocusDrill;
-  return VALID_FOCUS_DRILLS.has(candidate) ? candidate : "wristshot";
-}
-
 export default function CoachPage() {
-  return (
-    <Suspense fallback={null}>
-      <CoachPageInner />
-    </Suspense>
-  );
-}
-
-function CoachPageInner() {
-  const searchParams = useSearchParams();
-  const focusDrill = normalizeFocusDrill(searchParams.get("drill"));
-
   const videoRef = useRef<HTMLVideoElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [permissionError, setPermissionError] = useState<string | null>(null);
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
   const [coachStatus, setCoachStatus] = useState<string>("idle");
 
-  const live = useLiveSession({ focusDrill });
+  const live = useLiveSession();
   const capture = useRepCapture({
     sessionId: live.sessionId,
     stream,
@@ -105,8 +76,8 @@ function CoachPageInner() {
     [live.reps],
   );
 
-  const displayedDrillId = capture.activeDrillId ?? focusDrill;
-  const displayedHint = capture.activeDrillId ? capture.hint : FOCUS_DRILL_HINT[focusDrill];
+  const displayedDrillId = capture.activeDrillId;
+  const displayedHint = capture.hint;
 
   return (
     <main className="relative flex min-h-screen flex-col bg-zinc-950 text-white">

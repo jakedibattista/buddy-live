@@ -11,11 +11,7 @@ import {
 } from "firebase/firestore";
 import { ensureAnonymousUser, getDb } from "@/lib/firebase";
 import { commandsCollectionPath, repDocPath, sessionDocPath } from "@/lib/paths";
-import type { CoachCommand, FocusDrill, LiveSessionDoc, RepDoc } from "@/lib/types";
-
-interface UseLiveSessionOptions {
-  focusDrill?: FocusDrill;
-}
+import type { CoachCommand, LiveSessionDoc, RepDoc } from "@/lib/types";
 
 interface UseLiveSessionResult {
   sessionId: string | null;
@@ -36,8 +32,7 @@ interface UseLiveSessionResult {
  *
  * Returns the consolidated state for the /coach page.
  */
-export function useLiveSession(options: UseLiveSessionOptions = {}): UseLiveSessionResult {
-  const { focusDrill } = options;
+export function useLiveSession(): UseLiveSessionResult {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [session, setSession] = useState<LiveSessionDoc | null>(null);
@@ -62,7 +57,6 @@ export function useLiveSession(options: UseLiveSessionOptions = {}): UseLiveSess
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             userId: user?.uid ?? "anonymous",
-            focusDrill,
           }),
         });
         const body = (await resp.json()) as { sessionId: string };

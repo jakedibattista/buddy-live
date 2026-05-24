@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminConfigured, adminDb } from "@/lib/firebaseAdmin";
 import { SESSIONS_COLLECTION } from "@/lib/paths";
-import type { FocusDrill } from "@/lib/types";
 import { shortId } from "@/lib/utils";
 
 export const runtime = "nodejs";
@@ -10,18 +9,6 @@ export const dynamic = "force-dynamic";
 interface CreateSessionBody {
   userId?: string;
   sessionId?: string;
-  focusDrill?: string;
-}
-
-const VALID_FOCUS_DRILLS: ReadonlySet<FocusDrill> = new Set<FocusDrill>([
-  "wristshot",
-  "slapshot",
-  "backhand",
-]);
-
-function normalizeFocusDrill(input: string | undefined): FocusDrill {
-  const candidate = (input ?? "").toLowerCase().trim() as FocusDrill;
-  return VALID_FOCUS_DRILLS.has(candidate) ? candidate : "wristshot";
 }
 
 /**
@@ -30,8 +17,8 @@ function normalizeFocusDrill(input: string | undefined): FocusDrill {
  * via `customLlmExtraBody.arbitrary_identifier`, and that the ADK service uses
  * to address tool state in Firestore.
  *
- * `focusDrill` is locked in at session-create time and the ADK agent reads it
- * from the session doc to set the single drill the player will work on.
+ * The drill choice is no longer set here -- Coach Buddy asks the player at the
+ * top of the voice session and remembers their answer via ADK session memory.
  */
 export async function POST(req: NextRequest) {
   let body: CreateSessionBody = {};
@@ -42,13 +29,11 @@ export async function POST(req: NextRequest) {
   }
   const sessionId = body.sessionId || shortId("live");
   const userId = body.userId || "anonymous";
-  const focusDrill = normalizeFocusDrill(body.focusDrill);
 
   if (!adminConfigured()) {
     return NextResponse.json({
       sessionId,
       userId,
-      focusDrill,
       stub: true,
       warning: "firebase admin not configured -- session not persisted",
     });
@@ -61,14 +46,10 @@ export async function POST(req: NextRequest) {
     await ref.set({
       session_id: sessionId,
       user_id: userId,
-      focus_drill: focusDrill,
       startedAt: new Date().toISOString(),
       currentPhase: "warmup",
     });
-  } else if (!(snap.data() ?? {}).focus_drill) {
-    // Backfill focus_drill for sessions created before this field existed.
-    await ref.update({ focus_drill: focusDrill });
   }
 
-  return NextResponse.json({ sessionId, userId, focusDrill });
+  return NextResponse.json({ sessionId, userId });
 }
