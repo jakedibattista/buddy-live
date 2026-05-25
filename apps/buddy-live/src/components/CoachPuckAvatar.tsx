@@ -90,10 +90,8 @@ export function CoachPuckAvatar({
     };
   }, [activity, tick]);
 
-  const mouthHeight = 4 + mouthOpen * 14;
-  const mouthWidth = 18 + mouthOpen * 6;
-
   const squash = 1 + mouthOpen * 0.07;
+  const speakOpacity = Math.min(1, Math.max(0, mouthOpen * 1.4));
 
   return (
     <div
@@ -131,36 +129,17 @@ export function CoachPuckAvatar({
           height={512}
           priority
           className="h-full w-full object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
+          style={{ opacity: 1 - speakOpacity }}
         />
-
-        {/* Face on the top surface — mouth driven by coach audio (v2) */}
-        <svg
-          className="absolute inset-0 h-full w-full"
-          viewBox="0 0 100 100"
-          aria-hidden
-        >
-          <ellipse
-            cx="38"
-            cy="42"
-            rx="3.5"
-            ry="4"
-            className="fill-zinc-200/90"
-          />
-          <ellipse
-            cx="62"
-            cy="42"
-            rx="3.5"
-            ry="4"
-            className="fill-zinc-200/90"
-          />
-          <ellipse
-            cx="50"
-            cy="56"
-            rx={mouthWidth / 2}
-            ry={mouthHeight / 2}
-            className="fill-zinc-100 transition-[ry,rx] duration-75 ease-out"
-          />
-        </svg>
+        <Image
+          src="/mascot/coach-puck-speak.png"
+          alt=""
+          width={512}
+          height={512}
+          priority
+          className="absolute inset-0 h-full w-full object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
+          style={{ opacity: speakOpacity }}
+        />
         </div>
       </div>
     </div>

@@ -4,7 +4,7 @@
 **Updated:** 2026-05-25  
 **Source:** UI review against [Lovable’s chatbot UI guide](https://lovable.dev/guides/how-to-build-a-chatbot-ui), plus follow-up discussion on a live “talking puck” mascot.
 
-**Status:** Phases 1–2 and most of Phase 3 **shipped** in commit `ee8e1b1`. Remaining items are optional polish (interrupt button, mascot transparency export).
+**Status:** Phases 1–3 **shipped** (`ee8e1b1`, prompt polish `4a78321`). Only **deferred** item: interrupt / barge-in button (verify ElevenLabs WebRTC SDK support).
 
 This doc preserves recommendations from that conversation and turns them into an execution plan. Buddy Live is **voice-first coaching** — the transcript and mascot support the session; they are not a standalone text chat product.
 
@@ -31,6 +31,7 @@ This doc preserves recommendations from that conversation and turns them into an
 | Recording | **60s countdown**, **Stop & upload**, `stop_rep_capture` | `RecordingTimer.tsx`, `useRepCapture.ts` |
 | Session phases | Sidebar **Phase:** label (`warmup` → `drill_readiness` → scored → `recap`) | `lib/phases.ts`, Firestore `currentPhase` |
 | Next-turn cues | Contextual copy + **I'm ready** / **Wrap up** chips | `NextTurnCue.tsx`, `VoiceQuickPrompts.tsx` |
+| Coach mute | Mute coach **output** via `setVolume({ volume: 0 })` | `CoachAudioMuteButton.tsx` |
 | Errors | Retry connect + retry camera permission | `CoachConversation.tsx`, `coach/page.tsx` |
 | Mascot | **CoachPuckAvatar** — volume-reactive mouth, celebrate on score | `CoachPuckAvatar.tsx`, `public/mascot/` |
 | Session init | Loading state on session card; Start gated on `sessionReady` | `coach/page.tsx`, `useLiveSession.ts` |
@@ -234,7 +235,7 @@ If ElevenLabs exposes interrupt on WebRTC path: **Stop coach** (mid-speech) dist
 **Goal:** Talking puck on camera overlay, volume-synced mouth.
 
 - [x] Add mascot asset (`public/mascot/coach-puck.png`)
-- [x] New `CoachPuckAvatar.tsx` — PNG + SVG mouth overlay
+- [x] New `CoachPuckAvatar.tsx` — baked-face PNG crossfade (neutral ↔ speak)
 - [x] Mount on camera column in `coach/page.tsx`
 - [x] v1: `isSpeaking` bounce
 - [x] v2: `getOutputByteFrequencyData()` → mouth open / scaleY squash
@@ -244,42 +245,38 @@ If ElevenLabs exposes interrupt on WebRTC path: **Stop coach** (mid-speech) dist
 **Files likely touched:**
 
 - New: `apps/buddy-live/src/components/CoachPuckAvatar.tsx`
-- New: `apps/buddy-live/public/coach-puck.svg` (if not inline SVG)
+- New: `apps/buddy-live/public/mascot/coach-puck-speak.png` (mouth-open frame)
 - `apps/buddy-live/src/app/coach/page.tsx`
 
-### Phase 3 — Polish (P1) — **PARTIAL**
+### Phase 3 — Polish (P1) — **DONE** (except deferred interrupt)
 
 - [x] Transcript timestamps (clock + elapsed after 30s)
 - [x] Long message splitting (`splitLongMessage` in `lib/transcript.ts`)
 - [x] ~~First-connect AI + camera disclosure~~ — skipped by decision
 - [x] `currentPhase` in sidebar
 - [x] Voice quick-prompt chips (`I'm ready`, `Wrap up`, `Repeat that`, `Next drill`)
-- [ ] Interrupt button (if SDK supports on WebRTC)
+- [x] Coach output mute button (`CoachAudioMuteButton`)
+- [ ] Interrupt button — **deferred** (verify ElevenLabs WebRTC interrupt API)
 
 ---
 
-## Decisions & assets — **need your input**
+## Decisions & assets — **locked**
 
-Loop back on these before or during implementation. Blockers marked **BLOCKER**.
+### 1. Mascot art — **DONE**
 
-### 1. Mascot art — **provided (needs transparency fix)**
-
-**Chosen asset:** 3D rendered BUDDY puck (1024×1024 PNG).
+**Chosen asset:** 3D rendered BUDDY puck (1024×1024 source).
 
 | Path | Notes |
 |------|--------|
-| Cursor assets: `assets/image-3e27d5da-0069-42b9-94b1-fd33c18e59a3.png` | Best brand match; knurled side, tilted 3D look |
-| Target in repo: `apps/buddy-live/public/mascot/coach-puck.png` | Copy on Phase 2 implementation |
+| `public/mascot/puck.png` | Source master (~926KB RGB) |
+| `public/mascot/coach-puck.png` | **Neutral face** — charcoal eyes, subtle smirk; baked into 3D puck texture (RGBA, checkerboard keyed out) |
+| `public/mascot/coach-puck-speak.png` | **Speak frame** — same puck, mouth slightly open |
 
-**Important:** File is **RGB PNG (~990KB), not SVG** — the checkerboard is **baked into the pixels**, not a real alpha channel. Before overlay on camera, either:
-- Re-export from source with **transparent background** (preferred), or
-- We run a one-time background removal when copying into `public/mascot/`.
+**Animation:** Crossfade neutral ↔ speak PNGs driven by `getOutputByteFrequencyData()`; no SVG overlay (avoids emoji-sticker look on a photo-real puck). Optional `scaleY` squash while speaking.
 
-**Animation plan unchanged:** PNG body + inline SVG mouth/eyes overlay; volume-reactive squash via `getOutputByteFrequencyData()`.
+### 2. Mascot placement — **DECIDED**
 
-### 2. Mascot placement
-
-**Default:** bottom-left of camera — confirm or override.
+Bottom-left of camera overlay (inside `ConversationProvider` so ElevenLabs hooks work).
 
 ### 3. Voice quick-prompt chips — **DECIDED: Include**
 
@@ -352,7 +349,7 @@ Rep scores, session metadata, clips, and analysis `results` remain in **Firestor
 - [x] While recording, user sees **60s countdown**, can tap **Stop & upload**, clip auto-stops at limit
 - [x] Puck visibly reacts while Coach Buddy speaks (volume-reactive mouth)
 - [x] Mascot does not obstruct camera framing during rep capture
-- [ ] Interrupt mid-speech (deferred — verify SDK)
+- [ ] Interrupt mid-speech — **deferred** (not blocking; mute button ships instead)
 
 ---
 
@@ -367,6 +364,6 @@ Rep scores, session metadata, clips, and analysis `results` remain in **Firestor
 
 ## Next step
 
-1. **Optional:** Re-export puck PNG with true transparency (current asset works with overlay).
-2. **Devpost:** Demo video + 1-pager (see README checklist).
-3. **Live tuning:** Warm-up length, rep counting, adult players (14+ age band) from real sessions.
+1. **Devpost:** Demo video + 1-pager (see README checklist).
+2. **Live tuning:** Warm-up length, rep counting, adult players (14+ age band) from real sessions on Vercel.
+3. **Optional:** Interrupt / barge-in once ElevenLabs WebRTC interrupt is confirmed in SDK.
