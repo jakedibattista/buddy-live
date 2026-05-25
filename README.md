@@ -5,12 +5,14 @@ A real-time AI hockey coach. Talk to it, it watches your reps via webcam, and gi
 ```
 Browser ───── voice ─────▶  ElevenLabs Agent  ──── Custom LLM SSE ────▶  ADK Service (Cloud Run)
    │                            │                                            │
-   │ webcam frames               │                                            ├── peek_camera     → Gemini Flash
-   │  ↓                          │                                            ├── start_rep_capture → Firestore command
-   │ /api/peek                   │                                            ├── analyze_rep    → modelforpuckbuddy
-   │ /api/clips/upload           ▼                                            ├── get_rep_result → Firestore + jobs API
-   ▼                          Firestore  ◀────  listener subscriptions  ────┤
-Firebase Storage                                                              └── recommend_drill / end_session_recap
+   │ webcam frames               │                                            ├── peek_camera / set_focus_drill
+   │  ↓                          │                                            ├── start/stop_rep_capture
+   │ /api/peek                   │                                            ├── analyze_rep → modelforpuckbuddy
+   │ /api/clips/upload           │                                            ├── get_rep_result
+   │ /api/reps/analyze            ▼                                            └── recommend_drill / end_session_recap
+   │ /api/reps/refresh         Firestore  ◀────  listener subscriptions  ────┘
+   ▼
+Firebase Storage
 ```
 
 ## What's in the box
@@ -18,7 +20,8 @@ Firebase Storage                                                              �
 | Path | What |
 |---|---|
 | [`apps/buddy-live/`](apps/buddy-live) | Next.js 16 web app (TS, App Router, Tailwind v4, `@elevenlabs/react`). Live session UI, ElevenLabs widget, MediaRecorder rep capture, periodic webcam-frame uploader, Firestore listeners. |
-| [`services/buddy-live-adk/`](services/buddy-live-adk) | Python FastAPI + Google ADK 2.0 agent. OpenAI-compatible `/chat/completions` SSE endpoint hit by ElevenLabs' Custom LLM. 6 tools: `peek_camera`, `start_rep_capture`, `analyze_rep`, `get_rep_result`, `recommend_drill`, `end_session_recap`. |
+| [`services/buddy-live-adk/`](services/buddy-live-adk) | Python FastAPI + Google ADK 2.0 agent. OpenAI-compatible `/chat/completions` SSE endpoint hit by ElevenLabs' Custom LLM. **8 tools:** `peek_camera`, `set_focus_drill`, `start_rep_capture`, `stop_rep_capture`, `analyze_rep`, `get_rep_result`, `recommend_drill`, `end_session_recap`. |
+| [`docs/UI-CONVERSATION-UX-PLAN.md`](docs/UI-CONVERSATION-UX-PLAN.md) | Conversation UI plan — phases 1–3 shipped; optional polish remaining. |
 | [`infra/`](infra) | Cloud Build, Firestore + Storage rules, Firebase config, deploy guide. |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Hosting map (Vercel / Cloud Run / Firebase / ElevenLabs), data flow, env split. |
 | [`docs/FIRESTORE_RULES.md`](docs/FIRESTORE_RULES.md) | Safe merge + deploy of `live_sessions/` into the existing `puck-buddy` database. |
@@ -30,9 +33,9 @@ Firebase Storage                                                              �
 3. The agent is configured with `llm: custom_llm` pointing at the ADK service. On every conversational turn, ElevenLabs POSTs OpenAI-style messages to `/chat/completions` with `customLlmExtraBody.arbitrary_identifier = sessionId`.
 4. The ADK service routes that to the same persistent ADK `Session`, runs the LLM (Gemini Flash), and streams back SSE chunks. Tools run inside ADK with full session memory.
 5. While connected, the web app uploads a small webcam JPEG to Firebase Storage every ~2.5s and mirrors the signed URL into the session doc. When the agent calls `peek_camera`, the tool fetches that latest frame and one-shot-asks Gemini Flash a grounding question. This sidesteps the 1-FPS / 2-min Gemini Live API limits entirely.
-6. When the agent wants the player to shoot, it calls `start_rep_capture(drill_id, hint)`. That writes a Firestore command. The web client sees it, starts `MediaRecorder`, and uploads the resulting webm to `/api/clips/upload`.
-7. Once the clip is up, the agent calls `analyze_rep(rep_id, drill_id)` which POSTs to the existing [modelforpuckbuddy](https://github.com/jakedibattista/modelforpuckbuddy) `/api/analyze-video` endpoint. That kicks the full MediaPipe + Roboflow + Coach Seth pipeline (30-90s). The tool returns *immediately* so the agent can keep coaching.
-8. Whenever the player asks "how was that shot?" -- or the agent decides to surface results -- it calls `get_rep_result(rep_id)`. The score, weakest metric, and Coach Seth summary land in the side panel and the agent speaks the highlight.
+6. Coach Buddy drives the session in voice: warm-up → camera setup (framing gate) → drill explanation or practice rep → **5 scored reps**. Hockey IQ questions fill the wait while analysis runs (~30–90s).
+7. For each scored rep, the agent calls `start_rep_capture` (UI shows REC + 60s countdown), then `stop_rep_capture` when the player shoots. The clip uploads via `/api/clips/upload`; `/api/reps/analyze` and `/api/reps/refresh` keep the scorecard pipeline moving even if the agent is mid-conversation.
+8. The agent calls `analyze_rep` which POSTs to [modelforpuckbuddy](https://github.com/jakedibattista/modelforpuckbuddy) `/api/analyze-video`. Results land in the side panel; `get_rep_result` lets Coach Buddy speak one strength + one fix. Wrap-up uses `end_session_recap` + `recommend_drill` for homework.
 
 ## Quick start (local)
 
@@ -130,8 +133,8 @@ The hackathon judging criterion. Beyond that, ADK gives us a clean `Agent` + `Ru
 - [ ] Architecture diagram (see above)
 - [ ] Built with: **Google ADK, Gemini Flash, Gemini Live (peek only), Firebase, Cloud Run, ElevenLabs, Next.js, Vercel**
 - [ ] Public GitHub repo
-- [ ] Live URL (`buddy-live.vercel.app`)
-- [ ] 1-pager: how we use ADK specifically (`Agent` + `Runner` + `SessionService` + 6 tools + streaming SSE bridge to ElevenLabs)
+- [ ] Live URL: [buddy-live-indol.vercel.app](https://buddy-live-indol.vercel.app) (also `buddy-live-buddy-tech.vercel.app`)
+- [ ] 1-pager: how we use ADK specifically (`Agent` + `Runner` + `SessionService` + **8 tools** + streaming SSE bridge to ElevenLabs)
 
 ## Credits
 

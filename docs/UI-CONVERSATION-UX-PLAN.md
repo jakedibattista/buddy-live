@@ -1,7 +1,10 @@
 # Buddy Live · Conversation UI & Mascot Plan
 
 **Created:** 2026-05-24  
+**Updated:** 2026-05-25  
 **Source:** UI review against [Lovable’s chatbot UI guide](https://lovable.dev/guides/how-to-build-a-chatbot-ui), plus follow-up discussion on a live “talking puck” mascot.
+
+**Status:** Phases 1–2 and most of Phase 3 **shipped** in commit `ee8e1b1`. Remaining items are optional polish (interrupt button, mascot transparency export).
 
 This doc preserves recommendations from that conversation and turns them into an execution plan. Buddy Live is **voice-first coaching** — the transcript and mascot support the session; they are not a standalone text chat product.
 
@@ -17,17 +20,20 @@ This doc preserves recommendations from that conversation and turns them into an
 
 ---
 
-## Current state (baseline)
+## Current state (2026-05-25)
 
 | Area | Today | Key files |
 |------|--------|-----------|
-| Voice | ElevenLabs WebRTC (primary) or WebSocket (signed URL) | `apps/buddy-live/src/components/CoachConversation.tsx` |
-| Transcript | Read-only bubbles, user right / coach left, no timestamps | `apps/buddy-live/src/components/TranscriptPanel.tsx` |
-| Drill context | `DrillChip` on camera overlay | `apps/buddy-live/src/components/DrillChip.tsx` |
-| Rep progress | Named states on scorecards (“Analyzing”, etc.) | `apps/buddy-live/src/components/RepScorecard.tsx` |
-| Errors | Inline red text, no retry | `CoachConversation.tsx`, `coach/page.tsx` |
-| Mascot | None — no brand asset in repo yet | — |
-| Session init | `live.loading` from hook not rendered | `apps/buddy-live/src/hooks/useLiveSession.ts`, `coach/page.tsx` |
+| Voice | ElevenLabs WebRTC (primary) or WebSocket (signed URL) | `CoachConversation.tsx` |
+| Transcript | User/coach bubbles + **system pills**, timestamps, activity row | `TranscriptPanel.tsx`, `lib/transcript.ts` |
+| Drill context | `DrillChip` with **Rep armed** / **Now capturing** states | `DrillChip.tsx` |
+| Rep progress | Scorecards + system lines (upload → analyze → scored) | `RepScorecard.tsx`, `coach/page.tsx` |
+| Recording | **60s countdown**, **Stop & upload**, `stop_rep_capture` | `RecordingTimer.tsx`, `useRepCapture.ts` |
+| Session phases | Sidebar **Phase:** label (`warmup` → `drill_readiness` → scored → `recap`) | `lib/phases.ts`, Firestore `currentPhase` |
+| Next-turn cues | Contextual copy + **I'm ready** / **Wrap up** chips | `NextTurnCue.tsx`, `VoiceQuickPrompts.tsx` |
+| Errors | Retry connect + retry camera permission | `CoachConversation.tsx`, `coach/page.tsx` |
+| Mascot | **CoachPuckAvatar** — volume-reactive mouth, celebrate on score | `CoachPuckAvatar.tsx`, `public/mascot/` |
+| Session init | Loading state on session card; Start gated on `sessionReady` | `coach/page.tsx`, `useLiveSession.ts` |
 
 ElevenLabs SDK already exposes: `isSpeaking`, `isListening`, `mode`, `getOutputByteFrequencyData()`, `onModeChange`, `onAudio`, `onAudioAlignment`.  
 **Note:** Raw `onAudio` / alignment events do **not** fire on WebRTC (LiveKit handles playback). Frequency data **does** work on WebRTC. See [ElevenLabs client events](https://elevenlabs.io/docs/eleven-agents/customization/events/client-events).
@@ -111,11 +117,11 @@ Any clip recorded for upload to **modelforpuckbuddy** must show a clear **60-sec
 - Update `prompts.py`: after shot, call `stop_rep_capture` then `analyze_rep` (or document that UI stop + analyze is player-driven)
 
 **Implementation checklist:**
-- [ ] `MAX_REP_RECORDING_MS = 60_000` shared constant
-- [ ] `useRepCapture`: default 60s; handle `stop_capture` commands in commands listener
-- [ ] `RecordingTimer.tsx`: countdown + stop button on camera overlay
-- [ ] `coach/page.tsx`: wire `capture.stopRecording` to button
-- [ ] (ADK) `stop_rep_capture` tool + prompt update for post-shot stop
+- [x] `MAX_REP_RECORDING_MS = 60_000` shared constant
+- [x] `useRepCapture`: default 60s; handle `stop_capture` commands in commands listener
+- [x] `RecordingTimer.tsx`: countdown + stop button on camera overlay
+- [x] `coach/page.tsx`: wire `capture.stopRecording` to button
+- [x] (ADK) `stop_rep_capture` tool + prompt update for post-shot stop
 
 **Files:** `useRepCapture.ts`, `CameraView.tsx` or `RecordingTimer.tsx`, `rep_capture.py`, `prompts.py`, `coach/page.tsx`
 
@@ -200,19 +206,19 @@ If ElevenLabs exposes interrupt on WebRTC path: **Stop coach** (mid-speech) dist
 
 ## Execution phases
 
-### Phase 1 — Foundation (P0, no mascot asset required)
+### Phase 1 — Foundation (P0, no mascot asset required) — **DONE**
 
 **Goal:** Conversation feels alive and recoverable without new art.
 
-- [ ] Extend `TranscriptEntry` with `role: "system"` (+ optional `kind` for event type)
-- [ ] Update `TranscriptPanel` — system pills, coach activity row (thinking/speaking/listening)
-- [ ] Wire activity state from `useConversationMode()` in a small hook or child component
-- [ ] Setup framing gate: peek returns `full_body_in_frame` + `facing_camera`; agent re-peeks until pass, then asks “ready to start?”
-- [ ] Write `last_peek_result` to session doc; UI banner during setup until framing passes
-- [ ] Error recovery UI in `CoachConversation` (retry connect) and permission overlay (retry media)
-- [ ] Render `live.loading`; gate Start until session ready
-- [ ] Next-turn cue copy tied to `coachStatus`, `capture.recording`, rep analyzing state
-- [ ] **60s recording countdown** + **Stop & upload** button on camera during rep capture; align `maxRepMs` to 60_000; handle `stop_capture` commands
+- [x] Extend `TranscriptEntry` with `role: "system"` (+ optional `kind` for event type)
+- [x] Update `TranscriptPanel` — system pills, coach activity row (thinking/speaking/listening)
+- [x] Wire activity state from `useConversationMode()` in `CoachActivityIndicator`
+- [x] Setup framing gate: peek returns `full_body_in_frame` + `facing_camera`; agent re-peeks until pass
+- [x] Write peek status to session doc; UI banner during setup until framing passes
+- [x] Error recovery UI in `CoachConversation` (retry connect) and permission overlay (retry media)
+- [x] Render `live.loading`; gate Start until session ready
+- [x] Next-turn cue copy tied to phase, recording, analyzing, `results_ready_at`
+- [x] **60s recording countdown** + **Stop & upload** button; handle `stop_capture` commands
 
 **Files likely touched:**
 
@@ -223,17 +229,17 @@ If ElevenLabs exposes interrupt on WebRTC path: **Stop coach** (mid-speech) dist
 - New: `apps/buddy-live/src/hooks/useCoachActivity.ts` (optional)
 - New: `apps/buddy-live/src/components/CoachActivityIndicator.tsx` (optional)
 
-### Phase 2 — Mascot v1 + v2
+### Phase 2 — Mascot v1 + v2 — **DONE**
 
 **Goal:** Talking puck on camera overlay, volume-synced mouth.
 
-- [ ] Add mascot asset (see **Decisions & assets** below)
-- [ ] New `CoachPuckAvatar.tsx` — SVG preferred for mouth animation
-- [ ] Mount on camera column in `coach/page.tsx` with z-index / pointer-events rules
-- [ ] v1: `isSpeaking` bounce
-- [ ] v2: `getOutputByteFrequencyData()` → mouth open / scaleY squash
-- [ ] Dim/hide during recording
-- [ ] Optional: celebrate on rep `completed`
+- [x] Add mascot asset (`public/mascot/coach-puck.png`)
+- [x] New `CoachPuckAvatar.tsx` — PNG + SVG mouth overlay
+- [x] Mount on camera column in `coach/page.tsx`
+- [x] v1: `isSpeaking` bounce
+- [x] v2: `getOutputByteFrequencyData()` → mouth open / scaleY squash
+- [x] Dim during recording
+- [x] Celebrate on rep `completed`
 
 **Files likely touched:**
 
@@ -241,13 +247,13 @@ If ElevenLabs exposes interrupt on WebRTC path: **Stop coach** (mid-speech) dist
 - New: `apps/buddy-live/public/coach-puck.svg` (if not inline SVG)
 - `apps/buddy-live/src/app/coach/page.tsx`
 
-### Phase 3 — Polish (P1)
+### Phase 3 — Polish (P1) — **PARTIAL**
 
-- [ ] Transcript timestamps
-- [ ] Long message splitting
-- [ ] First-connect AI + camera disclosure
-- [ ] `currentPhase` in sidebar
-- [ ] Voice quick-prompt chips (if approved)
+- [x] Transcript timestamps (clock + elapsed after 30s)
+- [x] Long message splitting (`splitLongMessage` in `lib/transcript.ts`)
+- [x] ~~First-connect AI + camera disclosure~~ — skipped by decision
+- [x] `currentPhase` in sidebar
+- [x] Voice quick-prompt chips (`I'm ready`, `Wrap up`, `Repeat that`, `Next drill`)
 - [ ] Interrupt button (if SDK supports on WebRTC)
 
 ---
@@ -285,15 +291,18 @@ Phase 3. Drill-focused hints: “I’m ready”, “Repeat that”, “Next dril
 
 This replaces vague “I don’t see you” loops with a clear setup checklist.
 
-#### Desired setup flow
+#### Desired setup flow (implemented 2026-05-25)
 
 ```
 Drill picked (set_focus_drill)
-    → Agent: "Step back so I can see you head to toes, stick in hand, facing the camera."
-    → peek_camera (repeat until pass OR player adjusts)
-    → Pass: full_body_in_frame + facing_camera
-    → Agent: brief form tip if needed, then "Ready to start?"
-    → Player confirms → drill explainer → rep 1 (start_rep_capture)
+    → Warm-up (3–5 min, no recording)
+    → Agent: "Step back so I can see you head to toes…"
+    → peek_camera (repeat until pass)
+    → Pass: full_body_in_frame + facing_camera → phase: drill_readiness
+    → Agent: "Explain the drill or practice rep first?"
+    → Player ready → rep 1 (start_rep_capture + "Rep 1 of five — recording when you shoot")
+    → … scored reps + IQ while analyzing …
+    → results_ready_at → Wrap up → end_session_recap
 ```
 
 #### What “pass” means (new validation criteria)
@@ -307,15 +316,14 @@ Drill picked (set_focus_drill)
 
 **Fail → coach gives one concrete adjustment** (“step back”, “tilt the laptop”, “show your feet”), re-peeks. **Do not** proceed to recording or say “let’s go anyway” while framing fails.
 
-#### Code / prompt changes (execution)
+#### Code / prompt changes — **DONE**
 
 | Layer | Change |
 |-------|--------|
-| `peek_camera.py` | Extend Gemini prompt + parser: `FULL_BODY`, `FACING`, write `last_peek_result` to Firestore session doc |
-| `prompts.py` | Setup step: loop peek until pass; gate `start_rep_capture` on player “ready” after framing OK |
-| `LiveSessionDoc` / types | `last_peek_result?: { person_visible, full_body_in_frame, facing_camera, stick_visible, setup, at }` |
-| UI (Phase 1) | During setup only: camera banner — “Step back — head to toes in frame” until `full_body_in_frame && facing_camera`; transcript system lines on peek pass/fail |
-| UI quick-prompt | “I’m ready” chip appears **after** framing pass |
+| `peek_camera.py` | Structured vision prompt; `full_body_in_frame`, `facing_camera`, `setup_framing_passed`; phase → `drill_readiness` on pass |
+| `prompts.py` | Full session arc: warm-up → setup → drill readiness → scored reps → IQ → recap |
+| `LiveSessionDoc` / types | Peek fields, `currentPhase`, `results_ready_at`, `camera_hint` |
+| UI | Setup banner, system transcript, phase label, next-turn cues, quick prompts |
 
 #### What we are NOT doing
 
@@ -323,7 +331,7 @@ Drill picked (set_focus_drill)
 - Proceeding when peek fails (“but let’s go anyway”)
 - Stick-required as hard blocker if body is framed (prompt can still ask for stick)
 
-**Open engineering note:** `peek_camera` currently only returns `person_visible` / `stick_visible` and allows “sitting at a desk” as pass — too lenient for this gate. Tighten vision prompt + agent instructions together.
+**Engineering note (resolved):** peek gate tightened in `e08cf9b` / `ee8e1b1`. Agent no longer proceeds when framing fails.
 
 ### 5. First-connect disclosure — **DECIDED: Skip**
 
@@ -337,13 +345,14 @@ Rep scores, session metadata, clips, and analysis `results` remain in **Firestor
 
 ## Success criteria (how we know it worked)
 
-- [ ] During ADK/tool latency, user sees “thinking” — not a frozen UI
-- [ ] User can recover from connection error without refreshing the page
-- [ ] Transcript tells the story: said → recorded → uploaded → analyzed → scored
-- [ ] During a drill, user knows whether to speak, perform, or wait
-- [ ] While recording, user sees **60s countdown**, can tap **Stop & upload**, clip auto-stops at limit
-- [ ] Puck visibly reacts while Coach Buddy speaks (v2: mouth moves with voice energy)
-- [ ] Mascot does not obstruct camera framing during rep capture
+- [x] During ADK/tool latency, user sees “thinking” — not a frozen UI
+- [x] User can recover from connection error without refreshing the page
+- [x] Transcript tells the story: said → recorded → uploaded → analyzed → scored
+- [x] During a drill, user knows whether to speak, perform, or wait
+- [x] While recording, user sees **60s countdown**, can tap **Stop & upload**, clip auto-stops at limit
+- [x] Puck visibly reacts while Coach Buddy speaks (volume-reactive mouth)
+- [x] Mascot does not obstruct camera framing during rep capture
+- [ ] Interrupt mid-speech (deferred — verify SDK)
 
 ---
 
@@ -358,5 +367,6 @@ Rep scores, session metadata, clips, and analysis `results` remain in **Firestor
 
 ## Next step
 
-1. **You:** Confirm mascot **bottom-left** placement; optionally re-export puck PNG with real transparency.
-2. **Implementation:** Say **“execute Phase 1”** or **“execute all”** to build against this doc.
+1. **Optional:** Re-export puck PNG with true transparency (current asset works with overlay).
+2. **Devpost:** Demo video + 1-pager (see README checklist).
+3. **Live tuning:** Warm-up length, rep counting, adult players (14+ age band) from real sessions.

@@ -11,10 +11,10 @@ Where each piece runs, how data flows, and how it connects to the existing Puck 
 │                                 │     │                                  │
 │  • Next.js web UI (/coach)      │     │  • Python FastAPI + Google ADK   │
 │  • Webcam + MediaRecorder       │     │  • /chat/completions SSE         │
-│  • ElevenLabs React widget      │────▶│  • Gemini Flash + 6 tools        │
+│  • ElevenLabs React widget      │────▶│  • Gemini Flash + 8 tools        │
 │  • /api/session, /api/peek,     │     │                                  │
-│    /api/clips/upload            │     │  make deploy → gcloud builds     │
-│                                 │     │  submit                          │
+│    /api/clips/upload,           │     │  make deploy → gcloud builds     │
+│    /api/reps/analyze|refresh    │     │  submit                          │
 │  vercel deploy --prod           │     │                                  │
 └──────────────┬──────────────────┘     └──────────────────────────────────┘
                │
