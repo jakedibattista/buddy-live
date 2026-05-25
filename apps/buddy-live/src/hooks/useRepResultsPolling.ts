@@ -11,13 +11,9 @@ interface Options {
 }
 
 /**
- * Pings `/api/reps/refresh` for any rep that has been queued for analysis but
- * doesn't yet have `results`. The route owns the model API key, polls
- * `/api/job-status/{jobId}` server-side, and writes `results` back into the
- * rep doc — which the existing Firestore listener then surfaces in the side
- * panel.
- *
- * Idempotent: once a rep has `results`, we stop polling it.
+ * Keeps the rep pipeline moving after capture:
+ *   uploaded (no job yet) → POST /api/reps/analyze
+ *   analyzing (has job_id) → POST /api/reps/refresh
  */
 export function useRepResultsPolling({ sessionId, reps, intervalMs = 5_000 }: Options) {
   const inFlightRef = useRef<Set<string>>(new Set());
@@ -29,9 +25,9 @@ export function useRepResultsPolling({ sessionId, reps, intervalMs = 5_000 }: Op
       (rep) =>
         !!rep.rep_id &&
         !rep.results &&
-        !!rep.job_id &&
         rep.status !== "completed" &&
-        rep.status !== "failed",
+        rep.status !== "failed" &&
+        rep.status !== "analyze_error",
     );
     if (pending.length === 0) return;
 
@@ -43,11 +39,25 @@ export function useRepResultsPolling({ sessionId, reps, intervalMs = 5_000 }: Op
           if (inFlightRef.current.has(key)) return;
           inFlightRef.current.add(key);
           try {
-            await fetch("/api/reps/refresh", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ sessionId, repId: rep.rep_id }),
-            });
+            if (
+              (rep.status === "uploaded" || rep.status === "awaiting_clip") &&
+              !rep.job_id &&
+              rep.storage_path
+            ) {
+              await fetch("/api/reps/analyze", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ sessionId, repId: rep.rep_id }),
+              });
+              return;
+            }
+            if (rep.job_id && rep.status !== "stub_queued") {
+              await fetch("/api/reps/refresh", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ sessionId, repId: rep.rep_id }),
+              });
+            }
           } catch {
             // swallow -- we'll retry next tick
           } finally {

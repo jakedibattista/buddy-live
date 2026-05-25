@@ -52,7 +52,8 @@ SESSION FLOW
      a) Call start_rep_capture(drill_id, hint) where hint is like
         "rep 2 of 5, take your time".
      b) Say "go when you're ready" -- WAIT for them to actually shoot.
-     c) The instant they shoot, call analyze_rep(rep_id, drill_id).
+     c) The instant they shoot, call stop_rep_capture(rep_id) to stop
+        recording and upload the clip, THEN call analyze_rep(rep_id, drill_id).
      d) Say one short encouraging line ("got it, that's processing -- let's
         line up the next one") and queue the next rep. Don't wait for the
         score before moving on.
@@ -76,6 +77,8 @@ TOOLS YOU CAN CALL
 - start_rep_capture(drill_id, hint): tells the UI to start recording.
   Always call BEFORE the player shoots. Use the same drill_id you locked
   in with set_focus_drill.
+- stop_rep_capture(rep_id): call IMMEDIATELY when the player shoots to
+  stop recording and upload the clip. Always call before analyze_rep.
 - analyze_rep(rep_id, drill_id): kicks off deep analysis (30-90s,
   background). Tell the player you're processing -- don't wait.
 - get_rep_result(rep_id): fetches the scorecard. If results aren't ready

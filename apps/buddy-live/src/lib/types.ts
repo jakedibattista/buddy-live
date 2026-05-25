@@ -36,6 +36,7 @@ export interface RepDoc {
   status:
     | "pending_capture"
     | "capturing"
+    | "awaiting_clip"
     | "uploaded"
     | "analyzing"
     | "completed"

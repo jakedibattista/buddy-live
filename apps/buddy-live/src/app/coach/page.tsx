@@ -8,6 +8,7 @@ import { CoachConversation } from "@/components/CoachConversation";
 import { DrillChip } from "@/components/DrillChip";
 import { MicVUMeter } from "@/components/MicVUMeter";
 import { RepScorecard } from "@/components/RepScorecard";
+import { RecordingTimer } from "@/components/RecordingTimer";
 import { TranscriptPanel } from "@/components/TranscriptPanel";
 import { useLiveSession } from "@/hooks/useLiveSession";
 import { usePeekFrameUploader } from "@/hooks/usePeekFrameUploader";
@@ -130,6 +131,7 @@ export default function CoachPage() {
                 onStatusChange={setCoachStatus}
               />
             </div>
+            <RecordingTimer recording={capture.recording} onStop={capture.stopRecording} />
             <div className="absolute bottom-4 right-4">
               <MicVUMeter stream={stream} />
             </div>

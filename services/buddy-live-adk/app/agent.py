@@ -23,6 +23,7 @@ from app.tools import (
     recommend_drill,
     set_focus_drill,
     start_rep_capture,
+    stop_rep_capture,
 )
 
 _logger = logging.getLogger(__name__)
@@ -45,6 +46,7 @@ def _build_agent() -> Agent:
             peek_camera,
             set_focus_drill,
             start_rep_capture,
+            stop_rep_capture,
             analyze_rep,
             get_rep_result,
             recommend_drill,

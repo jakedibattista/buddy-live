@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 import uuid
 from datetime import datetime, timezone
 from typing import Any
@@ -115,6 +116,93 @@ def start_rep_capture(
     return {"rep_id": rep_id, "drill_id": canonical, "status": "capture_requested"}
 
 
+def stop_rep_capture(rep_id: str, tool_context: ToolContext) -> dict[str, Any]:
+    """Tell the web UI to stop recording a rep and upload the clip.
+
+    Call this right after the player shoots so the clip is ready before
+    analyze_rep runs.
+
+    Args:
+        rep_id: The rep_id returned by start_rep_capture.
+
+    Returns:
+        Dict with `status` and `rep_id`.
+    """
+    session_id = _get_session_id(tool_context)
+    if not session_id:
+        return {"status": "no_session", "rep_id": rep_id}
+
+    sref = session_ref(session_id)
+    if sref is not None:
+        sref.collection("commands").add(
+            {
+                "type": "stop_capture",
+                "rep_id": rep_id,
+                "created_at": _now_iso(),
+            }
+        )
+
+    ref = rep_ref(session_id, rep_id)
+    if ref is not None:
+        ref.set({"status": "capturing", "capture_stopped_at": _now_iso()}, merge=True)
+
+    return {"status": "stop_requested", "rep_id": rep_id}
+
+
+def _submit_analysis(
+    session_id: str,
+    rep_id: str,
+    drill_id: str,
+    storage_path: str,
+) -> dict[str, Any]:
+    """POST clip to modelforpuckbuddy and update the rep doc."""
+    ref = rep_ref(session_id, rep_id)
+    if ref is None:
+        return {"status": "no_firestore", "rep_id": rep_id}
+
+    canonical = _normalize_drill(drill_id)
+    api_url = os.getenv("MODELFORPUCKBUDDY_API_URL", "").rstrip("/")
+    if not api_url:
+        ref.update(
+            {
+                "status": "stub_queued",
+                "drill_id": canonical,
+                "queued_at": _now_iso(),
+            }
+        )
+        return {"status": "queued_stub", "rep_id": rep_id, "job_id": None}
+
+    headers = _build_auth_headers()
+    try:
+        with httpx.Client(timeout=15.0) as client:
+            resp = client.post(
+                f"{api_url}/api/analyze-video",
+                json={
+                    "storage_path": storage_path,
+                    "drill_id": canonical,
+                    "coach_id": "seth",
+                },
+                headers=headers,
+            )
+            resp.raise_for_status()
+            body = resp.json()
+            job_id = body.get("jobId") or body.get("job_id")
+    except Exception as exc:
+        _logger.exception("analyze_rep modelforpuckbuddy call failed")
+        ref.update({"status": "analyze_error", "error": str(exc)})
+        return {"status": "error", "rep_id": rep_id, "error": str(exc)}
+
+    ref.update(
+        {
+            "status": "analyzing",
+            "job_id": job_id,
+            "drill_id": canonical,
+            "queued_at": _now_iso(),
+        }
+    )
+    return {"status": "queued", "rep_id": rep_id, "job_id": job_id}
+
+
 def analyze_rep(
     rep_id: str,
     drill_id: str,
@@ -146,54 +234,42 @@ def analyze_rep(
     if not snap.exists:
         return {"status": "no_rep_doc", "rep_id": rep_id}
     rep = snap.to_dict() or {}
+
+    if rep.get("job_id"):
+        return {
+            "status": "already_queued",
+            "rep_id": rep_id,
+            "job_id": rep.get("job_id"),
+        }
+
     storage_path = rep.get("storage_path")
     if not storage_path:
-        return {"status": "no_clip", "rep_id": rep_id}
+        # Clip may still be uploading after stop_rep_capture — wait briefly.
+        wait_secs = float(os.getenv("ANALYZE_CLIP_WAIT_SECS", "25"))
+        deadline = time.monotonic() + wait_secs
+        while time.monotonic() < deadline:
+            time.sleep(1.0)
+            snap = ref.get()
+            rep = snap.to_dict() or {}
+            if rep.get("job_id"):
+                return {
+                    "status": "already_queued",
+                    "rep_id": rep_id,
+                    "job_id": rep.get("job_id"),
+                }
+            storage_path = rep.get("storage_path")
+            if storage_path:
+                break
+        if not storage_path:
+            ref.update({"status": "awaiting_clip", "analysis_pending": True})
+            return {
+                "status": "waiting_for_clip",
+                "rep_id": rep_id,
+                "hint": "Clip still uploading — analysis will start automatically.",
+            }
 
     canonical = _normalize_drill(drill_id)
-    api_url = os.getenv("MODELFORPUCKBUDDY_API_URL", "").rstrip("/")
-    if not api_url:
-        # Demo / no-backend fallback: write a synthetic placeholder so get_rep_result
-        # returns something useful for hackathon walkthroughs.
-        ref.update(
-            {
-                "status": "stub_queued",
-                "drill_id": canonical,
-                "queued_at": _now_iso(),
-            }
-        )
-        return {"status": "queued_stub", "rep_id": rep_id, "job_id": None}
-
-    headers = _build_auth_headers()
-
-    try:
-        with httpx.Client(timeout=15.0) as client:
-            resp = client.post(
-                f"{api_url}/api/analyze-video",
-                json={
-                    "storage_path": storage_path,
-                    "drill_id": canonical,
-                    "coach_id": "seth",
-                },
-                headers=headers,
-            )
-            resp.raise_for_status()
-            body = resp.json()
-            job_id = body.get("jobId") or body.get("job_id")
-    except Exception as exc:
-        _logger.exception("analyze_rep modelforpuckbuddy call failed")
-        ref.update({"status": "analyze_error", "error": str(exc)})
-        return {"status": "error", "rep_id": rep_id, "error": str(exc)}
-
-    ref.update(
-        {
-            "status": "analyzing",
-            "job_id": job_id,
-            "drill_id": canonical,
-            "queued_at": _now_iso(),
-        }
-    )
-    return {"status": "queued", "rep_id": rep_id, "job_id": job_id}
+    return _submit_analysis(session_id, rep_id, canonical, storage_path)
 
 
 def get_rep_result(rep_id: str, tool_context: ToolContext) -> dict[str, Any]:
