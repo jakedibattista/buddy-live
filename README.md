@@ -5,12 +5,12 @@ A real-time AI hockey coach. Talk to it, it watches your reps via webcam, and gi
 ```
 Browser ───── voice ─────▶  ElevenLabs Agent  ──── Custom LLM SSE ────▶  ADK Service (Cloud Run)
    │                            │                                            │
-   │ webcam frames               │                                            ├── peek_camera / set_focus_drill
-   │  ↓                          │                                            ├── start/stop_rep_capture
-   │ /api/peek                   │                                            ├── analyze_rep → modelforpuckbuddy
-   │ /api/clips/upload           │                                            ├── get_rep_result
-   │ /api/reps/analyze            ▼                                            └── recommend_drill / end_session_recap
-   │ /api/reps/refresh         Firestore  ◀────  listener subscriptions  ────┘
+   │ webcam frames               │                                            ├── peek_camera / peek_warmup
+   │  ↓                          │                                            ├── start_warmup_timer / set_focus_drill
+   │ /api/peek                   │                                            ├── start/stop_rep_capture
+   │ /api/clips/upload           │                                            ├── analyze_rep → modelforpuckbuddy
+   │ /api/reps/analyze            ▼                                            ├── get_rep_result
+   │ /api/reps/refresh         Firestore  ◀────  listener subscriptions       └── recommend_drill / end_session_recap
    ▼
 Firebase Storage
 ```
@@ -20,7 +20,7 @@ Firebase Storage
 | Path | What |
 |---|---|
 | [`apps/buddy-live/`](apps/buddy-live) | Next.js 16 web app (TS, App Router, Tailwind v4, `@elevenlabs/react`). Live session UI, ElevenLabs widget, MediaRecorder rep capture, periodic webcam-frame uploader, Firestore listeners. |
-| [`services/buddy-live-adk/`](services/buddy-live-adk) | Python FastAPI + Google ADK 2.0 agent. OpenAI-compatible `/chat/completions` SSE endpoint hit by ElevenLabs' Custom LLM. **8 tools:** `peek_camera`, `set_focus_drill`, `start_rep_capture`, `stop_rep_capture`, `analyze_rep`, `get_rep_result`, `recommend_drill`, `end_session_recap`. |
+| [`services/buddy-live-adk/`](services/buddy-live-adk) | Python FastAPI + Google ADK 2.0 agent. OpenAI-compatible `/chat/completions` SSE endpoint hit by ElevenLabs' Custom LLM. **10 tools:** `peek_camera`, `peek_warmup`, `start_warmup_timer`, `set_focus_drill`, `start_rep_capture`, `stop_rep_capture`, `analyze_rep`, `get_rep_result`, `recommend_drill`, `end_session_recap`. |
 | [`docs/UI-CONVERSATION-UX-PLAN.md`](docs/UI-CONVERSATION-UX-PLAN.md) | Conversation UI plan (Lovable chatbot UX applied to voice coaching) — **phases 1–3 shipped**; interrupt button deferred. |
 | [`infra/`](infra) | Cloud Build, Firestore + Storage rules, Firebase config, deploy guide. |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Hosting map (Vercel / Cloud Run / Firebase / ElevenLabs), data flow, env split. |
@@ -33,9 +33,12 @@ Firebase Storage
 3. The agent is configured with `llm: custom_llm` pointing at the ADK service. On every conversational turn, ElevenLabs POSTs OpenAI-style messages to `/chat/completions` with `customLlmExtraBody.arbitrary_identifier = sessionId`.
 4. The ADK service routes that to the same persistent ADK `Session`, runs the LLM (Gemini Flash), and streams back SSE chunks. Tools run inside ADK with full session memory.
 5. While connected, the web app uploads a small webcam JPEG to Firebase Storage every ~2.5s and mirrors the signed URL into the session doc. When the agent calls `peek_camera`, the tool fetches that latest frame and one-shot-asks Gemini Flash a grounding question. This sidesteps the 1-FPS / 2-min Gemini Live API limits entirely.
-6. Coach Buddy drives the session in voice: warm-up → camera setup (framing gate) → drill explanation or practice rep → **5 scored reps**. Hockey IQ questions fill the wait while analysis runs (~30–90s).
-7. For each scored rep, the agent calls `start_rep_capture` (UI shows REC + 60s countdown), then `stop_rep_capture` when the player shoots. The clip uploads via `/api/clips/upload`; `/api/reps/analyze` and `/api/reps/refresh` keep the scorecard pipeline moving even if the agent is mid-conversation.
-8. The agent calls `analyze_rep` which POSTs to [modelforpuckbuddy](https://github.com/jakedibattista/modelforpuckbuddy) `/api/analyze-video`. Results land in the side panel; `get_rep_result` lets Coach Buddy speak one strength + one fix. Wrap-up uses `end_session_recap` + `recommend_drill` for homework.
+6. Coach Buddy drives the session in voice: **timed warm-up** (on-screen m:ss countdown per move → `peek_warmup` feedback) → camera setup (framing gate, coach speaks fixes) → drill explanation or practice rep → **5 scored reps**. Hockey IQ questions fill the wait while analysis runs (~30–90s).
+7. Warm-up uses `start_warmup_timer` (20–30s per move). When the timer hits zero, the client nudges the agent to call `peek_warmup` for verbal “looks good / try this” feedback. Spoken demos use plain language for ages 10 and under (e.g. stick taps “like wiping a windshield,” not jargon alone).
+8. For each scored rep, the agent calls `start_rep_capture` (UI shows REC + 60s countdown), then `stop_rep_capture` when the player shoots. The clip uploads via `/api/clips/upload`; `/api/reps/analyze` and `/api/reps/refresh` keep the scorecard pipeline moving even if the agent is mid-conversation.
+9. The agent calls `analyze_rep` which POSTs to [modelforpuckbuddy](https://github.com/jakedibattista/modelforpuckbuddy) `/api/analyze-video`. Results land in the side panel; `get_rep_result` lets Coach Buddy speak one strength + one fix. Wrap-up uses `end_session_recap` + `recommend_drill` for homework.
+
+If the ElevenLabs voice link drops mid-session, the web app **auto-reconnects** (up to 5 attempts) and resumes the Firebase session with a reconnect first message — it does not restart from “what’s your name?” unless the player ends the call manually.
 
 The `/coach` UI follows voice-chat UX best practices (activity signals, system timeline, error recovery, next-turn cues, talking puck mascot). See [`docs/UI-CONVERSATION-UX-PLAN.md`](docs/UI-CONVERSATION-UX-PLAN.md).
 
@@ -92,7 +95,7 @@ npm run dev
 
 Hit **Start session** and start talking.
 
-**Tip:** For full Firebase + session flow without local admin keys, use the Vercel deployment ([buddy-live-indol.vercel.app/coach](https://buddy-live-indol.vercel.app/coach)) — deployment protection requires Buddy Tech login.
+**Testing policy:** Do **not** use local dev for QA on this project. Push to `main` and test on Vercel: [buddy-live-indol.vercel.app/coach](https://buddy-live-indol.vercel.app/coach) (Buddy Tech login required). Local setup below is for reference only.
 
 ## Deploy
 
@@ -138,7 +141,7 @@ The hackathon judging criterion. Beyond that, ADK gives us a clean `Agent` + `Ru
 - [ ] Built with: **Google ADK, Gemini Flash, Gemini Live (peek only), Firebase, Cloud Run, ElevenLabs, Next.js, Vercel**
 - [ ] Public GitHub repo — [github.com/jakedibattista/buddy-live](https://github.com/jakedibattista/buddy-live)
 - [x] Live URL (protected): [buddy-live-indol.vercel.app](https://buddy-live-indol.vercel.app) (also `buddy-live-buddy-tech.vercel.app`; Buddy Tech login required)
-- [ ] 1-pager: how we use ADK specifically (`Agent` + `Runner` + `SessionService` + **8 tools** + streaming SSE bridge to ElevenLabs)
+- [ ] 1-pager: how we use ADK specifically (`Agent` + `Runner` + `SessionService` + **10 tools** + streaming SSE bridge to ElevenLabs)
 
 ## Credits
 

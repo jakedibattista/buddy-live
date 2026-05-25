@@ -34,7 +34,7 @@ After the first deploy, set env vars / secrets:
 ```bash
 gcloud run services update buddy-live-adk \
   --region=us-central1 \
-  --update-env-vars=GEMINI_MODEL=gemini-flash-latest,MODELFORPUCKBUDDY_API_URL=https://api.buddysports.app,CORS_ALLOW_ORIGINS=https://buddy-live.vercel.app \
+  --update-env-vars=GEMINI_MODEL=gemini-flash-latest,MODELFORPUCKBUDDY_API_URL=https://api.buddysports.app,CORS_ALLOW_ORIGINS=https://buddy-live-indol.vercel.app,https://buddy-live-buddy-tech.vercel.app \
   --update-secrets=GOOGLE_API_KEY=gemini-api-key:latest
 ```
 
@@ -55,10 +55,16 @@ curl -s $SERVICE_URL/health
 
 ## Deploy the web app
 
+Push to `main` auto-deploys via GitHub → Vercel (root directory `apps/buddy-live`). Or manually:
+
 ```bash
 cd apps/buddy-live
 vercel deploy --prod
 ```
+
+**Production URLs:** [buddy-live-indol.vercel.app](https://buddy-live-indol.vercel.app) · [buddy-live-buddy-tech.vercel.app](https://buddy-live-buddy-tech.vercel.app)
+
+Deployment protection is enabled (Buddy Tech login required — not a public URL yet).
 
 Set these env vars in the Vercel project:
 

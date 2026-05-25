@@ -1,8 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { CameraView } from "@/components/CameraView";
 import { CoachConversation, CoachVoiceShell } from "@/components/CoachConversation";
 import { CoachPuckAvatar } from "@/components/CoachPuckAvatar";
@@ -11,6 +9,7 @@ import { MicVUMeter } from "@/components/MicVUMeter";
 import { NextTurnCue } from "@/components/NextTurnCue";
 import { RepScorecard } from "@/components/RepScorecard";
 import { RecordingTimer } from "@/components/RecordingTimer";
+import { WarmupTimerBridge } from "@/components/WarmupTimerBridge";
 import { TranscriptPanel } from "@/components/TranscriptPanel";
 import { VoiceQuickPrompts } from "@/components/VoiceQuickPrompts";
 import { useLiveSession } from "@/hooks/useLiveSession";
@@ -21,6 +20,7 @@ import { humanSessionPhase } from "@/lib/phases";
 import { SCORED_REP_TARGET } from "@/lib/recording";
 import { systemTranscript } from "@/lib/transcript";
 import type { TranscriptEntry } from "@/lib/types";
+import type { VoiceResumeContext } from "@/lib/voiceResume";
 
 const AGENT_ID = process.env.NEXT_PUBLIC_ELEVENLABS_AGENT_ID;
 
@@ -31,6 +31,8 @@ export default function CoachPage() {
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([]);
   const [coachStatus, setCoachStatus] = useState<string>("idle");
   const [celebratePuck, setCelebratePuck] = useState(false);
+  const [warmupTimerActive, setWarmupTimerActive] = useState(false);
+  const [warmupTimerLabel, setWarmupTimerLabel] = useState<string | null>(null);
 
   const live = useLiveSession();
   const capture = useRepCapture({
@@ -100,12 +102,26 @@ export default function CoachPage() {
     ? new Date(live.session.startedAt).getTime()
     : undefined;
 
+  const voiceResumeContext = useMemo<VoiceResumeContext>(
+    () => ({
+      focusDrill,
+      currentPhase,
+      repCount: reps.length,
+      setupFramingPassed,
+    }),
+    [focusDrill, currentPhase, reps.length, setupFramingPassed],
+  );
+
   const showSetupBanner =
     connected &&
     !capture.recording &&
-    reps.length === 0 &&
     focusDrill != null &&
-    !setupFramingPassed;
+    !setupFramingPassed &&
+    Boolean(live.session?.camera_hint || reps.length === 0);
+
+  const setupBannerText =
+    live.session?.camera_hint ??
+    "Step back — Coach Buddy needs to see you from head to toes, facing the camera.";
 
   const displayedDrillId = capture.activeDrillId ?? focusDrill;
   const nextRepNumber = Math.min(reps.length + 1, SCORED_REP_TARGET);
@@ -118,15 +134,22 @@ export default function CoachPage() {
       ? "Rep armed"
       : null;
 
-  const displayedHint = capture.activeDrillId
-    ? capture.hint
-    : focusDrill && setupFramingPassed && reps.length === 0
-      ? `Rep 1 of ${SCORED_REP_TARGET} — say ready to start recording`
-      : focusDrill && setupFramingPassed && !capture.recording && reps.length > 0
-        ? `Rep ${nextRepNumber} of ${SCORED_REP_TARGET} — say ready`
-        : focusDrill
-          ? `Today: ${SCORED_REP_TARGET} ${focusDrill}s, one at a time.`
-          : null;
+  const displayedHint = showSetupBanner
+    ? null
+    : capture.activeDrillId
+      ? capture.hint
+      : focusDrill && setupFramingPassed && reps.length === 0
+        ? `Rep 1 of ${SCORED_REP_TARGET} — say ready to start recording`
+        : focusDrill && setupFramingPassed && !capture.recording && reps.length > 0
+          ? `Rep ${nextRepNumber} of ${SCORED_REP_TARGET} — say ready`
+          : focusDrill
+            ? `Today: ${SCORED_REP_TARGET} ${focusDrill}s, one at a time.`
+            : null;
+
+  const handleWarmupTimerActiveChange = useCallback((active: boolean, label: string | null) => {
+    setWarmupTimerActive(active);
+    setWarmupTimerLabel(label);
+  }, []);
 
   const prevRecordingRef = useRef(false);
   useEffect(() => {
@@ -174,6 +197,22 @@ export default function CoachPage() {
     appendSystem,
   ]);
 
+  const prevWarmupPeekRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const at = live.session?.warmup_peek_updated_at;
+    if (!at || at === prevWarmupPeekRef.current) return;
+    prevWarmupPeekRef.current = at;
+
+    const form = live.session?.last_warmup_form;
+    if (form === "good") {
+      appendSystem("Warm-up move looked good.", "peek");
+    } else if (form === "adjust") {
+      appendSystem("Coach Buddy spotted something to adjust — listen for his cue.", "peek");
+    } else {
+      appendSystem("Coach Buddy checked your move — keep going.", "peek");
+    }
+  }, [live.session?.warmup_peek_updated_at, live.session?.last_warmup_form, appendSystem]);
+
   const prevCoachStatusRef = useRef(coachStatus);
   useEffect(() => {
     if (coachStatus.startsWith("error:") && !prevCoachStatusRef.current.startsWith("error:")) {
@@ -210,15 +249,6 @@ export default function CoachPage() {
 
   return (
     <main className="relative flex min-h-screen flex-col bg-zinc-950 text-white">
-      <div className="absolute left-4 top-4 z-30">
-        <Link
-          href="/"
-          className="flex items-center gap-2 rounded-full border border-white/10 bg-black/40 px-3 py-1.5 text-xs text-zinc-300 backdrop-blur hover:bg-black/60"
-        >
-          <ArrowLeft size={14} /> Back
-        </Link>
-      </div>
-
       <CoachVoiceShell>
         <div className="relative mx-auto grid w-full max-w-7xl flex-1 gap-6 p-4 lg:grid-cols-[1fr_360px] lg:p-6">
           {/* Camera column */}
@@ -241,12 +271,13 @@ export default function CoachPage() {
                 </div>
               )}
               {showSetupBanner && (
-                <div className="absolute inset-x-4 top-16 z-20 rounded-xl border border-amber-400/30 bg-amber-500/15 px-4 py-3 text-sm text-amber-100 backdrop-blur">
-                  {live.session?.camera_hint ??
-                    "Step back — Coach Buddy needs to see you from head to toes, facing the camera."}
+                <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center px-6">
+                  <div className="max-w-md rounded-xl border border-amber-400/30 bg-amber-500/20 px-5 py-3 text-center text-sm leading-snug text-amber-50 shadow-lg backdrop-blur-md">
+                    {setupBannerText}
+                  </div>
                 </div>
               )}
-              <div className="pointer-events-none absolute left-4 top-4 max-w-[60%] [&>*]:pointer-events-auto">
+              <div className="pointer-events-none absolute right-4 top-4 max-w-[45%] [&>*]:pointer-events-auto">
                 <DrillChip
                   drillId={displayedDrillId}
                   hint={displayedHint}
@@ -270,11 +301,18 @@ export default function CoachPage() {
                   sessionId={live.sessionId}
                   agentId={AGENT_ID}
                   sessionReady={!live.loading}
+                  resumeContext={voiceResumeContext}
                   onTranscript={handleTranscript}
                   onStatusChange={setCoachStatus}
                 />
               </div>
               <RecordingTimer recording={capture.recording} onStop={capture.stopRecording} />
+              <WarmupTimerBridge
+                sessionId={live.sessionId}
+                commands={live.commands}
+                onTranscript={handleTranscript}
+                onActiveChange={handleWarmupTimerActiveChange}
+              />
               <div className="absolute bottom-4 right-4">
                 <MicVUMeter stream={stream} />
               </div>
@@ -300,9 +338,11 @@ export default function CoachPage() {
                   className={
                     coachStatus === "connected"
                       ? "rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs text-emerald-300"
-                      : coachStatus === "wrapping up"
+                      : coachStatus === "reconnecting"
                         ? "rounded-full bg-amber-500/20 px-2 py-0.5 text-xs text-amber-300"
-                        : coachStatus === "ended" || live.session?.ended_at
+                        : coachStatus === "wrapping up"
+                          ? "rounded-full bg-amber-500/20 px-2 py-0.5 text-xs text-amber-300"
+                          : coachStatus === "ended" || live.session?.ended_at
                           ? "rounded-full bg-zinc-500/20 px-2 py-0.5 text-xs text-zinc-300"
                           : live.loading
                             ? "rounded-full bg-white/10 px-2 py-0.5 text-xs text-zinc-400"
@@ -320,12 +360,25 @@ export default function CoachPage() {
                 setupFramingPassed={setupFramingPassed}
                 focusDrill={focusDrill}
                 currentPhase={currentPhase}
+                lastWarmupExercise={live.session?.last_warmup_exercise}
+                lastWarmupForm={live.session?.last_warmup_form}
+                warmupMovesChecked={live.session?.warmup_moves_checked}
+                warmupTimerActive={warmupTimerActive}
+                warmupTimerLabel={warmupTimerLabel}
                 repCount={reps.length}
                 resultsReady={resultsReady}
                 connected={connected}
               />
               {live.error && (
                 <div className="mt-2 text-xs text-red-400">{live.error}</div>
+              )}
+              {live.session?.warmup_peek_updated_at && currentPhase === "warmup" && (
+                <div className="mt-2 text-xs text-zinc-500">
+                  Warm-up checked{" "}
+                  {new Date(live.session.warmup_peek_updated_at).toLocaleTimeString()}
+                  {live.session.warmup_moves_checked != null &&
+                    ` · ${live.session.warmup_moves_checked} move${live.session.warmup_moves_checked === 1 ? "" : "s"} reviewed`}
+                </div>
               )}
               {live.session?.peek_updated_at && (
                 <div className="mt-2 text-xs text-zinc-500">

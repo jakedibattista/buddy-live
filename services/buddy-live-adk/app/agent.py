@@ -20,9 +20,11 @@ from app.tools import (
     end_session_recap,
     get_rep_result,
     peek_camera,
+    peek_warmup,
     recommend_drill,
     set_focus_drill,
     start_rep_capture,
+    start_warmup_timer,
     stop_rep_capture,
 )
 
@@ -44,6 +46,8 @@ def _build_agent() -> Agent:
         instruction=COACH_SETH_LIVE_PROMPT,
         tools=[
             peek_camera,
+            peek_warmup,
+            start_warmup_timer,
             set_focus_drill,
             start_rep_capture,
             stop_rep_capture,

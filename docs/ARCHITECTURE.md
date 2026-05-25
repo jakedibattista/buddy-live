@@ -11,7 +11,7 @@ Where each piece runs, how data flows, and how it connects to the existing Puck 
 │                                 │     │                                  │
 │  • Next.js web UI (/coach)      │     │  • Python FastAPI + Google ADK   │
 │  • Webcam + MediaRecorder       │     │  • /chat/completions SSE         │
-│  • ElevenLabs React widget      │────▶│  • Gemini Flash + 8 tools        │
+│  • ElevenLabs React widget      │────▶│  • Gemini Flash + 10 tools       │
 │  • /api/session, /api/peek,     │     │                                  │
 │    /api/clips/upload,           │     │  make deploy → gcloud builds     │
 │    /api/reps/analyze|refresh    │     │  submit                          │
@@ -53,7 +53,9 @@ Player (browser)
   │                            ADK Service (Cloud Run)
   │                                 │
   │                                 ├─ Gemini Flash (conversation)
-  │                                 ├─ peek_camera → Gemini Flash (1 JPEG)
+  │                                 ├─ peek_camera → Gemini Flash (setup framing)
+  │                                 ├─ peek_warmup → Gemini Flash (warm-up form)
+  │                                 ├─ start_warmup_timer → Firestore command (UI countdown)
   │                                 ├─ start_rep_capture → Firestore command
   │                                 ├─ stop_rep_capture → Firestore stop_capture command
   │                                 └─ analyze_rep → modelforpuckbuddy API
@@ -82,8 +84,11 @@ The `/coach` page is voice-first but follows conversational UI patterns from [`U
 | Timeline | `TranscriptPanel` — user/coach bubbles + system pills (record, upload, peek, connection) |
 | Next action | `NextTurnCue` + `VoiceQuickPrompts` chips |
 | Mascot | `CoachPuckAvatar` on camera — crossfades `coach-puck.png` ↔ `coach-puck-speak.png` via `getOutputByteFrequencyData()` (baked face, no SVG overlay) |
-| Recording | `RecordingTimer` — 60s countdown + Stop & upload; driven by `useRepCapture` + `stop_capture` commands |
+| Recording | `RecordingTimer` — 60s REC countdown + Stop & upload; driven by `useRepCapture` |
+| Warm-up timer | `WarmupTimerBridge` + `CountdownOverlay` — amber m:ss countdown per move; driven by `start_warmup_timer` command |
+| Voice resilience | `CoachConversation` — auto-reconnect on ElevenLabs drop (resume message, not full re-onboarding) |
 | Session phase | Sidebar label from Firestore `currentPhase` (`lib/phases.ts`) |
+| Setup framing | Coach speaks fixes (`peek_camera`); sidebar `NextTurnCue` during `stance_check` |
 | Errors | Retry connect (ElevenLabs) and retry camera permission |
 
 Transcript text is **in-memory only** (ElevenLabs `onMessage`). Rep scores and session metadata persist in Firestore.
@@ -108,13 +113,17 @@ live_sessions/{sessionId}
   peek_url, peek_updated_at
   last_peek_person_visible, peek_fail_streak, camera_hint
   setup_framing_passed, full_body_in_frame, facing_camera
+  last_warmup_exercise, last_warmup_form, warmup_moves_checked, warmup_peek_updated_at
+  last_warmup_timer_label, last_warmup_timer_seconds, warmup_timer_started_at
   results_ready_at, ended_at
 
   reps/{repId}
     drill_id, status, storage_path, job_id, results
 
   commands/{cmdId}
-    type: "start_capture" | "stop_capture", rep_id, drill_id, hint, handled
+    type: "start_capture" | "stop_capture" | "start_warmup_timer"
+    rep_id, drill_id, hint, handled          (capture commands)
+    exercise, label, duration_seconds         (warm-up timer commands)
 
   coach_log/{logId}        (reserved; not fully wired yet)
   ambient_notes/{noteId}   (reserved)
@@ -126,8 +135,8 @@ live_sessions/{sessionId}
 
 | Env | Web app | ADK service | analyze-video API |
 |---|---|---|---|
-| Local dev | `localhost:3000` (needs full Firebase env) | `localhost:8080` + ngrok | dev Cloud Run URL |
-| Production | Vercel — [buddy-live-indol.vercel.app](https://buddy-live-indol.vercel.app) (deployment protection on) | Cloud Run `buddy-live-adk` | `https://api.buddysports.app` |
+| **Testing (this project)** | **Vercel only** — [buddy-live-indol.vercel.app](https://buddy-live-indol.vercel.app) (deployment protection on). No local QA. | Cloud Run `buddy-live-adk` (always deployed) | `https://api.buddysports.app` |
+| Local dev (reference) | `localhost:3000` — not used for Buddy Live QA | `localhost:8080` + ngrok — not used | dev Cloud Run URL |
 
 For heavy testing, point `MODELFORPUCKBUDDY_API_URL` at the **dev** API so you don't load prod workers:
 

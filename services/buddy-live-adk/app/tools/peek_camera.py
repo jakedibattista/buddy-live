@@ -41,7 +41,7 @@ _PEEK_PROMPT_PREAMBLE = (
     "- FACING=yes if the player is generally facing the camera (torso/face toward lens).\n"
     "- STICK=yes if a hockey stick is visible.\n"
     "- Do NOT say PERSON=no just because there is no stick or hockey stance.\n"
-    "- If FULL_BODY=no, COACH should ask them to step back / show feet — never say you cannot see them if PERSON=yes.\n"
+    "- If FULL_BODY=no, COACH should say they can't see the player's feet yet and ask them to step back — never say you cannot see them if PERSON=yes.\n"
     "- If PERSON=yes and FULL_BODY=yes and FACING=yes, COACH should confirm you can see them clearly."
 )
 
@@ -108,12 +108,15 @@ def _persist_peek_status(
         if not person_visible:
             hint = "Coach can't see you — check your camera and step into frame."
         elif not full_body_in_frame:
-            hint = "Step back — Coach Buddy needs to see you from head to toes."
+            hint = "Can't see your feet yet — step back so Coach Buddy can see you head to toes."
         elif not facing_camera:
             hint = "Face the camera so Coach Buddy can see your stance."
         elif not stick_visible:
             hint = "Grab your stick and stay in frame."
         current_phase = (snap.to_dict() or {}).get("currentPhase") if snap.exists else None
+        if current_phase == "warmup":
+            ref.set({"peek_updated_at": _now_iso()}, merge=True)
+            return 0
         locked_phases = {"wristshots", "snapshots", "skating", "recap", "ended"}
         if framing_passed and current_phase not in locked_phases:
             phase = "drill_readiness"

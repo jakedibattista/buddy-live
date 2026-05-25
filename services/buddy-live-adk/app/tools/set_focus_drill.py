@@ -60,7 +60,11 @@ def set_focus_drill(drill_id: str, tool_context: ToolContext) -> dict[str, Any]:
 
     try:
         ref.set(
-            {"focus_drill": canonical, "focus_drill_set_at": _now_iso()},
+            {
+                "focus_drill": canonical,
+                "focus_drill_set_at": _now_iso(),
+                "currentPhase": "warmup",
+            },
             merge=True,
         )
     except Exception as exc:

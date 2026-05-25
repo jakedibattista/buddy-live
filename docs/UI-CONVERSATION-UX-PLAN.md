@@ -288,19 +288,67 @@ Phase 3. Drill-focused hints: “I’m ready”, “Repeat that”, “Next dril
 
 This replaces vague “I don’t see you” loops with a clear setup checklist.
 
-#### Desired setup flow (implemented 2026-05-25)
+#### Desired setup flow (updated 2026-05-25)
 
 ```
 Drill picked (set_focus_drill)
-    → Warm-up (3–5 min, no recording)
-    → Agent: "Step back so I can see you head to toes…"
-    → peek_camera (repeat until pass)
+    → Warm-up (~2 min, timed moves — see below)
+    → Setup: peek_camera (repeat until pass) — coach SPEAKS fixes ("can't see your feet yet")
     → Pass: full_body_in_frame + facing_camera → phase: drill_readiness
     → Agent: "Explain the drill or practice rep first?"
     → Player ready → rep 1 (start_rep_capture + "Rep 1 of five — recording when you shoot")
     → … scored reps + IQ while analyzing …
     → results_ready_at → Wrap up → end_session_recap
 ```
+
+#### Warm-up (timed moves + vision feedback) — **DONE (2026-05-25)**
+
+Replaces jargon-heavy rep-count warm-up with **one move at a time**, plain language, and visible feedback.
+
+| Move | Duration | On-screen label |
+|------|----------|-----------------|
+| Arm circles | 20s | Arm circles |
+| High knees | 30s | High knees |
+| Stick wipers | 20s | Stick wipers |
+| Shadow shot (drill-specific) | 30s | Shadow wrist / slap / backhand |
+
+**Loop per move:**
+1. Coach **demos the move in plain words** (required for ages 10 and under — never label-only).
+2. Agent calls **`start_warmup_timer(exercise, duration_seconds, label)`** → amber **m:ss** countdown on camera (`CountdownOverlay`).
+3. Timer ends → client nudges agent → **`peek_warmup(exercise)`** → coach says "looks good" or one simple fix aloud.
+4. Sidebar: `NextTurnCue` + system transcript ("Time's up — …", "Warm-up move looked good").
+
+**Spoken demo example (stick wipers, ~9yo):** "Hold your stick out in front. Tap it left, then right, like wiping a windshield — twenty seconds." The label "Stick wipers" is for the timer only.
+
+| Layer | Change |
+|-------|--------|
+| `warmup_timer.py` | `start_warmup_timer` → Firestore `start_warmup_timer` command |
+| `peek_warmup.py` | Vision check per move; does not advance setup framing |
+| `CountdownOverlay.tsx` | Shared m:ss UI (warm-up amber + REC red) |
+| `WarmupTimerBridge.tsx` | Command listener + auto nudge to peek when timer hits 0 |
+| `prompts.py` | Timed warm-up script + SPOKEN DEMO lines for ages ≤10 |
+
+#### Setup framing — voice-led — **DONE (2026-05-25)**
+
+- Fail → coach tells player out loud (e.g. "I can't see your feet yet — step back"). No reliance on a persistent camera overlay for the fix.
+- `peek_camera` only after warm-up (unless player asks mid-session).
+- `peek_camera` ignored for phase/framing while `currentPhase === warmup`.
+
+#### Voice reconnect — **DONE (2026-05-25)**
+
+ElevenLabs voice can drop while the Firebase session continues. `CoachConversation` auto-reconnects (backoff, up to 5 tries), uses a **resume first message** (not "what's your name?"), and sends session context (drill, phase, rep count) to ADK. Manual end (red phone) does not auto-reconnect.
+
+#### Legacy setup flow note (2026-05-25 AM)
+
+```
+Drill picked (set_focus_drill)
+    → Warm-up (3–5 min, no recording)
+    → Agent: "Step back so I can see you head to toes…"
+    → peek_camera (repeat until pass)
+    ...
+```
+
+Superseded by timed warm-up + voice-led setup above.
 
 #### What “pass” means (new validation criteria)
 
@@ -311,7 +359,7 @@ Drill picked (set_focus_drill)
 | `facing_camera` | Torso/face generally toward camera (not turned away) |
 | `stick_visible` | Nice-to-have for setup; coach can prompt if missing |
 
-**Fail → coach gives one concrete adjustment** (“step back”, “tilt the laptop”, “show your feet”), re-peeks. **Do not** proceed to recording or say “let’s go anyway” while framing fails.
+**Fail → coach gives one concrete adjustment** (“step back”, “tilt the laptop”, “show your feet”), re-peeks. **Do not** proceed to recording or say “let’s go anyway” while framing fails. Coach speaks the fix — player hears Coach Buddy, not only UI text.
 
 #### Code / prompt changes — **DONE**
 
@@ -320,7 +368,7 @@ Drill picked (set_focus_drill)
 | `peek_camera.py` | Structured vision prompt; `full_body_in_frame`, `facing_camera`, `setup_framing_passed`; phase → `drill_readiness` on pass |
 | `prompts.py` | Full session arc: warm-up → setup → drill readiness → scored reps → IQ → recap |
 | `LiveSessionDoc` / types | Peek fields, `currentPhase`, `results_ready_at`, `camera_hint` |
-| UI | Setup banner, system transcript, phase label, next-turn cues, quick prompts |
+| UI | Phase label, next-turn cues, warm-up timer overlay, voice reconnect, quick prompts |
 
 #### What we are NOT doing
 
@@ -344,6 +392,8 @@ Rep scores, session metadata, clips, and analysis `results` remain in **Firestor
 
 - [x] During ADK/tool latency, user sees “thinking” — not a frozen UI
 - [x] User can recover from connection error without refreshing the page
+- [x] Voice auto-reconnects on unexpected ElevenLabs drop (resume session, not re-onboarding)
+- [x] Warm-up uses on-screen timer + verbal peek feedback per move
 - [x] Transcript tells the story: said → recorded → uploaded → analyzed → scored
 - [x] During a drill, user knows whether to speak, perform, or wait
 - [x] While recording, user sees **60s countdown**, can tap **Stop & upload**, clip auto-stops at limit
@@ -365,5 +415,5 @@ Rep scores, session metadata, clips, and analysis `results` remain in **Firestor
 ## Next step
 
 1. **Devpost:** Demo video + 1-pager (see README checklist).
-2. **Live tuning:** Warm-up length, rep counting, adult players (14+ age band) from real sessions on Vercel.
+2. **Live tuning:** Adult players (14+ age band), interrupt/barge-in, real-session edge cases on Vercel.
 3. **Optional:** Interrupt / barge-in once ElevenLabs WebRTC interrupt is confirmed in SDK.

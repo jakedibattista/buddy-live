@@ -11,7 +11,7 @@ import {
 } from "firebase/firestore";
 import { ensureAnonymousUser, getDb } from "@/lib/firebase";
 import { commandsCollectionPath, repDocPath, sessionDocPath } from "@/lib/paths";
-import type { CoachCommand, LiveSessionDoc, RepDoc } from "@/lib/types";
+import { parseCoachCommand, type CoachCommand, type LiveSessionDoc, type RepDoc } from "@/lib/types";
 
 interface UseLiveSessionResult {
   sessionId: string | null;
@@ -104,7 +104,10 @@ export function useLiveSession(): UseLiveSessionResult {
           cmdsRef,
           (snap) => {
             const next: CoachCommand[] = [];
-            snap.forEach((d) => next.push({ id: d.id, ...(d.data() as Omit<CoachCommand, "id">) }));
+            snap.forEach((d) => {
+              const cmd = parseCoachCommand(d.id, d.data() as Record<string, unknown>);
+              if (cmd) next.push(cmd);
+            });
             setCommands(next);
           },
           (err) => setError(err.message),
