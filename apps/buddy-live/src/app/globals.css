@@ -28,3 +28,70 @@ body {
   0% { transform: scale(0.9); opacity: 0.9; }
   100% { transform: scale(1.5); opacity: 0; }
 }
+
+@keyframes puck-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes puck-hover {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes puck-wobble {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(-3deg);
+  }
+  75% {
+    transform: rotate(3deg);
+  }
+}
+
+@utility animate-puck-bounce {
+  animation: puck-bounce 0.55s ease-in-out infinite;
+}
+
+@utility animate-puck-hover {
+  animation: puck-hover 2.8s ease-in-out infinite;
+}
+
+@utility animate-puck-wobble {
+  animation: puck-wobble 1.2s ease-in-out infinite;
+}
+
+@keyframes puck-celebrate {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  25% {
+    transform: rotate(-12deg) scale(1.08);
+  }
+  50% {
+    transform: rotate(12deg) scale(1.05);
+  }
+  75% {
+    transform: rotate(-6deg) scale(1.02);
+  }
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+}
+
+@utility animate-puck-celebrate {
+  animation: puck-celebrate 0.65s ease-in-out 2;
+}

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminConfigured, adminDb } from "@/lib/firebaseAdmin";
-import { repDocPath } from "@/lib/paths";
+import { repDocPath, sessionDocPath } from "@/lib/paths";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -97,6 +97,14 @@ export async function POST(req: NextRequest) {
       },
       { merge: true },
     );
+    const sessionRef = db.doc(sessionDocPath(sessionId));
+    const sessionSnap = await sessionRef.get();
+    if (!sessionSnap.data()?.results_ready_at) {
+      await sessionRef.set(
+        { results_ready_at: new Date().toISOString() },
+        { merge: true },
+      );
+    }
     return NextResponse.json({ ok: true, status: "completed" });
   }
 

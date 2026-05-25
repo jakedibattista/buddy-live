@@ -112,6 +112,8 @@ def start_rep_capture(
                 "created_at": _now_iso(),
             }
         )
+        phase = "snapshots" if canonical in ("slapshot_form", "snapshot") else "wristshots"
+        sref.set({"currentPhase": phase}, merge=True)
 
     return {"rep_id": rep_id, "drill_id": canonical, "status": "capture_requested"}
 
@@ -272,6 +274,20 @@ def analyze_rep(
     return _submit_analysis(session_id, rep_id, canonical, storage_path)
 
 
+def _mark_results_ready(session_id: str) -> None:
+    """Set results_ready_at on the session when the first scorecard lands."""
+    sref = session_ref(session_id)
+    if sref is None:
+        return
+    try:
+        snap = sref.get()
+        if snap.exists and (snap.to_dict() or {}).get("results_ready_at"):
+            return
+        sref.set({"results_ready_at": _now_iso()}, merge=True)
+    except Exception:
+        _logger.exception("results_ready_at write failed")
+
+
 def get_rep_result(rep_id: str, tool_context: ToolContext) -> dict[str, Any]:
     """Get the analysis scorecard for a previously analyzed rep.
 
@@ -298,6 +314,7 @@ def get_rep_result(rep_id: str, tool_context: ToolContext) -> dict[str, Any]:
 
     cached = rep.get("results")
     if cached:
+        _mark_results_ready(session_id)
         return _summarize_results(rep_id, cached)
 
     job_id = rep.get("job_id")
@@ -316,6 +333,7 @@ def get_rep_result(rep_id: str, tool_context: ToolContext) -> dict[str, Any]:
                     if job_status == "completed":
                         results = job.get("results", {})
                         ref.update({"status": "completed", "results": results})
+                        _mark_results_ready(session_id)
                         return _summarize_results(rep_id, results)
                     if job_status == "failed":
                         ref.update({"status": "failed", "error": job.get("error")})

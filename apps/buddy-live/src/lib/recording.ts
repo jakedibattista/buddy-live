@@ -1,3 +1,6 @@
+/** Target scored reps per session (matches coach agent prompt). */
+export const SCORED_REP_TARGET = 5;
+
 /** Max rep clip length sent to modelforpuckbuddy (matches coach UX spec). */
 export const MAX_REP_RECORDING_MS = 60_000;
 

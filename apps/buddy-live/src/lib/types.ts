@@ -5,6 +5,7 @@ export type FocusDrill = "wristshot" | "slapshot" | "backhand";
 export type SessionPhase =
   | "warmup"
   | "stance_check"
+  | "drill_readiness"
   | "wristshots"
   | "snapshots"
   | "skating"
@@ -22,10 +23,14 @@ export interface LiveSessionDoc {
   peek_updated_at?: string;
   last_peek_person_visible?: boolean;
   last_peek_stick_visible?: boolean;
+  last_peek_full_body_in_frame?: boolean;
+  last_peek_facing_camera?: boolean;
   last_peek_setup?: string;
+  setup_framing_passed?: boolean;
   peek_fail_streak?: number;
   camera_hint?: string;
   peek_status_updated_at?: string;
+  results_ready_at?: string;
   ended_at?: string;
 }
 
@@ -76,9 +81,19 @@ export interface CoachCommand {
   handled?: boolean;
 }
 
+export type TranscriptKind =
+  | "info"
+  | "recording"
+  | "upload"
+  | "analysis"
+  | "connection"
+  | "peek"
+  | "error";
+
 export interface TranscriptEntry {
   id: string;
-  role: "user" | "coach";
+  role: "user" | "coach" | "system";
+  kind?: TranscriptKind;
   text: string;
   ts: number;
 }
