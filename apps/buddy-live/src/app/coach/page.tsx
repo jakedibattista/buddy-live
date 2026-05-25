@@ -34,7 +34,9 @@ export default function CoachPage() {
   usePeekFrameUploader({
     sessionId: live.sessionId,
     videoRef,
-    enabled: coachStatus === "connected",
+    // Start uploading frames as soon as camera + session exist so a frame
+    // is ready before the setup peek_camera call.
+    enabled: Boolean(live.sessionId && stream),
   });
 
   useRepResultsPolling({ sessionId: live.sessionId, reps: live.reps });
@@ -151,6 +153,12 @@ export default function CoachPage() {
             </div>
             {live.error && (
               <div className="mt-2 text-xs text-red-400">{live.error}</div>
+            )}
+            {live.session?.peek_updated_at && (
+              <div className="mt-2 text-xs text-zinc-500">
+                Camera frame updated{" "}
+                {new Date(live.session.peek_updated_at).toLocaleTimeString()}
+              </div>
             )}
             {capture.lastUpload && (
               <div className="mt-2 text-xs text-zinc-400">
