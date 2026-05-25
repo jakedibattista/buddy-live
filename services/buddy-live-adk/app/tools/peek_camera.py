@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 import os
+from datetime import datetime, timezone
 from typing import Any
 
 import httpx
@@ -63,6 +64,58 @@ def _parse_peek_response(raw: str) -> dict[str, Any]:
     }
 
 
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _persist_peek_status(
+    session_id: str,
+    *,
+    person_visible: bool,
+    stick_visible: bool,
+    setup: str,
+) -> int:
+    """Mirror peek results onto the session doc for the web UI."""
+    ref = session_ref(session_id)
+    if ref is None:
+        return 0
+    try:
+        snap = ref.get()
+        prev_streak = int((snap.to_dict() or {}).get("peek_fail_streak") or 0) if snap.exists else 0
+        streak = 0 if person_visible else prev_streak + 1
+        hint = None
+        if not person_visible and streak >= 2:
+            hint = "Coach is having trouble seeing you — step back, face the camera, and grab your stick."
+        elif person_visible and not stick_visible:
+            hint = "Coach sees you — grab your stick and step back so your full body is in frame."
+        ref.set(
+            {
+                "last_peek_person_visible": person_visible,
+                "last_peek_stick_visible": stick_visible,
+                "last_peek_setup": setup,
+                "peek_fail_streak": streak,
+                "camera_hint": hint,
+                "peek_status_updated_at": _now_iso(),
+            },
+            merge=True,
+        )
+        return streak
+    except Exception:
+        _logger.exception("peek_camera status write failed")
+        return 0
+
+
+def _peek_unavailable(session_id: str | None, observation: str) -> dict[str, Any]:
+    if session_id:
+        _persist_peek_status(
+            session_id,
+            person_visible=False,
+            stick_visible=False,
+            setup="no frame",
+        )
+    return {"observation": observation, "available": False, "person_visible": False}
+
+
 def _get_session_id(tool_context: ToolContext) -> str | None:
     state = tool_context.state or {}
     return state.get("session_id") or state.get("sessionId")
@@ -93,17 +146,11 @@ def peek_camera(question: str, tool_context: ToolContext) -> dict[str, Any]:
     """
     session_id = _get_session_id(tool_context)
     if not session_id:
-        return {
-            "observation": "Camera unavailable: no active session.",
-            "available": False,
-        }
+        return _peek_unavailable(None, "Camera unavailable: no active session.")
 
     peek_url = _get_peek_url(session_id)
     if not peek_url:
-        return {
-            "observation": "Camera unavailable: no recent frame uploaded yet.",
-            "available": False,
-        }
+        return _peek_unavailable(session_id, "Camera unavailable: no recent frame uploaded yet.")
 
     try:
         with httpx.Client(timeout=8.0) as client:
@@ -112,15 +159,12 @@ def peek_camera(question: str, tool_context: ToolContext) -> dict[str, Any]:
             image_bytes = resp.content
     except Exception as exc:
         _logger.warning("peek_camera frame fetch failed: %s", exc)
-        return {"observation": "Camera glitched -- couldn't grab a frame.", "available": False}
+        return _peek_unavailable(session_id, "Camera glitched -- couldn't grab a frame.")
 
     try:
         api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
         if not api_key:
-            return {
-                "observation": "Camera unavailable: vision API not configured.",
-                "available": False,
-            }
+            return _peek_unavailable(session_id, "Camera unavailable: vision API not configured.")
         genai = Client(api_key=api_key)
         model = os.getenv("PEEK_MODEL", os.getenv("GEMINI_MODEL", "gemini-flash-latest"))
         response = genai.models.generate_content(
@@ -141,23 +185,28 @@ def peek_camera(question: str, tool_context: ToolContext) -> dict[str, Any]:
             parts = response.candidates[0].content.parts if response.candidates[0].content else []
             text = " ".join((p.text or "").strip() for p in parts).strip()
         parsed = _parse_peek_response(text)
+        streak = _persist_peek_status(
+            session_id,
+            person_visible=bool(parsed.get("person_visible")),
+            stick_visible=bool(parsed.get("stick_visible")),
+            setup=str(parsed.get("setup") or ""),
+        )
         _logger.info(
-            "peek_camera session=%s person=%s stick=%s setup=%r observation=%r",
+            "peek_camera session=%s person=%s stick=%s streak=%s setup=%r observation=%r",
             session_id,
             parsed.get("person_visible"),
             parsed.get("stick_visible"),
+            streak,
             parsed.get("setup"),
             parsed.get("observation"),
         )
         return {
             **parsed,
+            "peek_fail_streak": streak,
             "available": parsed.get("available", False),
             "source": "gemini-flash",
             "raw": text,
         }
     except Exception as exc:
         _logger.exception("peek_camera Gemini call failed")
-        return {
-            "observation": f"Vision error: {type(exc).__name__}",
-            "available": False,
-        }
+        return _peek_unavailable(session_id, f"Vision error: {type(exc).__name__}")

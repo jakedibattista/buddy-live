@@ -13,6 +13,9 @@ interface CoachConversationProps {
   onStatusChange?: (status: string) => void;
 }
 
+const WRAP_UP_MESSAGE =
+  "I'm all done for today. Please give me a quick recap and one homework cue, then say goodbye.";
+
 export function CoachConversation(props: CoachConversationProps) {
   return (
     <ConversationProvider>
@@ -28,9 +31,13 @@ function CoachConversationInner({
   onStatusChange,
 }: CoachConversationProps) {
   const [error, setError] = useState<string | null>(null);
+  const [ending, setEnding] = useState(false);
   const convo = useConversation({
     onConnect: () => onStatusChange?.("connected"),
-    onDisconnect: () => onStatusChange?.("disconnected"),
+    onDisconnect: () => {
+      setEnding(false);
+      onStatusChange?.("disconnected");
+    },
     onError: (e: unknown) => {
       const msg = e instanceof Error ? e.message : String(e);
       setError(msg);
@@ -48,10 +55,14 @@ function CoachConversationInner({
   });
 
   useEffect(() => {
+    if (ending) {
+      onStatusChange?.("wrapping up");
+      return;
+    }
     onStatusChange?.(convo.status);
-  }, [convo.status, onStatusChange]);
+  }, [convo.status, ending, onStatusChange]);
 
-  const canStart = sessionId && agentId && convo.status === "disconnected";
+  const canStart = sessionId && agentId && convo.status === "disconnected" && !ending;
 
   async function handleStart() {
     if (!agentId || !sessionId) return;
@@ -87,8 +98,24 @@ function CoachConversationInner({
     }
   }
 
-  function handleEnd() {
-    convo.endSession();
+  async function handleEnd() {
+    if (convo.status !== "connected" || ending) {
+      convo.endSession();
+      return;
+    }
+
+    setEnding(true);
+    setError(null);
+    try {
+      convo.sendUserMessage(WRAP_UP_MESSAGE);
+      // Give Coach Buddy time to call end_session_recap and speak the goodbye.
+      await new Promise((resolve) => window.setTimeout(resolve, 12000));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      convo.endSession();
+      setEnding(false);
+    }
   }
 
   return (
@@ -110,7 +137,8 @@ function CoachConversationInner({
             <button
               type="button"
               onClick={() => convo.setMuted(!convo.isMuted)}
-              className="flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-white/5 text-white transition-colors hover:bg-white/10"
+              disabled={ending}
+              className="flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-white/5 text-white transition-colors hover:bg-white/10 disabled:opacity-50"
               aria-label={convo.isMuted ? "Unmute" : "Mute"}
             >
               {convo.isMuted ? <MicOff size={18} /> : <Mic size={18} />}
@@ -118,7 +146,8 @@ function CoachConversationInner({
             <button
               type="button"
               onClick={handleEnd}
-              className="flex h-12 w-12 items-center justify-center rounded-full bg-red-600 text-white shadow-lg hover:bg-red-700"
+              disabled={ending}
+              className="flex h-12 w-12 items-center justify-center rounded-full bg-red-600 text-white shadow-lg hover:bg-red-700 disabled:opacity-60"
               aria-label="End session"
             >
               <PhoneOff size={18} />
@@ -127,10 +156,11 @@ function CoachConversationInner({
         )}
       </div>
       <div className="text-xs text-zinc-400">
-        {convo.status === "connected" && (
+        {ending && <span className="text-amber-300">Wrapping up…</span>}
+        {!ending && convo.status === "connected" && (
           <span className="text-emerald-400">Live · {convo.mode}</span>
         )}
-        {convo.status === "disconnected" && !error && <span>Ready</span>}
+        {!ending && convo.status === "disconnected" && !error && <span>Ready</span>}
         {error && <span className="text-red-400">{error}</span>}
         {!agentId && (
           <span className="text-yellow-300">Set NEXT_PUBLIC_ELEVENLABS_AGENT_ID</span>

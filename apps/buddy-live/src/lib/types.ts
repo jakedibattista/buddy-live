@@ -20,6 +20,12 @@ export interface LiveSessionDoc {
   focus_drill_set_at?: string;
   peek_url?: string;
   peek_updated_at?: string;
+  last_peek_person_visible?: boolean;
+  last_peek_stick_visible?: boolean;
+  last_peek_setup?: string;
+  peek_fail_streak?: number;
+  camera_hint?: string;
+  peek_status_updated_at?: string;
   ended_at?: string;
 }
 

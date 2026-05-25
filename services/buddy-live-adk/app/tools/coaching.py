@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 from typing import Any
 
 from google.adk.tools.tool_context import ToolContext
@@ -204,6 +205,18 @@ def end_session_recap(tool_context: ToolContext) -> dict[str, Any]:
             )
         else:
             summary = f"Nice session: {rep_summary}. Keep grinding."
+
+    if ref is not None:
+        try:
+            ref.set(
+                {
+                    "currentPhase": "recap",
+                    "ended_at": datetime.now(timezone.utc).isoformat(),
+                },
+                merge=True,
+            )
+        except Exception:
+            _logger.exception("end_session_recap status write failed")
 
     return {
         "total_reps": sum(by_drill.values()),

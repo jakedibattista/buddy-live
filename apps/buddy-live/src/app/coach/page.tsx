@@ -110,6 +110,11 @@ export default function CoachPage() {
                 </div>
               </div>
             )}
+            {live.session?.camera_hint && coachStatus !== "disconnected" && (
+              <div className="absolute inset-x-4 top-16 z-20 rounded-xl border border-amber-400/30 bg-amber-500/15 px-4 py-3 text-sm text-amber-100 backdrop-blur">
+                {live.session.camera_hint}
+              </div>
+            )}
             <div className="pointer-events-none absolute left-4 top-4 max-w-[60%] [&>*]:pointer-events-auto">
               <DrillChip
                 drillId={displayedDrillId}
@@ -145,10 +150,14 @@ export default function CoachPage() {
                 className={
                   coachStatus === "connected"
                     ? "rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs text-emerald-300"
-                    : "rounded-full bg-white/10 px-2 py-0.5 text-xs text-zinc-300"
+                    : coachStatus === "wrapping up"
+                      ? "rounded-full bg-amber-500/20 px-2 py-0.5 text-xs text-amber-300"
+                      : coachStatus === "ended" || live.session?.ended_at
+                        ? "rounded-full bg-zinc-500/20 px-2 py-0.5 text-xs text-zinc-300"
+                        : "rounded-full bg-white/10 px-2 py-0.5 text-xs text-zinc-300"
                 }
               >
-                {coachStatus}
+                {live.session?.ended_at ? "ended" : coachStatus}
               </span>
             </div>
             {live.error && (
