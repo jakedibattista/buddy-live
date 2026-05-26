@@ -11,6 +11,16 @@ interface PeekBody {
   imageBase64: string;
 }
 
+interface PeekHistoryEntry {
+  url: string;
+  ts: string;
+}
+
+const PEEK_HISTORY_MAX = 4;
+// Drop entries older than this so peek_warmup never grabs frames from a
+// previous warmup move when a new timer kicks off.
+const PEEK_HISTORY_TTL_MS = 60_000;
+
 /**
  * Uploads a single webcam JPEG to Firebase Storage at
  * `live_sessions/{sid}/peek_latest.jpg`, then writes the public-ish URL into
@@ -47,13 +57,38 @@ export async function POST(req: NextRequest) {
     expires: Date.now() + 1000 * 60 * 60 * 4,
   });
 
-  await db.doc(sessionDocPath(body.sessionId)).set(
-    {
-      peek_url: signedUrl,
-      peek_updated_at: new Date().toISOString(),
-    },
-    { merge: true },
-  );
+  const nowIso = new Date().toISOString();
+  const sessionRef = db.doc(sessionDocPath(body.sessionId));
+
+  // Maintain a small ring buffer of recent frame URLs so the ADK service
+  // can analyze motion across time (used by peek_warmup multi-frame check).
+  // Read-modify-write inside a transaction to avoid clobbering concurrent
+  // uploads. Trim to PEEK_HISTORY_MAX entries and drop stale ones.
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(sessionRef);
+    const data = snap.exists ? (snap.data() ?? {}) : {};
+    const prev = Array.isArray(data.peek_url_history)
+      ? (data.peek_url_history as PeekHistoryEntry[])
+      : [];
+    const nowMs = Date.now();
+    const fresh = prev.filter((entry) => {
+      if (!entry?.url || !entry?.ts) return false;
+      const tsMs = Date.parse(entry.ts);
+      return Number.isFinite(tsMs) && nowMs - tsMs <= PEEK_HISTORY_TTL_MS;
+    });
+    fresh.push({ url: signedUrl, ts: nowIso });
+    const trimmed = fresh.slice(-PEEK_HISTORY_MAX);
+
+    tx.set(
+      sessionRef,
+      {
+        peek_url: signedUrl,
+        peek_updated_at: nowIso,
+        peek_url_history: trimmed,
+      },
+      { merge: true },
+    );
+  });
 
   return NextResponse.json({ ok: true, signedUrl });
 }

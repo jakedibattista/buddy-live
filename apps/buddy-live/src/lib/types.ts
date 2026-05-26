@@ -21,6 +21,7 @@ export interface LiveSessionDoc {
   focus_drill_set_at?: string;
   peek_url?: string;
   peek_updated_at?: string;
+  peek_url_history?: Array<{ url: string; ts: string }>;
   last_peek_person_visible?: boolean;
   last_peek_stick_visible?: boolean;
   last_peek_full_body_in_frame?: boolean;
@@ -33,6 +34,8 @@ export interface LiveSessionDoc {
   last_warmup_exercise?: string;
   last_warmup_form?: "good" | "adjust" | "unclear";
   last_warmup_moving?: boolean;
+  last_warmup_motion_detected?: boolean;
+  last_warmup_frames_analyzed?: number;
   last_warmup_setup?: string;
   warmup_moves_checked?: number;
   warmup_peek_updated_at?: string;

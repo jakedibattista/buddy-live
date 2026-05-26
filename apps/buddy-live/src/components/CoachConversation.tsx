@@ -121,7 +121,8 @@ function CoachConversationInner({
       if (msg.source === "user") {
         if (
           msg.message.startsWith("(Voice reconnected") ||
-          msg.message.startsWith("(Warm-up timer finished")
+          msg.message.startsWith("(Warm-up timer finished") ||
+          msg.message.startsWith("(Camera check")
         ) {
           return;
         }

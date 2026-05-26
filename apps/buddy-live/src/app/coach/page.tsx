@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { CameraPeekNudge } from "@/components/CameraPeekNudge";
 import { CameraView } from "@/components/CameraView";
 import { CoachConversation, CoachVoiceShell } from "@/components/CoachConversation";
 import { CoachPuckAvatar } from "@/components/CoachPuckAvatar";
@@ -112,15 +113,21 @@ export default function CoachPage() {
     [focusDrill, currentPhase, reps.length, setupFramingPassed],
   );
 
+  // Only show the framing banner when the agent is actively in the setup
+  // check phase and has emitted a real camera_hint. We deliberately do NOT
+  // fall back on `reps.length === 0` (that fired the banner before any peek
+  // ran) and we hide it the moment setup_framing_passed flips true.
+  const cameraHint = live.session?.camera_hint;
   const showSetupBanner =
     connected &&
     !capture.recording &&
     focusDrill != null &&
+    currentPhase === "stance_check" &&
     !setupFramingPassed &&
-    Boolean(live.session?.camera_hint || reps.length === 0);
+    Boolean(cameraHint);
 
   const setupBannerText =
-    live.session?.camera_hint ??
+    cameraHint ??
     "Step back — Coach Buddy needs to see you from head to toes, facing the camera.";
 
   const displayedDrillId = capture.activeDrillId ?? focusDrill;
@@ -134,17 +141,15 @@ export default function CoachPage() {
       ? "Rep armed"
       : null;
 
-  const displayedHint = showSetupBanner
-    ? null
-    : capture.activeDrillId
-      ? capture.hint
-      : focusDrill && setupFramingPassed && reps.length === 0
-        ? `Rep 1 of ${SCORED_REP_TARGET} — say ready to start recording`
-        : focusDrill && setupFramingPassed && !capture.recording && reps.length > 0
-          ? `Rep ${nextRepNumber} of ${SCORED_REP_TARGET} — say ready`
-          : focusDrill
-            ? `Today: ${SCORED_REP_TARGET} ${focusDrill}s, one at a time.`
-            : null;
+  const displayedHint = capture.activeDrillId
+    ? capture.hint
+    : focusDrill && setupFramingPassed && reps.length === 0
+      ? `Rep 1 of ${SCORED_REP_TARGET} — say ready to start recording`
+      : focusDrill && setupFramingPassed && !capture.recording && reps.length > 0
+        ? `Rep ${nextRepNumber} of ${SCORED_REP_TARGET} — say ready`
+        : focusDrill
+          ? `Today: ${SCORED_REP_TARGET} ${focusDrill}s, one at a time.`
+          : null;
 
   const handleWarmupTimerActiveChange = useCallback((active: boolean, label: string | null) => {
     setWarmupTimerActive(active);
@@ -271,13 +276,13 @@ export default function CoachPage() {
                 </div>
               )}
               {showSetupBanner && (
-                <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center px-6">
-                  <div className="max-w-md rounded-xl border border-amber-400/30 bg-amber-500/20 px-5 py-3 text-center text-sm leading-snug text-amber-50 shadow-lg backdrop-blur-md">
+                <div className="pointer-events-none absolute left-4 top-4 z-10 max-w-[55%] sm:max-w-sm">
+                  <div className="rounded-xl border border-amber-400/40 bg-amber-500/25 px-4 py-2 text-xs leading-snug text-amber-50 shadow-md backdrop-blur-md sm:text-sm">
                     {setupBannerText}
                   </div>
                 </div>
               )}
-              <div className="pointer-events-none absolute right-4 top-4 max-w-[45%] [&>*]:pointer-events-auto">
+              <div className="pointer-events-none absolute right-4 top-4 z-30 max-w-[45%] [&>*]:pointer-events-auto">
                 <DrillChip
                   drillId={displayedDrillId}
                   hint={displayedHint}
@@ -285,6 +290,11 @@ export default function CoachPage() {
                   recording={capture.recording}
                 />
               </div>
+              <CameraPeekNudge
+                currentPhase={currentPhase}
+                setupFramingPassed={setupFramingPassed}
+                peekStatusUpdatedAt={live.session?.peek_status_updated_at}
+              />
               <CoachPuckAvatar
                 recording={capture.recording}
                 celebrate={celebratePuck}
