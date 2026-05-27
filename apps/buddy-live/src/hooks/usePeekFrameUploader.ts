@@ -8,6 +8,14 @@ interface Options {
   enabled: boolean;
   /** Capture interval in ms. Default 2500ms = ~0.4 FPS server-side. */
   intervalMs?: number;
+  /**
+   * Capture interval to use while a warm-up timer is running. Faster so the
+   * peek_url_history ring buffer fills with enough closely-spaced frames for
+   * peek_warmup to detect motion across the timer window. Default 1500ms.
+   */
+  warmupIntervalMs?: number;
+  /** True while a warm-up timer is active. Switches to warmupIntervalMs. */
+  warmupActive?: boolean;
   /** Output JPEG width. Default 640px to keep payload small. */
   width?: number;
   /** JPEG quality 0-1. Default 0.7. */
@@ -30,10 +38,13 @@ export function usePeekFrameUploader({
   videoRef,
   enabled,
   intervalMs = 2500,
+  warmupIntervalMs = 1500,
+  warmupActive = false,
   width = 640,
   quality = 0.7,
 }: Options) {
   const lastSentAtRef = useRef(0);
+  const effectiveInterval = warmupActive ? warmupIntervalMs : intervalMs;
 
   useEffect(() => {
     if (!enabled || !sessionId) return;
@@ -66,11 +77,11 @@ export function usePeekFrameUploader({
       }
     }
 
-    const handle = window.setInterval(tick, intervalMs);
+    const handle = window.setInterval(tick, effectiveInterval);
     tick();
     return () => {
       cancelled = true;
       window.clearInterval(handle);
     };
-  }, [sessionId, enabled, intervalMs, width, quality, videoRef]);
+  }, [sessionId, enabled, effectiveInterval, width, quality, videoRef]);
 }

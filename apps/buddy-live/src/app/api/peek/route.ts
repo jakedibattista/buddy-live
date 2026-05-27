@@ -16,7 +16,9 @@ interface PeekHistoryEntry {
   ts: string;
 }
 
-const PEEK_HISTORY_MAX = 4;
+// 8 slots × ~1.5s during warmup ≈ 12s of history, enough to span most
+// warm-up moves end-to-end and give peek_warmup richer motion comparisons.
+const PEEK_HISTORY_MAX = 8;
 // Drop entries older than this so peek_warmup never grabs frames from a
 // previous warmup move when a new timer kicks off.
 const PEEK_HISTORY_TTL_MS = 60_000;

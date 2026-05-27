@@ -1,10 +1,15 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { ArrowDown } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { CoachActivityIndicator } from "@/components/CoachActivityIndicator";
 import { formatTranscriptElapsed, formatTranscriptTime } from "@/lib/transcript";
 import { cn } from "@/lib/utils";
 import type { TranscriptEntry } from "@/lib/types";
+
+// How far from the bottom (in px) still counts as "pinned to latest" — gives
+// the user a little slack so a 1-2px scroll difference doesn't pause auto-scroll.
+const STICK_TO_BOTTOM_THRESHOLD_PX = 32;
 
 interface Props {
   entries: TranscriptEntry[];
@@ -29,20 +34,51 @@ function timeLabel(entry: TranscriptEntry, sessionStartMs?: number): string {
 
 export function TranscriptPanel({ entries, sessionStartMs, className }: Props) {
   const ref = useRef<HTMLDivElement>(null);
+  // Track whether the user has scrolled up to read older messages. While
+  // they're reading, we stop auto-scrolling so new entries don't yank the
+  // panel back down. A "Jump to latest" button appears in the bottom-right.
+  const [pinnedToBottom, setPinnedToBottom] = useState(true);
+  const [hasNew, setHasNew] = useState(false);
+
   useEffect(() => {
     const el = ref.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [entries]);
+    if (!el) return;
+    if (pinnedToBottom) {
+      el.scrollTop = el.scrollHeight;
+      setHasNew(false);
+    } else {
+      setHasNew(true);
+    }
+  }, [entries, pinnedToBottom]);
+
+  function handleScroll() {
+    const el = ref.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.clientHeight - el.scrollTop;
+    setPinnedToBottom(distanceFromBottom <= STICK_TO_BOTTOM_THRESHOLD_PX);
+  }
+
+  function jumpToLatest() {
+    const el = ref.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+    setPinnedToBottom(true);
+    setHasNew(false);
+  }
 
   return (
     <div
-      ref={ref}
       className={cn(
-        "flex max-h-72 flex-col gap-2 overflow-y-auto rounded-2xl border border-white/10 bg-black/50 p-4 text-sm text-white shadow-xl backdrop-blur",
+        "relative rounded-2xl border border-white/10 bg-black/50 text-white shadow-xl backdrop-blur",
         className,
       )}
     >
-      <CoachActivityIndicator className="mb-1 shrink-0" />
+      <div
+        ref={ref}
+        onScroll={handleScroll}
+        className="flex max-h-72 flex-col gap-2 overflow-y-auto p-4 text-sm"
+      >
+        <CoachActivityIndicator className="mb-1 shrink-0" />
 
       {entries.length === 0 && (
         <div className="text-zinc-500">
@@ -102,6 +138,22 @@ export function TranscriptPanel({ entries, sessionStartMs, className }: Props) {
           </div>
         );
       })}
+      </div>
+      {!pinnedToBottom && (
+        <button
+          type="button"
+          onClick={jumpToLatest}
+          className={cn(
+            "absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-white/15 px-3 py-1 text-xs font-medium text-white shadow-lg backdrop-blur transition-colors",
+            hasNew
+              ? "bg-emerald-500/90 text-black hover:bg-emerald-400"
+              : "bg-black/70 hover:bg-white/10",
+          )}
+        >
+          <ArrowDown size={12} />
+          {hasNew ? "New messages" : "Jump to latest"}
+        </button>
+      )}
     </div>
   );
 }

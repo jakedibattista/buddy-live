@@ -219,7 +219,9 @@ def peek_camera(question: str, tool_context: ToolContext) -> dict[str, Any]:
             ],
             config=genai_types.GenerateContentConfig(
                 temperature=0.1,
-                max_output_tokens=512,
+                # 6-line structured reply ≈ 80 tokens; 128 gives headroom
+                # without paying for unused output budget.
+                max_output_tokens=128,
             ),
         )
         text = (response.text or "").strip()

@@ -11,6 +11,7 @@ import logging
 import os
 import uuid
 
+import sentry_sdk
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -25,6 +26,23 @@ from app.sse import sse_chunk, sse_done
 load_dotenv()
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 _logger = logging.getLogger("buddy_live_adk")
+
+# Initialize Sentry BEFORE FastAPI() so the FastAPI integration auto-wires
+# itself. Gated on SENTRY_DSN so local dev / unset envs are a no-op.
+_sentry_dsn = os.getenv("SENTRY_DSN")
+if _sentry_dsn:
+    sentry_sdk.init(
+        dsn=_sentry_dsn,
+        environment=os.getenv("SENTRY_ENVIRONMENT", "production"),
+        release=os.getenv("SENTRY_RELEASE"),
+        send_default_pii=True,
+        # Full visibility for the demo; lower to 0.1-0.2 once traffic grows.
+        traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "1.0")),
+        # Ship Python `logging` exceptions (incl. _logger.exception in peek tools)
+        # to Sentry as breadcrumbs + structured logs.
+        enable_logs=True,
+    )
+    _logger.info("sentry initialized environment=%s", os.getenv("SENTRY_ENVIRONMENT", "production"))
 
 app = FastAPI(title="Buddy Live ADK", version="0.1.0")
 

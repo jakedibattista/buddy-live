@@ -8,6 +8,8 @@ interface Props {
   currentPhase?: string | null;
   setupFramingPassed: boolean;
   peekStatusUpdatedAt?: string;
+  /** Called each time we silently nudge the agent — used to log to the transcript. */
+  onNudge?: () => void;
 }
 
 // Minimum seconds since the last persisted peek before we nudge again.
@@ -26,10 +28,13 @@ export function CameraPeekNudge({
   currentPhase,
   setupFramingPassed,
   peekStatusUpdatedAt,
+  onNudge,
 }: Props) {
   const { status } = useConversationStatus();
   const { sendUserMessage } = useConversationControls();
   const lastNudgeAtRef = useRef(0);
+  const onNudgeRef = useRef(onNudge);
+  onNudgeRef.current = onNudge;
 
   const connected = status === "connected";
   const inStanceCheck = currentPhase === "stance_check";
@@ -54,6 +59,7 @@ export function CameraPeekNudge({
       lastNudgeAtRef.current = now;
       try {
         sendUserMessage(CAMERA_RECHECK_MESSAGE);
+        onNudgeRef.current?.();
       } catch {
         // best-effort: ElevenLabs may be momentarily disconnected
       }

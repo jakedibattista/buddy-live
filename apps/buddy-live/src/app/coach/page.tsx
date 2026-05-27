@@ -47,6 +47,7 @@ export default function CoachPage() {
     sessionId: live.sessionId,
     videoRef,
     enabled: Boolean(live.sessionId && stream),
+    warmupActive: warmupTimerActive,
   });
 
   useRepResultsPolling({ sessionId: live.sessionId, reps: live.reps });
@@ -307,6 +308,7 @@ export default function CoachPage() {
                 currentPhase={currentPhase}
                 setupFramingPassed={setupFramingPassed}
                 peekStatusUpdatedAt={live.session?.peek_status_updated_at}
+                onNudge={() => appendSystem("Asked Coach to re-check framing.", "peek")}
               />
               <CoachPuckAvatar
                 recording={capture.recording}

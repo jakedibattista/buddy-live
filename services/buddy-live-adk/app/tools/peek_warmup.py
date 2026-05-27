@@ -28,11 +28,12 @@ from app.firestore_client import session_ref
 
 _logger = logging.getLogger(__name__)
 
-# How many frames we try to send. Anything between 2 and 4 is reasonable —
-# 3 is the sweet spot for "start / middle / end" of a 20-30s warm-up move.
-_TARGET_FRAME_COUNT = 3
-# Minimum spacing between frames in the analyzed set. The peek uploader runs
-# at ~0.4 FPS so 2s ≈ one upload interval apart.
+# How many frames we try to send. With an 8-slot ring buffer at ~1.5s
+# spacing during a warm-up timer we have ~12s of history to choose from;
+# 4 frames spaced ≥2s apart spans ~8s and gives the model a clear motion
+# arc without bloating prompt tokens.
+_TARGET_FRAME_COUNT = 4
+# Minimum spacing between frames in the analyzed set.
 _MIN_FRAME_GAP_SECONDS = 2.0
 
 _WARMUP_PROMPT_PREAMBLE = (
@@ -287,7 +288,9 @@ def peek_warmup(exercise: str, tool_context: ToolContext) -> dict[str, Any]:
             contents=contents,
             config=genai_types.GenerateContentConfig(
                 temperature=0.1,
-                max_output_tokens=512,
+                # 5-line structured reply ≈ 60-80 tokens; 128 gives headroom
+                # without paying for unused output budget.
+                max_output_tokens=128,
             ),
         )
         text = (response.text or "").strip()
