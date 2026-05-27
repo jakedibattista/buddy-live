@@ -38,9 +38,6 @@ if _sentry_dsn:
         send_default_pii=True,
         # Full visibility for the demo; lower to 0.1-0.2 once traffic grows.
         traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "1.0")),
-        # Ship Python `logging` exceptions (incl. _logger.exception in peek tools)
-        # to Sentry as breadcrumbs + structured logs.
-        enable_logs=True,
     )
     _logger.info("sentry initialized environment=%s", os.getenv("SENTRY_ENVIRONMENT", "production"))
 
