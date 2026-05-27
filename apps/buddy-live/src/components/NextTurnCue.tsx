@@ -92,6 +92,8 @@ export function NextTurnCue({
     message = "Coach Buddy is checking your camera setup — follow his voice cues.";
   } else if (focusDrill && currentPhase === "drill_readiness" && repCount === 0) {
     message = "Ask for a drill explanation or a practice rep — then say ready for rep 1.";
+  } else if (currentPhase === "iq_practice") {
+    message = "Hockey IQ — talk through the scenario with Coach Buddy.";
   } else if (focusDrill && setupFramingPassed && repCount === 0) {
     message = "Say ready when you want rep 1 of 5 — Coach will start recording.";
   } else if (focusDrill && setupFramingPassed) {

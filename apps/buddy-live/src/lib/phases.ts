@@ -5,6 +5,7 @@ const PHASE_LABELS: Record<SessionPhase, string> = {
   stance_check: "Setup check",
   drill_readiness: "Drill readiness",
   scored_reps: "Scored reps",
+  iq_practice: "Hockey IQ",
   recap: "Recap",
   ended: "Ended",
 };

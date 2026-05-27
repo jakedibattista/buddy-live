@@ -14,6 +14,7 @@ export type SessionPhase =
   | "stance_check"
   | "drill_readiness"
   | "scored_reps"
+  | "iq_practice"
   | "recap"
   | "ended";
 
@@ -104,7 +105,14 @@ export interface WarmupTimerCommand extends CoachCommandBase {
   duration_seconds: number;
 }
 
-export type CoachCommand = CaptureCommand | WarmupTimerCommand;
+export interface IqVisualCommand extends CoachCommandBase {
+  type: "show_iq_visual";
+  scenario: string;
+  options: string[];
+  diagram: string;
+}
+
+export type CoachCommand = CaptureCommand | WarmupTimerCommand | IqVisualCommand;
 
 export function parseCoachCommand(id: string, data: Record<string, unknown>): CoachCommand | null {
   const created_at = typeof data.created_at === "string" ? data.created_at : "";
@@ -126,6 +134,16 @@ export function parseCoachCommand(id: string, data: Record<string, unknown>): Co
     const hint = typeof data.hint === "string" ? data.hint : undefined;
     if (!rep_id) return null;
     return { id, type, rep_id, drill_id, hint, created_at, handled };
+  }
+
+  if (type === "show_iq_visual") {
+    const scenario = typeof data.scenario === "string" ? data.scenario : "";
+    const options = Array.isArray(data.options)
+      ? (data.options as unknown[]).filter((o): o is string => typeof o === "string")
+      : [];
+    const diagram = typeof data.diagram === "string" ? data.diagram : "";
+    if (!scenario) return null;
+    return { id, type, scenario, options, diagram, created_at, handled };
   }
 
   return null;

@@ -7,6 +7,7 @@ import { CoachConversation, CoachVoiceShell } from "@/components/CoachConversati
 import { CoachPuckAvatar } from "@/components/CoachPuckAvatar";
 import { DrillChip } from "@/components/DrillChip";
 import { FramingIndicator } from "@/components/FramingIndicator";
+import { IqVisualCard } from "@/components/IqVisualCard";
 import { MicVUMeter } from "@/components/MicVUMeter";
 import { NextTurnCue } from "@/components/NextTurnCue";
 import { RepScorecard } from "@/components/RepScorecard";
@@ -22,6 +23,7 @@ import { humanSessionPhase } from "@/lib/phases";
 import { SCORED_REP_TARGET } from "@/lib/recording";
 import { systemTranscript } from "@/lib/transcript";
 import type { TranscriptEntry } from "@/lib/types";
+import type { IqVisualCommand } from "@/lib/types";
 import type { VoiceResumeContext } from "@/lib/hiddenAgentMessages";
 
 const AGENT_ID = process.env.NEXT_PUBLIC_ELEVENLABS_AGENT_ID;
@@ -94,6 +96,13 @@ export default function CoachPage() {
     () => reps.filter((r) => r.status === "analyzing" || r.status === "uploaded").length,
     [reps],
   );
+
+  const latestIqVisual = useMemo<IqVisualCommand | null>(() => {
+    const iqCommands = live.commands.filter(
+      (c): c is IqVisualCommand => c.type === "show_iq_visual",
+    );
+    return iqCommands.length > 0 ? iqCommands[iqCommands.length - 1] : null;
+  }, [live.commands]);
 
   const focusDrill = live.session?.focus_drill ?? null;
   const setupFramingPassed = live.session?.setup_framing_passed === true;
@@ -430,6 +439,10 @@ export default function CoachPage() {
             </div>
 
             <TranscriptPanel entries={transcript} sessionStartMs={sessionStartMs} />
+
+            {currentPhase === "iq_practice" && (
+              <IqVisualCard command={latestIqVisual} />
+            )}
 
             <div className="flex flex-col gap-3">
               <div className="px-1 text-xs uppercase tracking-widest text-zinc-400">

@@ -7,9 +7,11 @@ Exposes:
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import uuid
+from collections import defaultdict
 
 import sentry_sdk
 from dotenv import load_dotenv
@@ -50,10 +52,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+_session_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
+
+_SILENCE_FILLERS = frozenset({"...", "", ".", "..", "…"})
+
+_TURN_TIMEOUT_SECONDS = 30
+
 
 @app.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
     return HealthResponse()
+
+
+def _is_silence(text: str) -> bool:
+    return text.strip() in _SILENCE_FILLERS
 
 
 @app.post("/chat/completions")
@@ -61,6 +73,18 @@ async def chat_completions(payload: ChatCompletionRequest, request: Request) -> 
     session_id = payload.session_identifier()
     user_text = payload.latest_user_text()
     _logger.info("turn session=%s user_text=%r", session_id, user_text[:200])
+
+    if _is_silence(user_text):
+        _logger.info("skipping silence filler session=%s", session_id)
+
+        async def empty_stream():
+            response_id = f"chatcmpl-{uuid.uuid4().hex[:12]}"
+            yield sse_chunk(response_id, {"role": "assistant"})
+            yield sse_chunk(response_id, {"content": ""})
+            yield sse_chunk(response_id, {}, finish_reason="stop")
+            yield sse_done()
+
+        return StreamingResponse(empty_stream(), media_type="text/event-stream")
 
     runner = get_runner()
     await ensure_session(session_id, user_id="player")
@@ -74,7 +98,7 @@ async def chat_completions(payload: ChatCompletionRequest, request: Request) -> 
             role="user", parts=[genai_types.Part.from_text(text="(session start)")]
         )
 
-    run_config = RunConfig(streaming_mode=StreamingMode.SSE)
+    run_config = RunConfig(streaming_mode=StreamingMode.SSE, max_llm_calls=10)
 
     async def event_stream():
         response_id = f"chatcmpl-{uuid.uuid4().hex[:12]}"
@@ -82,44 +106,50 @@ async def chat_completions(payload: ChatCompletionRequest, request: Request) -> 
         sent_any_text = False
         full_text_parts: list[str] = []
         try:
-            async for event in runner.run_async(
-                user_id="player",
-                session_id=session_id,
-                new_message=new_message,
-                run_config=run_config,
-            ):
-                if not event.content or not event.content.parts:
-                    continue
-                text_pieces: list[str] = []
-                for part in event.content.parts:
-                    piece = getattr(part, "text", None) or ""
-                    if piece:
-                        text_pieces.append(piece)
-                text = "".join(text_pieces)
-                if not text:
-                    continue
+            async with _session_locks[session_id]:
+                async with asyncio.timeout(_TURN_TIMEOUT_SECONDS):
+                    async for event in runner.run_async(
+                        user_id="player",
+                        session_id=session_id,
+                        new_message=new_message,
+                        run_config=run_config,
+                    ):
+                        if not event.content or not event.content.parts:
+                            continue
+                        text_pieces: list[str] = []
+                        for part in event.content.parts:
+                            piece = getattr(part, "text", None) or ""
+                            if piece:
+                                text_pieces.append(piece)
+                        text = "".join(text_pieces)
+                        if not text:
+                            continue
 
-                is_partial = getattr(event, "partial", False)
-                if is_partial:
-                    if not sent_role:
-                        yield sse_chunk(response_id, {"role": "assistant"})
-                        sent_role = True
-                    yield sse_chunk(response_id, {"content": text})
-                    full_text_parts.append(text)
-                    sent_any_text = True
-                else:
-                    # Final aggregated event -- only forward if we never streamed
-                    # any partials (some model backends skip partials).
-                    if not sent_any_text:
-                        yield sse_chunk(response_id, {"role": "assistant"})
-                        sent_role = True
-                        yield sse_chunk(response_id, {"content": text})
-                        sent_any_text = True
+                        is_partial = getattr(event, "partial", False)
+                        if is_partial:
+                            if not sent_role:
+                                yield sse_chunk(response_id, {"role": "assistant"})
+                                sent_role = True
+                            yield sse_chunk(response_id, {"content": text})
+                            full_text_parts.append(text)
+                            sent_any_text = True
+                        else:
+                            if not sent_any_text:
+                                yield sse_chunk(response_id, {"role": "assistant"})
+                                sent_role = True
+                                yield sse_chunk(response_id, {"content": text})
+                                sent_any_text = True
 
             if not sent_role:
-                # No content at all -- emit empty assistant turn so ElevenLabs doesn't hang.
                 yield sse_chunk(response_id, {"role": "assistant"})
                 yield sse_chunk(response_id, {"content": ""})
+            yield sse_chunk(response_id, {}, finish_reason="stop")
+            yield sse_done()
+        except TimeoutError:
+            _logger.warning("turn timed out session=%s after %ds", session_id, _TURN_TIMEOUT_SECONDS)
+            if not sent_role:
+                yield sse_chunk(response_id, {"role": "assistant"})
+            yield sse_chunk(response_id, {"content": "Hold on one sec — let me catch up. What were you saying?"})
             yield sse_chunk(response_id, {}, finish_reason="stop")
             yield sse_done()
         except Exception:

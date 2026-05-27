@@ -69,6 +69,7 @@ def start_warmup_timer(
                 "last_warmup_timer_label": ui_label,
                 "last_warmup_timer_seconds": duration,
                 "warmup_timer_started_at": _now_iso(),
+                "peek_url_history": [],
             },
             merge=True,
         )
