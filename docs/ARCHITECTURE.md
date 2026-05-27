@@ -152,6 +152,15 @@ session_summaries/{sessionId}              (kept forever — weekly review recor
 | Firestore | `session_summaries/{sid}` | Not on TTL — durable per-session record for weekly review |
 | Errors | ADK service | Sentry FastAPI integration (`SENTRY_DSN` env var on Cloud Run) |
 
+### ADK guardrails (main.py)
+
+| Guard | Effect |
+| --- | --- |
+| `max_llm_calls=10` | Caps tool-calling rounds per user turn (default was 500) |
+| Silence filter | `"..."` / empty from ElevenLabs → immediate empty SSE, no Gemini call |
+| Per-session asyncio lock | Serializes concurrent turns on same session |
+| 30s turn timeout | `asyncio.timeout` — fails fast instead of hanging until Cloud Run kills at 300s |
+
 See [`infra/storage-lifecycle.md`](../infra/storage-lifecycle.md) for the Sunday
 review workflow.
 
