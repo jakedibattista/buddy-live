@@ -119,7 +119,7 @@ function CoachConversationInner({
       setReconnecting(false);
       onStatusChange?.("disconnected");
 
-      if (userEndedRef.current || details.reason === "user") return;
+      if (userEndedRef.current || details?.reason === "user") return;
       if (!hadConnectedRef.current) return;
 
       scheduleReconnect();
@@ -157,13 +157,6 @@ function CoachConversationInner({
         customLlmExtraBody: { arbitrary_identifier: sessionId },
         userId: sessionId,
         useWakeLock: true,
-        overrides: resume
-          ? {
-              agent: {
-                firstMessage: VOICE_RESUME_FIRST_MESSAGE,
-              },
-            }
-          : undefined,
       };
 
       try {
@@ -192,7 +185,6 @@ function CoachConversationInner({
           });
         }
 
-        reconnectAttemptRef.current = 0;
         setReconnecting(false);
         return true;
       } catch (e) {

@@ -64,6 +64,7 @@ def set_focus_drill(drill_id: str, tool_context: ToolContext) -> dict[str, Any]:
                 "focus_drill": canonical,
                 "focus_drill_set_at": _now_iso(),
                 "currentPhase": "warmup",
+                "setup_framing_passed": True,  # Automatically pass framing setup since we simplified it to verbal confirmation
             },
             merge=True,
         )

@@ -22,7 +22,7 @@ from fastapi.responses import StreamingResponse
 from google.adk.agents.run_config import RunConfig, StreamingMode
 from google.genai import types as genai_types
 
-from app.agent import APP_NAME, ensure_session, get_runner
+from app.agent import APP_NAME, ensure_session, get_runner, get_session_service
 from app.models import ChatCompletionRequest, HealthResponse
 from app.sse import sse_chunk, sse_done
 
@@ -97,11 +97,29 @@ async def chat_completions(payload: ChatCompletionRequest, request: Request) -> 
         return StreamingResponse(empty_stream(), media_type="text/event-stream")
 
     runner = get_runner()
+
+    session_exists = False
+    if not user_text:
+        svc = get_session_service()
+        try:
+            session = await svc.get_session(
+                app_name=APP_NAME, user_id="player", session_id=session_id
+            )
+            if session is not None:
+                session_exists = True
+        except Exception:
+            pass
+
     await ensure_session(session_id, user_id="player")
 
     if user_text:
         new_message = genai_types.Content(
             role="user", parts=[genai_types.Part.from_text(text=user_text)]
+        )
+    elif session_exists:
+        _logger.info("reconnect detected for session=%s, suppressing intro greeting", session_id)
+        new_message = genai_types.Content(
+            role="user", parts=[genai_types.Part.from_text(text="(voice connection restored - wait for user to speak)")]
         )
     else:
         new_message = genai_types.Content(
