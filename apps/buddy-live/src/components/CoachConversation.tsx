@@ -56,6 +56,7 @@ function CoachConversationInner({
   const reconnectTimerRef = useRef<number | null>(null);
   const resumeContextRef = useRef(resumeContext);
   const connectSessionRef = useRef<(resume: boolean) => Promise<boolean>>(async () => false);
+  const shouldSendReconnectRef = useRef(false);
 
   useEffect(() => {
     resumeContextRef.current = resumeContext;
@@ -101,6 +102,17 @@ function CoachConversationInner({
       setReconnecting(false);
       clearReconnectTimer();
       onStatusChange?.("connected");
+
+      if (shouldSendReconnectRef.current) {
+        shouldSendReconnectRef.current = false;
+        // Wait briefly after onConnect to ensure the channel is fully flushed and ready
+        window.setTimeout(() => {
+          convo.sendUserMessage(buildVoiceReconnectMessage(resumeContextRef.current));
+        }, 500);
+        onTranscript(
+          systemTranscript("Voice reconnected — Coach Buddy is picking up where you left off.", "connection"),
+        );
+      }
     },
     onDisconnect: (details) => {
       setEnding(false);
@@ -138,6 +150,7 @@ function CoachConversationInner({
 
       setError(null);
       setReconnecting(resume);
+      shouldSendReconnectRef.current = resume;
       if (resume) onStatusChange?.("reconnecting");
 
       const sessionOptions = {
@@ -177,15 +190,6 @@ function CoachConversationInner({
             connectionType: "webrtc",
             ...sessionOptions,
           });
-        }
-
-        if (resume) {
-          window.setTimeout(() => {
-            convo.sendUserMessage(buildVoiceReconnectMessage(resumeContextRef.current));
-          }, 900);
-          onTranscript(
-            systemTranscript("Voice reconnected — Coach Buddy is picking up where you left off.", "connection"),
-          );
         }
 
         reconnectAttemptRef.current = 0;

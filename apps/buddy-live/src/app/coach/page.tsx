@@ -177,11 +177,11 @@ export default function CoachPage() {
   const displayedHint = capture.activeDrillId
     ? capture.hint
     : focusDrill && setupFramingPassed && reps.length === 0
-      ? `Rep 1 of ${SCORED_REP_TARGET} — say ready to start recording`
+      ? `Rep 1 — say ready to start recording`
       : focusDrill && setupFramingPassed && !capture.recording && reps.length > 0
-        ? `Rep ${nextRepNumber} of ${SCORED_REP_TARGET} — say ready`
+        ? `Rep ${nextRepNumber} — say ready`
         : focusDrill
-          ? `Today: ${SCORED_REP_TARGET} ${focusDrill}s, one at a time.`
+          ? `Focus drill: ${focusDrill.charAt(0).toUpperCase() + focusDrill.slice(1)}.`
           : null;
 
   const handleWarmupTimerActiveChange = useCallback((active: boolean, label: string | null) => {
