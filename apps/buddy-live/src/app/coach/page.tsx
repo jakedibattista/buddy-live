@@ -5,7 +5,6 @@ import { CameraPeekNudge } from "@/components/CameraPeekNudge";
 import { CameraView } from "@/components/CameraView";
 import { CoachConversation, CoachVoiceShell } from "@/components/CoachConversation";
 import { CoachPuckAvatar } from "@/components/CoachPuckAvatar";
-import { DrillChip } from "@/components/DrillChip";
 import { FramingIndicator } from "@/components/FramingIndicator";
 import { IqVisualCard } from "@/components/IqVisualCard";
 import { MicVUMeter } from "@/components/MicVUMeter";
@@ -355,12 +354,6 @@ export default function CoachPage() {
               )}
               {!inIqPractice && (
                 <div className="pointer-events-none absolute right-4 top-4 z-30 flex max-w-[45%] flex-col items-end gap-1.5 [&>*]:pointer-events-auto">
-                  <DrillChip
-                    drillId={displayedDrillId}
-                    hint={displayedHint}
-                    headline={displayedHeadline}
-                    recording={capture.recording}
-                  />
                   <FramingIndicator
                     framingPassedOnce={framingPassedOnceRef.current}
                     lastFullBodyInFrame={live.session?.last_peek_full_body_in_frame}
