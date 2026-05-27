@@ -69,14 +69,14 @@ export function TranscriptPanel({ entries, sessionStartMs, className }: Props) {
   return (
     <div
       className={cn(
-        "relative rounded-2xl border border-white/10 bg-black/50 text-white shadow-xl backdrop-blur",
+        "relative rounded-2xl border border-zinc-800/60 bg-zinc-900/40 text-white shadow-sm backdrop-blur-md flex flex-col min-h-0 h-80 lg:h-auto",
         className,
       )}
     >
       <div
         ref={ref}
         onScroll={handleScroll}
-        className="flex max-h-72 flex-col gap-2 overflow-y-auto p-4 text-sm"
+        className="flex-1 min-h-0 flex flex-col gap-2 overflow-y-auto p-4 text-sm"
       >
         <CoachActivityIndicator className="mb-1 shrink-0" />
 

@@ -8,6 +8,8 @@ interface IqVisualCardProps {
   answer?: IqAnswerCommand | null;
   size?: "sm" | "lg";
   className?: string;
+  questionIndex?: number;
+  totalQuestions?: number;
 }
 
 export function IqVisualCard({
@@ -15,6 +17,8 @@ export function IqVisualCard({
   answer = null,
   size = "sm",
   className = "",
+  questionIndex,
+  totalQuestions = 8,
 }: IqVisualCardProps) {
   if (!command) return null;
 
@@ -25,20 +29,20 @@ export function IqVisualCard({
   const optionSize = size === "lg" ? "text-base sm:text-lg" : "text-sm";
   const optionPad = size === "lg" ? "px-4 py-3" : "px-3 py-2";
   const optionBadgeSize = size === "lg" ? "h-7 w-7 text-sm" : "h-5 w-5 text-xs";
-  const footerSize = size === "lg" ? "text-xs" : "text-[11px]";
 
   return (
     <div
-      className={`animate-in fade-in slide-in-from-bottom-2 duration-300 rounded-2xl border border-indigo-400/30 bg-gradient-to-br from-indigo-950/90 to-zinc-900/90 shadow-xl backdrop-blur-md ${padding} ${className}`}
+      className={`animate-in fade-in slide-in-from-bottom-2 duration-300 w-full ${padding} ${className}`}
     >
-      <div className="mb-1 flex items-center gap-2">
-        <span className={size === "lg" ? "text-2xl" : "text-lg"}>🧠</span>
-        <span
-          className={`font-semibold uppercase tracking-widest text-indigo-300 ${titleSize}`}
-        >
-          Hockey IQ
-        </span>
-      </div>
+      {questionIndex ? (
+        <div className="mb-2">
+          <span
+            className={`font-semibold uppercase tracking-wider text-indigo-300/80 ${titleSize}`}
+          >
+            Question {questionIndex} of {totalQuestions}
+          </span>
+        </div>
+      ) : null}
 
       {command.diagram && <DiagramVisual diagram={command.diagram} size={size} />}
 
@@ -70,14 +74,8 @@ export function IqVisualCard({
         </div>
       )}
 
-      <p className={`mt-3 text-zinc-500 ${footerSize}`}>
-        {answer
-          ? answer.was_correct
-            ? "Nice read — Coach Buddy will explain why."
-            : "Not quite — Coach Buddy will walk you through it."
-          : "Talk through your answer with Coach Buddy"}
-      </p>
     </div>
+  );
   );
 }
 
@@ -97,7 +95,7 @@ function stateClasses(state: OptionState): string {
     case "wrong":
       return "border-red-400/60 bg-red-500/15 text-red-100";
     default:
-      return "border-white/10 bg-white/[0.04] text-zinc-200";
+      return "border-zinc-800/60 bg-zinc-900/40 text-zinc-200";
   }
 }
 
@@ -108,7 +106,7 @@ function badgeClasses(state: OptionState): string {
     case "wrong":
       return "bg-red-500/40 text-red-100";
     default:
-      return "bg-indigo-500/30 text-indigo-200";
+      return "bg-zinc-800 text-zinc-300";
   }
 }
 
@@ -119,7 +117,7 @@ function DiagramVisual({ diagram, size = "sm" }: { diagram: string; size?: "sm" 
 
   return (
     <div
-      className={`relative mt-3 w-full overflow-hidden rounded-xl border border-white/10 bg-zinc-900/80 ${heightClass}`}
+      className={`relative mt-3 w-full overflow-hidden rounded-xl border border-zinc-800/60 bg-zinc-900/40 ${heightClass}`}
     >
 
       {/* Half-rink background */}
@@ -176,11 +174,6 @@ function DiagramVisual({ diagram, size = "sm" }: { diagram: string; size?: "sm" 
           </g>
         )}
       </svg>
-
-      {/* Diagram text overlay */}
-      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent px-3 py-2">
-        <p className={`leading-tight text-zinc-300 ${captionTextClass}`}>{diagram}</p>
-      </div>
     </div>
   );
 }

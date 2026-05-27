@@ -97,6 +97,10 @@ export default function CoachPage() {
     [reps],
   );
 
+  const iqCommandsCount = useMemo(() => {
+    return live.commands.filter((c) => c.type === "show_iq_visual").length;
+  }, [live.commands]);
+
   const latestIqVisual = useMemo<IqVisualCommand | null>(() => {
     const iqCommands = live.commands.filter(
       (c): c is IqVisualCommand => c.type === "show_iq_visual",
@@ -294,20 +298,22 @@ export default function CoachPage() {
   }, [reps, appendSystem]);
 
   return (
-    <main className="relative flex min-h-screen flex-col bg-zinc-950 text-white">
+    <main className="relative flex min-h-screen flex-col bg-black text-white">
       <CoachVoiceShell>
         <div className="relative mx-auto grid w-full max-w-7xl flex-1 gap-6 p-4 lg:grid-cols-[1fr_360px] lg:p-6">
           {/* Camera column (or large IQ overlay during Hockey IQ practice) */}
           <section className="relative flex h-[60vh] w-full flex-col gap-4 lg:h-[calc(100vh-3rem)]">
             <div className="relative flex-1">
               {inIqPractice ? (
-                <div className="absolute inset-0 flex items-center justify-center overflow-y-auto rounded-2xl border border-indigo-400/20 bg-gradient-to-br from-indigo-950 via-zinc-950 to-zinc-900 p-4 sm:p-6">
+                <div className="absolute inset-0 flex items-center justify-center overflow-y-auto rounded-2xl bg-black p-4 sm:p-6">
                   {latestIqVisual ? (
                     <IqVisualCard
                       command={latestIqVisual}
                       answer={latestIqAnswer}
                       size="lg"
                       className="w-full max-w-2xl"
+                      questionIndex={iqCommandsCount}
+                      totalQuestions={8}
                     />
                   ) : (
                     <div className="max-w-md text-center text-zinc-300">
@@ -333,7 +339,7 @@ export default function CoachPage() {
                     <button
                       type="button"
                       onClick={() => void requestMedia()}
-                      className="rounded-full bg-emerald-500 px-5 py-2 text-sm font-semibold text-black hover:bg-emerald-400"
+                      className="rounded-full bg-white px-5 py-2 text-sm font-semibold text-black hover:bg-zinc-200 transition-colors shadow-sm"
                     >
                       Try again
                     </button>
@@ -415,8 +421,8 @@ export default function CoachPage() {
           </section>
 
           {/* Side panel */}
-          <aside className="flex flex-col gap-4">
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          <aside className="flex flex-col gap-4 lg:h-[calc(100vh-3rem)] lg:min-h-0">
+            <div className="rounded-2xl border border-zinc-800/60 bg-zinc-900/40 p-5 shadow-sm backdrop-blur-md">
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-xs uppercase tracking-widest text-zinc-400">Session</div>
@@ -432,16 +438,16 @@ export default function CoachPage() {
                 <span
                   className={
                     coachStatus === "connected"
-                      ? "rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs text-emerald-300"
+                      ? "rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-400"
                       : coachStatus === "reconnecting"
-                        ? "rounded-full bg-amber-500/20 px-2 py-0.5 text-xs text-amber-300"
+                        ? "rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-0.5 text-xs font-semibold text-amber-400 animate-pulse"
                         : coachStatus === "wrapping up"
-                          ? "rounded-full bg-amber-500/20 px-2 py-0.5 text-xs text-amber-300"
+                          ? "rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-0.5 text-xs font-semibold text-amber-400"
                           : coachStatus === "ended" || live.session?.ended_at
-                          ? "rounded-full bg-zinc-500/20 px-2 py-0.5 text-xs text-zinc-300"
+                          ? "rounded-full border border-zinc-800 bg-zinc-900/40 px-2.5 py-0.5 text-xs font-semibold text-zinc-400"
                           : live.loading
-                            ? "rounded-full bg-white/10 px-2 py-0.5 text-xs text-zinc-400"
-                            : "rounded-full bg-white/10 px-2 py-0.5 text-xs text-zinc-300"
+                            ? "rounded-full border border-zinc-800 bg-zinc-900/40 px-2.5 py-0.5 text-xs font-semibold text-zinc-500"
+                            : "rounded-full border border-zinc-800 bg-zinc-900/40 px-2.5 py-0.5 text-xs font-semibold text-zinc-400"
                   }
                 >
                   {live.loading ? "loading" : live.session?.ended_at ? "ended" : coachStatus}
@@ -475,12 +481,6 @@ export default function CoachPage() {
                     ` · ${live.session.warmup_moves_checked} move${live.session.warmup_moves_checked === 1 ? "" : "s"} reviewed`}
                 </div>
               )}
-              {live.session?.peek_updated_at && (
-                <div className="mt-2 text-xs text-zinc-500">
-                  Camera frame updated{" "}
-                  {new Date(live.session.peek_updated_at).toLocaleTimeString()}
-                </div>
-              )}
               {capture.lastUpload && (
                 <div className="mt-2 text-xs text-zinc-400">
                   Last clip: <span className="text-zinc-200">{capture.lastUpload.repId}</span> ·{" "}
@@ -499,21 +499,27 @@ export default function CoachPage() {
               )}
             </div>
 
-            <TranscriptPanel entries={transcript} sessionStartMs={sessionStartMs} />
+            <TranscriptPanel
+              className="flex-1 min-h-0"
+              entries={transcript}
+              sessionStartMs={sessionStartMs}
+            />
 
-            <div className="flex flex-col gap-3">
-              <div className="px-1 text-xs uppercase tracking-widest text-zinc-400">
-                Reps ({reps.length})
-              </div>
-              {reps.length === 0 && (
-                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-zinc-400">
-                  Reps will appear here as Coach Buddy guides you through the drills.
+            {!inIqPractice && (
+              <div className="flex flex-col gap-3">
+                <div className="px-1 text-xs uppercase tracking-widest text-zinc-400">
+                  Reps ({reps.length})
                 </div>
-              )}
-              {reps.map((rep) => (
-                <RepScorecard key={rep.rep_id} rep={rep} />
-              ))}
-            </div>
+                {reps.length === 0 && (
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-zinc-400">
+                    Reps will appear here as Coach Buddy guides you through the drills.
+                  </div>
+                )}
+                {reps.map((rep) => (
+                  <RepScorecard key={rep.rep_id} rep={rep} />
+                ))}
+              </div>
+            )}
           </aside>
         </div>
       </CoachVoiceShell>

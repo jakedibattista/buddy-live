@@ -272,8 +272,8 @@ function CoachConversationInner({
           onClick={() => void handleStart()}
           disabled={!canStart}
           className={cn(
-            "rounded-full bg-emerald-500 px-6 py-3 text-sm font-semibold text-black shadow-lg transition-transform hover:scale-[1.02] active:scale-95",
-            !canStart && "cursor-not-allowed opacity-50 hover:scale-100",
+            "rounded-full bg-white px-6 py-3 text-sm font-semibold text-black shadow-md transition-transform hover:scale-[1.01] hover:bg-zinc-200 active:scale-[0.99]",
+            !canStart && "cursor-not-allowed opacity-50 hover:scale-100 hover:bg-white",
           )}
         >
           {reconnecting

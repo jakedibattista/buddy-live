@@ -11,6 +11,7 @@ import asyncio
 import logging
 import os
 import uuid
+import re
 from collections import defaultdict
 
 import sentry_sdk
@@ -64,6 +65,14 @@ def health() -> HealthResponse:
     return HealthResponse()
 
 
+def _clean_speaker_labels(text: str) -> str:
+    if not text:
+        return text
+    # Strip common speaker diarization prefixes like "Stafford:" or "Coach Buddy:"
+    cleaned = re.sub(r'(?i)\b(stafford|coach\s*buddy|coach|player|user):\s*', '', text)
+    return cleaned.strip()
+
+
 def _is_silence(text: str) -> bool:
     return text.strip() in _SILENCE_FILLERS
 
@@ -71,8 +80,9 @@ def _is_silence(text: str) -> bool:
 @app.post("/chat/completions")
 async def chat_completions(payload: ChatCompletionRequest, request: Request) -> StreamingResponse:
     session_id = payload.session_identifier()
-    user_text = payload.latest_user_text()
-    _logger.info("turn session=%s user_text=%r", session_id, user_text[:200])
+    raw_user_text = payload.latest_user_text()
+    user_text = _clean_speaker_labels(raw_user_text)
+    _logger.info("turn session=%s raw_user_text=%r user_text=%r", session_id, raw_user_text[:200], user_text[:200])
 
     if _is_silence(user_text):
         _logger.info("skipping silence filler session=%s", session_id)

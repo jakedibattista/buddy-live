@@ -52,7 +52,7 @@ export function RepScorecard({ rep }: Props) {
   const weakest = entries[0];
   const strongest = entries[entries.length - 1];
   return (
-    <div className="rounded-2xl border border-white/10 bg-zinc-900/80 p-4 text-white shadow-xl backdrop-blur">
+    <div className="rounded-2xl border border-zinc-800/60 bg-zinc-900/40 p-4 text-white shadow-sm backdrop-blur-md">
       <div className="flex items-center justify-between">
         <div>
           <div className="text-xs uppercase tracking-widest text-zinc-400">
@@ -97,7 +97,7 @@ export function RepScorecard({ rep }: Props) {
         )
       )}
       {weakest && strongest && entries.length > 1 && (
-        <div className="mt-3 border-t border-white/10 pt-2 text-xs text-zinc-300">
+        <div className="mt-3 border-t border-zinc-800/60 pt-2 text-xs text-zinc-300">
           Focus: <span className="capitalize text-red-300">{humanMetric(weakest[0])}</span>. Loved
           your <span className="capitalize text-emerald-300">{humanMetric(strongest[0])}</span>.
         </div>
