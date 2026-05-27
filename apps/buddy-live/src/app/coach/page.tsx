@@ -48,7 +48,7 @@ export default function CoachPage() {
   usePeekFrameUploader({
     sessionId: live.sessionId,
     videoRef,
-    enabled: Boolean(live.sessionId && stream),
+    enabled: Boolean(live.sessionId && stream && live.session?.currentPhase !== "iq_practice"),
     warmupActive: warmupTimerActive,
   });
 
