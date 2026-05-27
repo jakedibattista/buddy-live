@@ -334,9 +334,12 @@ Replaces jargon-heavy rep-count warm-up with **one move at a time**, plain langu
 - `peek_camera` only after warm-up (unless player asks mid-session).
 - `peek_camera` ignored for phase/framing while `currentPhase === warmup`.
 
-#### Voice reconnect — **DONE (2026-05-25)**
+#### Voice reconnect — **DONE (Updated 2026-05-27)**
 
-ElevenLabs voice can drop while the Firebase session continues. `CoachConversation` auto-reconnects (backoff, up to 5 tries), uses a **resume first message** (not "what's your name?"), and sends session context (drill, phase, rep count) to ADK. Manual end (red phone) does not auto-reconnect.
+ElevenLabs voice can drop while the Firebase session continues (e.g., due to automatic inactivity/silence timeout). `CoachConversation` auto-reconnects (backoff, up to 5 tries) seamlessly:
+- **Authorization & Security Fix:** Removed unauthorized ElevenLabs client-side `overrides` (like custom `firstMessage`) that previously triggered instant WebSocket connection failures on client reconnect due to restricted dashboard permissions.
+- **Backend Reconnect Detection:** When the client reconnects, the ADK backend (`main.py`) detects if the `session_id` already exists in `InMemorySessionService`. If it does, it suppresses the default welcome/greeting by sending a silent `"(voice connection restored - wait for user to speak)"` system prompt.
+- **Seamless State Resume:** 500ms after connecting, the client sends a hidden reconnect context message containing `focusDrill`, `currentPhase`, `repCount`, and `setupFramingPassed` to let Coach Buddy continue the session exactly where it left off without starting over. Manual end (red phone) does not auto-reconnect.
 
 #### Legacy setup flow note (2026-05-25 AM)
 

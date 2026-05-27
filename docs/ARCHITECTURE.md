@@ -86,7 +86,7 @@ The `/coach` page is voice-first but follows conversational UI patterns from [`U
 | Mascot | `CoachPuckAvatar` on camera — crossfades `coach-puck.png` ↔ `coach-puck-speak.png` via `getOutputByteFrequencyData()` (baked face, no SVG overlay) |
 | Recording | `RecordingTimer` — 60s REC countdown + Stop & upload; driven by `useRepCapture` |
 | Warm-up timer | `WarmupTimerBridge` + `CountdownOverlay` — amber m:ss countdown per move; driven by `start_warmup_timer` command |
-| Voice resilience | `CoachConversation` — auto-reconnect on ElevenLabs drop (resume message, not full re-onboarding) |
+| Voice resilience | `CoachConversation` — auto-reconnect on ElevenLabs drop (via clean startSession without unauthorized overrides) combined with ADK backend reconnect detection to suppress double greetings |
 | Session phase | Sidebar label from Firestore `currentPhase` (`lib/phases.ts`) |
 | Setup framing | Coach speaks fixes (`peek_camera`); sidebar `NextTurnCue` during `stance_check` |
 | Errors | Retry connect (ElevenLabs) and retry camera permission |
@@ -160,6 +160,7 @@ session_summaries/{sessionId}              (kept forever — weekly review recor
 | Silence filter | `"..."` / empty from ElevenLabs → immediate empty SSE, no Gemini call |
 | Per-session asyncio lock | Serializes concurrent turns on same session |
 | 30s turn timeout | `asyncio.timeout` — fails fast instead of hanging until Cloud Run kills at 300s |
+| Reconnect detection | Suppresses default welcome/greeting on reconnecting turns if the session already exists |
 
 See [`infra/storage-lifecycle.md`](../infra/storage-lifecycle.md) for the Sunday
 review workflow.
