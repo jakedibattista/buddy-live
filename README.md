@@ -20,7 +20,7 @@ Firebase Storage
 | Path | What |
 |---|---|
 | [`apps/buddy-live/`](apps/buddy-live) | Next.js 16 web app (TS, App Router, Tailwind v4, `@elevenlabs/react`). Live session UI, ElevenLabs widget, MediaRecorder rep capture, periodic webcam-frame uploader, Firestore listeners. |
-| [`services/buddy-live-adk/`](services/buddy-live-adk) | Python FastAPI + Google ADK 2.0 agent. OpenAI-compatible `/chat/completions` SSE endpoint hit by ElevenLabs' Custom LLM. **10 tools:** `peek_camera`, `peek_warmup`, `start_warmup_timer`, `set_focus_drill`, `start_rep_capture`, `stop_rep_capture`, `analyze_rep`, `get_rep_result`, `recommend_drill`, `end_session_recap`. |
+| [`services/buddy-live-adk/`](services/buddy-live-adk) | Python FastAPI + Google ADK 2.0 agent. OpenAI-compatible `/chat/completions` SSE endpoint hit by ElevenLabs' Custom LLM. **11 tools:** `peek_camera`, `peek_warmup`, `start_warmup_timer`, `set_focus_drill`, `show_iq_visual`, `mark_iq_answer`, `start_rep_capture`, `stop_rep_capture`, `analyze_rep`, `get_rep_result`, `recommend_drill`, `end_session_recap`. |
 | [`docs/UI-CONVERSATION-UX-PLAN.md`](docs/UI-CONVERSATION-UX-PLAN.md) | Conversation UI plan (Lovable chatbot UX applied to voice coaching) — **phases 1–3 shipped**; interrupt button deferred. |
 | [`infra/`](infra) | Cloud Build, Firestore + Storage rules, Firebase config, deploy guide. |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Hosting map (Vercel / Cloud Run / Firebase / ElevenLabs), data flow, env split. |
@@ -145,7 +145,7 @@ The hackathon judging criterion. Beyond that, ADK gives us a clean `Agent` + `Ru
 - [ ] Built with: **Google ADK, Gemini Flash, Gemini Live (peek only), Firebase, Cloud Run, ElevenLabs, Next.js, Vercel**
 - [ ] Public GitHub repo — [github.com/jakedibattista/buddy-live](https://github.com/jakedibattista/buddy-live)
 - [x] Live URL (protected): [buddy-live-indol.vercel.app](https://buddy-live-indol.vercel.app) (also `buddy-live-buddy-tech.vercel.app`; Buddy Tech login required)
-- [ ] 1-pager: how we use ADK specifically (`Agent` + `Runner` + `SessionService` + **10 tools** + streaming SSE bridge to ElevenLabs)
+- [ ] 1-pager: how we use ADK specifically (`Agent` + `Runner` + `SessionService` + **11 tools** + streaming SSE bridge to ElevenLabs)
 
 ## Credits
 
