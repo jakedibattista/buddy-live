@@ -1,9 +1,29 @@
-"""ADK Agent + Runner factory for Buddy Live.
+"""ADK 2.0 Agent + Runner factory for Buddy Live.
 
-The Agent is constructed once per process (cheap, stateless). Sessions are managed
-per ElevenLabs conversation via the SessionService -- we map the
-`arbitrary_identifier` from the ElevenLabs Custom LLM extra body to an ADK
-session_id, so memory and tool state persist across turns.
+Structure (ADK 2.0 sub-agent pattern):
+
+  buddy_live_coach (LlmAgent, root)
+    └─ iq_coach (LlmAgent, sub_agent)
+
+The root agent runs the full shooting flow (opening → warm-up → setup →
+scored reps → recap). When the player doesn't have space to shoot, the
+root calls transfer_to_agent("iq_coach") and the IQ sub-agent takes over
+the rest of the session with its own focused prompt and a single tool
+(show_iq_visual).
+
+Why this split:
+- Isolates the new IQ practice feature from the mature shooting flow so
+  prompt changes to one don't risk regressing the other.
+- Gives each agent a smaller, focused instruction set the model can
+  follow more reliably than one monolithic prompt.
+
+Both agents share the same Firestore-driven phase guard
+(BeforeToolCallback) so they cannot, for example, call start_rep_capture
+before framing passes.
+
+Sessions are managed per ElevenLabs conversation via SessionService -- we
+map the `arbitrary_identifier` from the ElevenLabs Custom LLM extra body
+to an ADK session_id, so memory persists across turns.
 """
 from __future__ import annotations
 
@@ -14,7 +34,8 @@ from google.adk.agents import Agent
 from google.adk.runners import Runner
 from google.adk.sessions import BaseSessionService, InMemorySessionService
 
-from app.prompts import COACH_SETH_LIVE_PROMPT
+from app.callbacks import phase_guard
+from app.prompts import COACH_SETH_LIVE_PROMPT, IQ_COACH_PROMPT
 from app.tools import (
     analyze_rep,
     end_session_recap,
@@ -38,11 +59,29 @@ _runner: Runner | None = None
 _session_service: BaseSessionService | None = None
 
 
+def _build_iq_coach() -> Agent:
+    """IQ Coach sub-agent: handles Hockey IQ Practice mode end-to-end."""
+    model = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
+    return Agent(
+        name="iq_coach",
+        description=(
+            "Hockey IQ Practice coach. Takes over when the player lacks "
+            "space to shoot. Runs 8-10 game-situation scenarios with the "
+            "show_iq_visual tool, encourages discussion, then wraps up."
+        ),
+        model=model,
+        instruction=IQ_COACH_PROMPT,
+        tools=[show_iq_visual],
+        before_tool_callback=phase_guard,
+    )
+
+
 def _build_agent() -> Agent:
+    """Root coach agent: opening, shooting flow, recap. Delegates IQ mode."""
     model = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
     return Agent(
         name="buddy_live_coach",
-        description="Real-time hockey shooting and skating coach (voice + webcam).",
+        description="Real-time hockey shooting coach (voice + webcam).",
         model=model,
         instruction=COACH_SETH_LIVE_PROMPT,
         tools=[
@@ -50,7 +89,6 @@ def _build_agent() -> Agent:
             peek_warmup,
             start_warmup_timer,
             set_focus_drill,
-            show_iq_visual,
             start_rep_capture,
             stop_rep_capture,
             analyze_rep,
@@ -58,6 +96,8 @@ def _build_agent() -> Agent:
             recommend_drill,
             end_session_recap,
         ],
+        sub_agents=[_build_iq_coach()],
+        before_tool_callback=phase_guard,
     )
 
 
