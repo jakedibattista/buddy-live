@@ -20,6 +20,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 import httpx
+from firebase_admin import firestore
 from google.adk.tools.tool_context import ToolContext
 from google.genai import Client
 from google.genai import types as genai_types
@@ -134,19 +135,19 @@ def _persist_warmup_status(
             int((snap.to_dict() or {}).get("warmup_moves_checked") or 0)
             if snap.exists else 0
         )
-        ref.set(
-            {
-                "last_warmup_exercise": exercise,
-                "last_warmup_form": form,
-                "last_warmup_moving": moving,
-                "last_warmup_motion_detected": motion_detected,
-                "last_warmup_frames_analyzed": frames_analyzed,
-                "last_warmup_setup": setup,
-                "warmup_moves_checked": prev_count + 1,
-                "warmup_peek_updated_at": _now_iso(),
-            },
-            merge=True,
-        )
+        payload: dict[str, Any] = {
+            "last_warmup_exercise": exercise,
+            "last_warmup_form": form,
+            "last_warmup_moving": moving,
+            "last_warmup_motion_detected": motion_detected,
+            "last_warmup_frames_analyzed": frames_analyzed,
+            "last_warmup_setup": setup,
+            "warmup_moves_checked": prev_count + 1,
+            "warmup_peek_updated_at": _now_iso(),
+        }
+        if not motion_detected:
+            payload["warmup_motion_miss_count"] = firestore.Increment(1)
+        ref.set(payload, merge=True)
     except Exception:
         _logger.exception("peek_warmup status write failed")
 

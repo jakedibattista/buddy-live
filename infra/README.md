@@ -1,5 +1,8 @@
 # Infra
 
+For storage cleanup, the Firestore TTL policy, and the weekly review workflow,
+see [`storage-lifecycle.md`](./storage-lifecycle.md).
+
 ## One-time setup
 
 ```bash

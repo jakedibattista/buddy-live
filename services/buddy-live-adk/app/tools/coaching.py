@@ -7,7 +7,9 @@ from typing import Any
 
 from google.adk.tools.tool_context import ToolContext
 
-from app.firestore_client import session_ref
+from app.firestore_client import db, session_ref
+
+_SESSION_SUMMARIES_COLLECTION = "session_summaries"
 
 _logger = logging.getLogger(__name__)
 
@@ -206,17 +208,33 @@ def end_session_recap(tool_context: ToolContext) -> dict[str, Any]:
         else:
             summary = f"Nice session: {rep_summary}. Keep grinding."
 
+    ended_at = datetime.now(timezone.utc).isoformat()
     if ref is not None:
         try:
             ref.set(
                 {
                     "currentPhase": "recap",
-                    "ended_at": datetime.now(timezone.utc).isoformat(),
+                    "ended_at": ended_at,
                 },
                 merge=True,
             )
         except Exception:
             _logger.exception("end_session_recap status write failed")
+
+    # Persist a compact, long-lived summary for weekly review. Lives in a
+    # separate top-level collection so it survives the live_sessions TTL.
+    try:
+        session_doc = (ref.get().to_dict() or {}) if ref is not None else {}
+        _write_session_summary(
+            session_id=session_id,
+            session_doc=session_doc,
+            by_drill=by_drill,
+            averages=averages,
+            biggest_opportunity=biggest_opportunity,
+            ended_at=ended_at,
+        )
+    except Exception:
+        _logger.exception("session summary write failed")
 
     return {
         "total_reps": sum(by_drill.values()),
@@ -225,3 +243,47 @@ def end_session_recap(tool_context: ToolContext) -> dict[str, Any]:
         "biggest_opportunity": biggest_opportunity,
         "summary": summary,
     }
+
+
+def _write_session_summary(
+    *,
+    session_id: str,
+    session_doc: dict[str, Any],
+    by_drill: dict[str, int],
+    averages: dict[str, float],
+    biggest_opportunity: str | None,
+    ended_at: str,
+) -> None:
+    """Write a single compact summary doc per session into session_summaries/.
+
+    Schema is deliberately flat so it can be queried/filtered in the Firebase
+    console without indexes. Keep this lean -- one row per session is the
+    weekly review unit, not a high-cardinality analytics stream.
+    """
+    client = db()
+    if client is None:
+        return
+
+    primary_drill = (
+        session_doc.get("focus_drill")
+        or (max(by_drill, key=by_drill.get) if by_drill else None)
+    )
+
+    summary_doc: dict[str, Any] = {
+        "session_id": session_id,
+        "created_at": ended_at,
+        "started_at": session_doc.get("startedAt"),
+        "drill": primary_drill,
+        "rep_count": sum(by_drill.values()),
+        "by_drill": by_drill,
+        "weakest_metric": biggest_opportunity,
+        "average_scores": averages,
+        "framing_struggles": int(session_doc.get("framing_failure_count") or 0),
+        "warmup_motion_misses": int(session_doc.get("warmup_motion_miss_count") or 0),
+        "warmup_moves_checked": int(session_doc.get("warmup_moves_checked") or 0),
+        "final_phase": session_doc.get("currentPhase"),
+    }
+    client.collection(_SESSION_SUMMARIES_COLLECTION).document(session_id).set(
+        summary_doc,
+        merge=True,
+    )

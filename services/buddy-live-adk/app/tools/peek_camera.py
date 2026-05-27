@@ -19,6 +19,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 import httpx
+from firebase_admin import firestore
 from google.adk.tools.tool_context import ToolContext
 from google.genai import Client
 from google.genai import types as genai_types
@@ -111,7 +112,8 @@ def _persist_peek_status(
             hint = "Face the camera so Coach Buddy can see your stance."
         elif not stick_visible:
             hint = "Grab your stick and stay in frame."
-        current_phase = (snap.to_dict() or {}).get("currentPhase") if snap.exists else None
+        prev_doc = snap.to_dict() or {} if snap.exists else {}
+        current_phase = prev_doc.get("currentPhase")
         if current_phase == "warmup":
             ref.set({"peek_updated_at": _now_iso()}, merge=True)
             return
@@ -132,6 +134,11 @@ def _persist_peek_status(
             "camera_hint": hint,
             "peek_status_updated_at": _now_iso(),
         }
+        # Count framing struggles only on transitions (passing/unknown -> failing).
+        # Avoids inflating the counter from every consecutive failing frame.
+        prev_passed = prev_doc.get("setup_framing_passed")
+        if not framing_passed and prev_passed is not False:
+            payload["framing_failure_count"] = firestore.Increment(1)
         if phase:
             payload["currentPhase"] = phase
         ref.set(payload, merge=True)

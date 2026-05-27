@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Timestamp } from "firebase-admin/firestore";
 import { adminConfigured, adminDb } from "@/lib/firebaseAdmin";
 import { SESSIONS_COLLECTION } from "@/lib/paths";
 import { shortId } from "@/lib/utils";
+
+const SESSION_TTL_HOURS = 24;
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,11 +46,19 @@ export async function POST(req: NextRequest) {
   const ref = db.collection(SESSIONS_COLLECTION).doc(sessionId);
   const snap = await ref.get();
   if (!snap.exists) {
+    const now = new Date();
+    const expiresAt = Timestamp.fromMillis(
+      now.getTime() + SESSION_TTL_HOURS * 60 * 60 * 1000,
+    );
     await ref.set({
       session_id: sessionId,
       user_id: userId,
-      startedAt: new Date().toISOString(),
+      startedAt: now.toISOString(),
       currentPhase: "warmup",
+      // Firestore TTL policy on `live_sessions.expires_at` auto-deletes the
+      // doc (and its subcollections) ~24h after creation. See
+      // infra/storage-lifecycle.md for the matching GCS prefix cleanup.
+      expires_at: expiresAt,
     });
   }
 
