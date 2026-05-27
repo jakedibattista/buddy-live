@@ -172,7 +172,15 @@ export default function CoachPage() {
     ? "Now capturing"
     : inDrillReadiness
       ? "Rep armed"
-      : null;
+      : currentPhase === "warmup"
+        ? "Warm-up"
+        : (currentPhase === "stance_check" || currentPhase === "drill_readiness" || currentPhase === "scored_reps") && focusDrill
+          ? `${focusDrill.charAt(0).toUpperCase() + focusDrill.slice(1)} practice`
+          : currentPhase === "recap" || currentPhase === "ended"
+            ? "Cooldown & review"
+            : currentPhase === "iq_practice"
+              ? "Hockey IQ"
+              : null;
 
   const displayedHint = capture.activeDrillId
     ? capture.hint

@@ -44,6 +44,7 @@ export function usePeekFrameUploader({
   quality = 0.7,
 }: Options) {
   const lastSentAtRef = useRef(0);
+  const inFlightRef = useRef(false);
   const effectiveInterval = warmupActive ? warmupIntervalMs : intervalMs;
 
   useEffect(() => {
@@ -56,6 +57,7 @@ export function usePeekFrameUploader({
 
     async function tick() {
       if (cancelled) return;
+      if (inFlightRef.current) return;
       const video = videoRef.current;
       if (video && video.readyState >= 2 && video.videoWidth > 0) {
         const aspect = video.videoHeight / video.videoWidth;
@@ -65,6 +67,7 @@ export function usePeekFrameUploader({
         const dataUrl = canvas.toDataURL("image/jpeg", quality);
         const base64 = dataUrl.split(",")[1];
         try {
+          inFlightRef.current = true;
           await fetch("/api/peek", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -73,6 +76,8 @@ export function usePeekFrameUploader({
           lastSentAtRef.current = Date.now();
         } catch {
           // swallow: best-effort
+        } finally {
+          inFlightRef.current = false;
         }
       }
     }
@@ -82,6 +87,7 @@ export function usePeekFrameUploader({
     return () => {
       cancelled = true;
       window.clearInterval(handle);
+      inFlightRef.current = false;
     };
   }, [sessionId, enabled, effectiveInterval, width, quality, videoRef]);
 }
