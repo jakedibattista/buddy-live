@@ -311,7 +311,7 @@ function CoachConversationInner({
         {!ending && reconnecting && <span className="text-amber-300">Reconnecting to Coach Buddy…</span>}
         {!ending && !reconnecting && !sessionReady && <span>Starting session…</span>}
         {!ending && !reconnecting && sessionReady && convo.status === "connected" && (
-          <span className="text-emerald-400">Live · {convo.mode}</span>
+          <span className="text-[#2997ff]">Live · {convo.mode}</span>
         )}
         {!ending && !reconnecting && sessionReady && convo.status === "disconnected" && !error && (
           <span>Ready</span>

@@ -431,7 +431,7 @@ export default function CoachPage() {
                 <span
                   className={
                     coachStatus === "connected"
-                      ? "rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-400"
+                      ? "rounded-full border border-sky-500/20 bg-sky-500/10 px-2.5 py-0.5 text-xs font-semibold text-[#2997ff]"
                       : coachStatus === "reconnecting"
                         ? "rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-0.5 text-xs font-semibold text-amber-400 animate-pulse"
                         : coachStatus === "wrapping up"

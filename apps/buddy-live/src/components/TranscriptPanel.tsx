@@ -97,7 +97,7 @@ export function TranscriptPanel({ entries, sessionStartMs, className }: Props) {
                   e.kind === "peek" && "bg-amber-500/15 text-amber-100",
                   e.kind === "recording" && "bg-red-500/15 text-red-100",
                   e.kind === "upload" && "bg-sky-500/15 text-sky-100",
-                  e.kind === "analysis" && "bg-emerald-500/15 text-emerald-100",
+                  e.kind === "analysis" && "bg-sky-500/15 text-sky-100",
                   e.kind === "connection" && "bg-white/10 text-zinc-300",
                   (!e.kind || e.kind === "info") && "bg-white/8 text-zinc-400",
                 )}
@@ -130,7 +130,7 @@ export function TranscriptPanel({ entries, sessionStartMs, className }: Props) {
             <span
               className={cn(
                 "max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-snug",
-                e.role === "user" ? "bg-emerald-500/90 text-black" : "bg-white/10 text-white",
+                e.role === "user" ? "bg-[#0066cc] text-white" : "bg-zinc-800/80 text-white",
               )}
             >
               {e.text}
@@ -144,9 +144,9 @@ export function TranscriptPanel({ entries, sessionStartMs, className }: Props) {
           type="button"
           onClick={jumpToLatest}
           className={cn(
-            "absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-white/15 px-3 py-1 text-xs font-medium text-white shadow-lg backdrop-blur transition-colors",
+            "absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-zinc-800 px-3 py-1.5 text-xs font-semibold text-zinc-300 backdrop-blur-md transition-all hover:border-zinc-700 hover:bg-zinc-800/80 hover:scale-[1.01] shadow-sm",
             hasNew
-              ? "bg-emerald-500/90 text-black hover:bg-emerald-400"
+              ? "bg-[#0066cc] text-white hover:bg-[#0071e3]"
               : "bg-black/70 hover:bg-white/10",
           )}
         >
