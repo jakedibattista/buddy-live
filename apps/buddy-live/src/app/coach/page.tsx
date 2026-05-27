@@ -6,6 +6,7 @@ import { CameraView } from "@/components/CameraView";
 import { CoachConversation, CoachVoiceShell } from "@/components/CoachConversation";
 import { CoachPuckAvatar } from "@/components/CoachPuckAvatar";
 import { DrillChip } from "@/components/DrillChip";
+import { FramingIndicator } from "@/components/FramingIndicator";
 import { MicVUMeter } from "@/components/MicVUMeter";
 import { NextTurnCue } from "@/components/NextTurnCue";
 import { RepScorecard } from "@/components/RepScorecard";
@@ -21,7 +22,7 @@ import { humanSessionPhase } from "@/lib/phases";
 import { SCORED_REP_TARGET } from "@/lib/recording";
 import { systemTranscript } from "@/lib/transcript";
 import type { TranscriptEntry } from "@/lib/types";
-import type { VoiceResumeContext } from "@/lib/voiceResume";
+import type { VoiceResumeContext } from "@/lib/hiddenAgentMessages";
 
 const AGENT_ID = process.env.NEXT_PUBLIC_ELEVENLABS_AGENT_ID;
 
@@ -97,6 +98,13 @@ export default function CoachPage() {
   const setupFramingPassed = live.session?.setup_framing_passed === true;
   const resultsReady = Boolean(live.session?.results_ready_at);
   const currentPhase = live.session?.currentPhase;
+
+  // Track whether the player has EVER cleared the setup framing check this
+  // session. Once true, stays true — so the soft FramingIndicator can light
+  // up mid-drill if a later peek sees them drift out, without flashing during
+  // the initial setup phase.
+  const framingPassedOnceRef = useRef(false);
+  if (setupFramingPassed) framingPassedOnceRef.current = true;
   const connected = coachStatus === "connected" || coachStatus === "wrapping up";
   const phaseLabel = humanSessionPhase(live.session?.currentPhase);
   const sessionStartMs = live.session?.startedAt
@@ -282,12 +290,17 @@ export default function CoachPage() {
                   </div>
                 </div>
               )}
-              <div className="pointer-events-none absolute right-4 top-4 z-30 max-w-[45%] [&>*]:pointer-events-auto">
+              <div className="pointer-events-none absolute right-4 top-4 z-30 flex max-w-[45%] flex-col items-end gap-1.5 [&>*]:pointer-events-auto">
                 <DrillChip
                   drillId={displayedDrillId}
                   hint={displayedHint}
                   headline={displayedHeadline}
                   recording={capture.recording}
+                />
+                <FramingIndicator
+                  framingPassedOnce={framingPassedOnceRef.current}
+                  lastFullBodyInFrame={live.session?.last_peek_full_body_in_frame}
+                  inSetupPhase={currentPhase === "stance_check"}
                 />
               </div>
               <CameraPeekNudge

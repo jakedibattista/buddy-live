@@ -12,11 +12,9 @@ interface DrillChipProps {
 
 const DRILL_LABEL: Record<string, string> = {
   wristshot: "Wristshot",
-  snapshot: "Snapshot",
   slapshot: "Slapshot",
   slapshot_form: "Slapshot",
   backhand: "Backhand",
-  skating: "Skating Stride",
 };
 
 export function DrillChip({ drillId, hint, recording, headline }: DrillChipProps) {

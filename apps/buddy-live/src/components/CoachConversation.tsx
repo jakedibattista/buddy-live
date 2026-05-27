@@ -7,10 +7,11 @@ import { CoachAudioMuteButton } from "@/components/CoachAudioMuteButton";
 import { coachTranscriptEntries, systemTranscript, voiceTranscriptEntry } from "@/lib/transcript";
 import { cn } from "@/lib/utils";
 import {
-  buildVoiceResumeUserMessage,
+  buildVoiceReconnectMessage,
+  isHiddenAgentMessage,
   VOICE_RESUME_FIRST_MESSAGE,
   type VoiceResumeContext,
-} from "@/lib/voiceResume";
+} from "@/lib/hiddenAgentMessages";
 import type { TranscriptEntry } from "@/lib/types";
 
 interface CoachConversationProps {
@@ -119,11 +120,7 @@ function CoachConversationInner({
     onMessage: (msg: { source: string; message: string }) => {
       if (!msg?.message) return;
       if (msg.source === "user") {
-        if (
-          msg.message.startsWith("(Voice reconnected") ||
-          msg.message.startsWith("(Warm-up timer finished") ||
-          msg.message.startsWith("(Camera check")
-        ) {
+        if (isHiddenAgentMessage(msg.message)) {
           return;
         }
         onTranscript(voiceTranscriptEntry("user", msg.message));
@@ -184,7 +181,7 @@ function CoachConversationInner({
 
         if (resume) {
           window.setTimeout(() => {
-            convo.sendUserMessage(buildVoiceResumeUserMessage(resumeContextRef.current));
+            convo.sendUserMessage(buildVoiceReconnectMessage(resumeContextRef.current));
           }, 900);
           onTranscript(
             systemTranscript("Voice reconnected — Coach Buddy is picking up where you left off.", "connection"),

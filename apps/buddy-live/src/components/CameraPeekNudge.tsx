@@ -2,17 +2,13 @@
 
 import { useEffect, useRef } from "react";
 import { useConversationControls, useConversationStatus } from "@elevenlabs/react";
+import { CAMERA_RECHECK_MESSAGE } from "@/lib/hiddenAgentMessages";
 
 interface Props {
   currentPhase?: string | null;
   setupFramingPassed: boolean;
   peekStatusUpdatedAt?: string;
 }
-
-// Hidden user message prefix; CoachConversation suppresses it from the transcript.
-export const CAMERA_RECHECK_PREFIX = "(Camera check";
-const CAMERA_RECHECK_MESSAGE =
-  "(Camera check — please call peek_camera now to see if the player fixed their framing.)";
 
 // Minimum seconds since the last persisted peek before we nudge again.
 const STALE_THRESHOLD_MS = 10_000;

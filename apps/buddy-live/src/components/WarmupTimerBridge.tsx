@@ -4,7 +4,7 @@ import { useCallback, useEffect } from "react";
 import { useConversationControls } from "@elevenlabs/react";
 import { CountdownOverlay } from "@/components/CountdownOverlay";
 import { useWarmupTimer } from "@/hooks/useWarmupTimer";
-import { buildWarmupTimerDoneMessage } from "@/lib/countdown";
+import { buildWarmupTimerDoneMessage } from "@/lib/hiddenAgentMessages";
 import { systemTranscript } from "@/lib/transcript";
 import type { CoachCommand, TranscriptEntry } from "@/lib/types";
 

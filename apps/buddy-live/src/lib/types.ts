@@ -1,14 +1,19 @@
-export type DrillId = "wristshot" | "snapshot" | "slapshot_form" | "backhand" | "skating";
+/**
+ * Canonical drill id sent to the modelforpuckbuddy `/api/analyze-video`
+ * endpoint. The voice agent talks in user-facing FocusDrill names (see below)
+ * and the conversion happens once in `lib/drills.ts` (frontend) and
+ * `rep_capture._normalize_drill` (backend).
+ */
+export type DrillId = "wristshot" | "slapshot_form" | "backhand";
 
+/** What the voice agent says out loud and what the UI displays. */
 export type FocusDrill = "wristshot" | "slapshot" | "backhand";
 
 export type SessionPhase =
   | "warmup"
   | "stance_check"
   | "drill_readiness"
-  | "wristshots"
-  | "snapshots"
-  | "skating"
+  | "scored_reps"
   | "recap"
   | "ended";
 
@@ -28,7 +33,6 @@ export interface LiveSessionDoc {
   last_peek_facing_camera?: boolean;
   last_peek_setup?: string;
   setup_framing_passed?: boolean;
-  peek_fail_streak?: number;
   camera_hint?: string;
   peek_status_updated_at?: string;
   last_warmup_exercise?: string;

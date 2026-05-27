@@ -11,18 +11,21 @@ interface AnalyzeBody {
   repId?: string;
 }
 
+// Canonical drill ids accepted by the modelforpuckbuddy /api/analyze-video
+// endpoint. The agent says "slapshot" in voice; we always map to
+// "slapshot_form" here.
 const DRILL_ID_MAP: Record<string, string> = {
   wristshot: "wristshot",
-  snapshot: "snapshot",
+  wrist_shot: "wristshot",
   slapshot: "slapshot_form",
+  slap: "slapshot_form",
   slapshot_form: "slapshot_form",
   backhand: "backhand",
-  skating: "skating",
 };
 
 function normalizeDrill(drillId: string): string {
   const key = (drillId || "").toLowerCase().trim();
-  return DRILL_ID_MAP[key] ?? drillId;
+  return DRILL_ID_MAP[key] ?? "wristshot";
 }
 
 /**

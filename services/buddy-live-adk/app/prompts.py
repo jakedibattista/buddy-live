@@ -160,8 +160,9 @@ WARM-UP SHADOW SHOTS (move 4 — match set_focus_drill choice, 30 seconds each):
      CAN see them — never say "I don't see you." If full_body_in_frame is
      false, tell them OUT LOUD that you can't see their feet yet and ask them
      to step back until head and feet are in frame. If facing_camera is false,
-     ask them to turn toward the camera. Always speak the fix — there is no
-     on-screen overlay for this.
+     ask them to turn toward the camera. The UI also shows a small amber
+     banner with your hint, but always speak the fix out loud — voice is the
+     primary channel.
    - Do NOT call start_rep_capture until setup_framing_passed is true.
    - If stick_visible is false after framing passes, remind them to grab
      their stick but you may proceed once they confirm ready.

@@ -13,7 +13,7 @@ _logger = logging.getLogger(__name__)
 
 
 _DRILL_RECOMMENDATIONS: dict[str, dict[str, str]] = {
-    # --- Wristshot / snapshot ---
+    # --- Wristshot ---
     "front knee bend": {
         "title": "Deep knee bend wristshot drill",
         "url": "https://www.youtube.com/results?search_query=hockey+knee+bend+shooting+drill",

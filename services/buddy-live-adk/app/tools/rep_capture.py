@@ -30,16 +30,17 @@ from app.firestore_client import db, rep_ref, session_ref
 
 _logger = logging.getLogger(__name__)
 
+# Canonical drill ids accepted by the modelforpuckbuddy /api/analyze-video
+# endpoint. The agent speaks user-facing names ("slapshot") and we map to the
+# canonical id here. Anything we don't recognize defaults to "wristshot" so
+# analysis never fails on a typo.
 _DRILL_ID_MAP = {
     "wristshot": "wristshot",
     "wrist_shot": "wristshot",
-    "snapshot": "snapshot",
-    "snap": "snapshot",
     "slapshot": "slapshot_form",
     "slap": "slapshot_form",
+    "slapshot_form": "slapshot_form",
     "backhand": "backhand",
-    "skating": "skating",
-    "stride": "skating",
 }
 
 
@@ -53,7 +54,7 @@ def _get_session_id(tool_context: ToolContext) -> str | None:
 
 
 def _normalize_drill(drill_id: str) -> str:
-    return _DRILL_ID_MAP.get((drill_id or "").lower().strip(), drill_id)
+    return _DRILL_ID_MAP.get((drill_id or "").lower().strip(), "wristshot")
 
 
 def _build_auth_headers() -> dict[str, str]:
@@ -76,7 +77,8 @@ def start_rep_capture(
     """Tell the web UI to start recording the next rep.
 
     Args:
-        drill_id: One of "wristshot", "snapshot", "skating", "slapshot", "backhand".
+        drill_id: One of "wristshot", "slapshot", or "backhand". Anything else
+            is treated as "wristshot" so analysis never fails on a typo.
         hint: A short user-facing hint shown on the UI ("3 wristshots, go on your time").
 
     Returns:
@@ -112,8 +114,7 @@ def start_rep_capture(
                 "created_at": _now_iso(),
             }
         )
-        phase = "snapshots" if canonical in ("slapshot_form", "snapshot") else "wristshots"
-        sref.set({"currentPhase": phase}, merge=True)
+        sref.set({"currentPhase": "scored_reps"}, merge=True)
 
     return {"rep_id": rep_id, "drill_id": canonical, "status": "capture_requested"}
 
@@ -346,7 +347,7 @@ def get_rep_result(rep_id: str, tool_context: ToolContext) -> dict[str, Any]:
 
 
 _SHOOTING_METRIC_LABELS = {
-    # Wristshot + snapshot (per-shot API returns camelCase; session_insights uses snake_case)
+    # Wristshot (per-shot API returns camelCase; session_insights uses snake_case)
     "front_knee_bend": "front knee bend",
     "frontKneeBend": "front knee bend",
     "weight_transfer": "weight transfer",

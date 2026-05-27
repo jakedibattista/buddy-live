@@ -94,16 +94,14 @@ def _persist_peek_status(
     facing_camera: bool,
     stick_visible: bool,
     setup: str,
-) -> int:
+) -> None:
     """Mirror peek results onto the session doc for the web UI."""
     ref = session_ref(session_id)
     if ref is None:
-        return 0
+        return
     try:
         snap = ref.get()
-        prev_streak = int((snap.to_dict() or {}).get("peek_fail_streak") or 0) if snap.exists else 0
         framing_passed = person_visible and full_body_in_frame and facing_camera
-        streak = 0 if framing_passed else prev_streak + 1
         hint = None
         if not person_visible:
             hint = "Coach can't see you — check your camera and step into frame."
@@ -116,8 +114,8 @@ def _persist_peek_status(
         current_phase = (snap.to_dict() or {}).get("currentPhase") if snap.exists else None
         if current_phase == "warmup":
             ref.set({"peek_updated_at": _now_iso()}, merge=True)
-            return 0
-        locked_phases = {"wristshots", "snapshots", "skating", "recap", "ended"}
+            return
+        locked_phases = {"scored_reps", "recap", "ended"}
         if framing_passed and current_phase not in locked_phases:
             phase = "drill_readiness"
         elif not framing_passed and current_phase not in locked_phases:
@@ -131,17 +129,14 @@ def _persist_peek_status(
             "last_peek_stick_visible": stick_visible,
             "last_peek_setup": setup,
             "setup_framing_passed": framing_passed,
-            "peek_fail_streak": streak,
             "camera_hint": hint,
             "peek_status_updated_at": _now_iso(),
         }
         if phase:
             payload["currentPhase"] = phase
         ref.set(payload, merge=True)
-        return streak
     except Exception:
         _logger.exception("peek_camera status write failed")
-        return 0
 
 
 def _peek_unavailable(session_id: str | None, observation: str) -> dict[str, Any]:
@@ -232,7 +227,7 @@ def peek_camera(question: str, tool_context: ToolContext) -> dict[str, Any]:
             parts = response.candidates[0].content.parts if response.candidates[0].content else []
             text = " ".join((p.text or "").strip() for p in parts).strip()
         parsed = _parse_peek_response(text)
-        streak = _persist_peek_status(
+        _persist_peek_status(
             session_id,
             person_visible=bool(parsed.get("person_visible")),
             full_body_in_frame=bool(parsed.get("full_body_in_frame")),
@@ -241,19 +236,17 @@ def peek_camera(question: str, tool_context: ToolContext) -> dict[str, Any]:
             setup=str(parsed.get("setup") or ""),
         )
         _logger.info(
-            "peek_camera session=%s person=%s full_body=%s facing=%s stick=%s streak=%s setup=%r observation=%r",
+            "peek_camera session=%s person=%s full_body=%s facing=%s stick=%s setup=%r observation=%r",
             session_id,
             parsed.get("person_visible"),
             parsed.get("full_body_in_frame"),
             parsed.get("facing_camera"),
             parsed.get("stick_visible"),
-            streak,
             parsed.get("setup"),
             parsed.get("observation"),
         )
         return {
             **parsed,
-            "peek_fail_streak": streak,
             "available": parsed.get("available", False),
             "source": "gemini-flash",
             "raw": text,
