@@ -112,7 +112,18 @@ export interface IqVisualCommand extends CoachCommandBase {
   diagram: string;
 }
 
-export type CoachCommand = CaptureCommand | WarmupTimerCommand | IqVisualCommand;
+export interface IqAnswerCommand extends CoachCommandBase {
+  type: "mark_iq_answer";
+  player_choice: string;
+  correct_choice: string;
+  was_correct: boolean;
+}
+
+export type CoachCommand =
+  | CaptureCommand
+  | WarmupTimerCommand
+  | IqVisualCommand
+  | IqAnswerCommand;
 
 export function parseCoachCommand(id: string, data: Record<string, unknown>): CoachCommand | null {
   const created_at = typeof data.created_at === "string" ? data.created_at : "";
@@ -144,6 +155,27 @@ export function parseCoachCommand(id: string, data: Record<string, unknown>): Co
     const diagram = typeof data.diagram === "string" ? data.diagram : "";
     if (!scenario) return null;
     return { id, type, scenario, options, diagram, created_at, handled };
+  }
+
+  if (type === "mark_iq_answer") {
+    const player_choice =
+      typeof data.player_choice === "string" ? data.player_choice.toUpperCase() : "";
+    const correct_choice =
+      typeof data.correct_choice === "string" ? data.correct_choice.toUpperCase() : "";
+    if (!player_choice || !correct_choice) return null;
+    const was_correct =
+      typeof data.was_correct === "boolean"
+        ? data.was_correct
+        : player_choice === correct_choice;
+    return {
+      id,
+      type,
+      player_choice,
+      correct_choice,
+      was_correct,
+      created_at,
+      handled,
+    };
   }
 
   return null;

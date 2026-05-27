@@ -23,7 +23,7 @@ import { humanSessionPhase } from "@/lib/phases";
 import { SCORED_REP_TARGET } from "@/lib/recording";
 import { systemTranscript } from "@/lib/transcript";
 import type { TranscriptEntry } from "@/lib/types";
-import type { IqVisualCommand } from "@/lib/types";
+import type { IqAnswerCommand, IqVisualCommand } from "@/lib/types";
 import type { VoiceResumeContext } from "@/lib/hiddenAgentMessages";
 
 const AGENT_ID = process.env.NEXT_PUBLIC_ELEVENLABS_AGENT_ID;
@@ -103,6 +103,21 @@ export default function CoachPage() {
     );
     return iqCommands.length > 0 ? iqCommands[iqCommands.length - 1] : null;
   }, [live.commands]);
+
+  // Pair the latest answer mark with the current scenario, but only if the
+  // mark came AFTER the scenario was shown — otherwise a stale mark from a
+  // previous scenario would bleed through onto the next card.
+  const latestIqAnswer = useMemo<IqAnswerCommand | null>(() => {
+    if (!latestIqVisual) return null;
+    const answers = live.commands.filter(
+      (c): c is IqAnswerCommand => c.type === "mark_iq_answer",
+    );
+    if (answers.length === 0) return null;
+    const last = answers[answers.length - 1];
+    return last.created_at > latestIqVisual.created_at ? last : null;
+  }, [live.commands, latestIqVisual]);
+
+  const inIqPractice = live.session?.currentPhase === "iq_practice";
 
   const focusDrill = live.session?.focus_drill ?? null;
   const setupFramingPassed = live.session?.setup_framing_passed === true;
@@ -274,11 +289,35 @@ export default function CoachPage() {
     <main className="relative flex min-h-screen flex-col bg-zinc-950 text-white">
       <CoachVoiceShell>
         <div className="relative mx-auto grid w-full max-w-7xl flex-1 gap-6 p-4 lg:grid-cols-[1fr_360px] lg:p-6">
-          {/* Camera column */}
+          {/* Camera column (or large IQ overlay during Hockey IQ practice) */}
           <section className="relative flex h-[60vh] w-full flex-col gap-4 lg:h-[calc(100vh-3rem)]">
             <div className="relative flex-1">
-              <CameraView ref={videoRef} stream={stream} recording={capture.recording} />
-              {permissionError && (
+              {inIqPractice ? (
+                <div className="absolute inset-0 flex items-center justify-center overflow-y-auto rounded-2xl border border-indigo-400/20 bg-gradient-to-br from-indigo-950 via-zinc-950 to-zinc-900 p-4 sm:p-6">
+                  {latestIqVisual ? (
+                    <IqVisualCard
+                      command={latestIqVisual}
+                      answer={latestIqAnswer}
+                      size="lg"
+                      className="w-full max-w-2xl"
+                    />
+                  ) : (
+                    <div className="max-w-md text-center text-zinc-300">
+                      <div className="mb-3 text-3xl">🧠</div>
+                      <div className="text-lg font-semibold text-white">
+                        Hockey IQ Practice
+                      </div>
+                      <div className="mt-2 text-sm text-zinc-400">
+                        Coach Buddy is lining up your first scenario — listen for
+                        the question and watch this space.
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <CameraView ref={videoRef} stream={stream} recording={capture.recording} />
+              )}
+              {!inIqPractice && permissionError && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/70 p-6 text-center">
                   <div className="max-w-sm">
                     <div className="mb-1 text-lg font-semibold">Camera + mic required</div>
@@ -293,44 +332,52 @@ export default function CoachPage() {
                   </div>
                 </div>
               )}
-              {showSetupBanner && (
+              {!inIqPractice && showSetupBanner && (
                 <div className="pointer-events-none absolute left-4 top-4 z-10 max-w-[55%] sm:max-w-sm">
                   <div className="rounded-xl border border-amber-400/40 bg-amber-500/25 px-4 py-2 text-xs leading-snug text-amber-50 shadow-md backdrop-blur-md sm:text-sm">
                     {setupBannerText}
                   </div>
                 </div>
               )}
-              <div className="pointer-events-none absolute right-4 top-4 z-30 flex max-w-[45%] flex-col items-end gap-1.5 [&>*]:pointer-events-auto">
-                <DrillChip
-                  drillId={displayedDrillId}
-                  hint={displayedHint}
-                  headline={displayedHeadline}
-                  recording={capture.recording}
-                />
-                <FramingIndicator
-                  framingPassedOnce={framingPassedOnceRef.current}
-                  lastFullBodyInFrame={live.session?.last_peek_full_body_in_frame}
-                  inSetupPhase={currentPhase === "stance_check"}
-                />
-              </div>
-              <CameraPeekNudge
-                currentPhase={currentPhase}
-                setupFramingPassed={setupFramingPassed}
-                peekStatusUpdatedAt={live.session?.peek_status_updated_at}
-                onNudge={() => appendSystem("Asked Coach to re-check framing.", "peek")}
-              />
-              <CoachPuckAvatar
-                recording={capture.recording}
-                celebrate={celebratePuck}
-                className="absolute bottom-24 left-4 z-20"
-              />
-              <div className="absolute bottom-4 left-1/2 z-10 flex w-full max-w-lg -translate-x-1/2 flex-col items-center gap-2 px-4">
-                <VoiceQuickPrompts
-                  recording={capture.recording}
+              {!inIqPractice && (
+                <div className="pointer-events-none absolute right-4 top-4 z-30 flex max-w-[45%] flex-col items-end gap-1.5 [&>*]:pointer-events-auto">
+                  <DrillChip
+                    drillId={displayedDrillId}
+                    hint={displayedHint}
+                    headline={displayedHeadline}
+                    recording={capture.recording}
+                  />
+                  <FramingIndicator
+                    framingPassedOnce={framingPassedOnceRef.current}
+                    lastFullBodyInFrame={live.session?.last_peek_full_body_in_frame}
+                    inSetupPhase={currentPhase === "stance_check"}
+                  />
+                </div>
+              )}
+              {!inIqPractice && (
+                <CameraPeekNudge
+                  currentPhase={currentPhase}
                   setupFramingPassed={setupFramingPassed}
-                  repCount={reps.length}
-                  resultsReady={resultsReady}
+                  peekStatusUpdatedAt={live.session?.peek_status_updated_at}
+                  onNudge={() => appendSystem("Asked Coach to re-check framing.", "peek")}
                 />
+              )}
+              {!inIqPractice && (
+                <CoachPuckAvatar
+                  recording={capture.recording}
+                  celebrate={celebratePuck}
+                  className="absolute bottom-24 left-4 z-20"
+                />
+              )}
+              <div className="absolute bottom-4 left-1/2 z-10 flex w-full max-w-lg -translate-x-1/2 flex-col items-center gap-2 px-4">
+                {!inIqPractice && (
+                  <VoiceQuickPrompts
+                    recording={capture.recording}
+                    setupFramingPassed={setupFramingPassed}
+                    repCount={reps.length}
+                    resultsReady={resultsReady}
+                  />
+                )}
                 <CoachConversation
                   sessionId={live.sessionId}
                   agentId={AGENT_ID}
@@ -340,16 +387,22 @@ export default function CoachPage() {
                   onStatusChange={setCoachStatus}
                 />
               </div>
-              <RecordingTimer recording={capture.recording} onStop={capture.stopRecording} />
-              <WarmupTimerBridge
-                sessionId={live.sessionId}
-                commands={live.commands}
-                onTranscript={handleTranscript}
-                onActiveChange={handleWarmupTimerActiveChange}
-              />
-              <div className="absolute bottom-4 right-4">
-                <MicVUMeter stream={stream} />
-              </div>
+              {!inIqPractice && (
+                <RecordingTimer recording={capture.recording} onStop={capture.stopRecording} />
+              )}
+              {!inIqPractice && (
+                <WarmupTimerBridge
+                  sessionId={live.sessionId}
+                  commands={live.commands}
+                  onTranscript={handleTranscript}
+                  onActiveChange={handleWarmupTimerActiveChange}
+                />
+              )}
+              {!inIqPractice && (
+                <div className="absolute bottom-4 right-4">
+                  <MicVUMeter stream={stream} />
+                </div>
+              )}
             </div>
           </section>
 
@@ -439,10 +492,6 @@ export default function CoachPage() {
             </div>
 
             <TranscriptPanel entries={transcript} sessionStartMs={sessionStartMs} />
-
-            {currentPhase === "iq_practice" && (
-              <IqVisualCard command={latestIqVisual} />
-            )}
 
             <div className="flex flex-col gap-3">
               <div className="px-1 text-xs uppercase tracking-widest text-zinc-400">

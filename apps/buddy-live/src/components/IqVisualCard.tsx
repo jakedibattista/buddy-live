@@ -1,61 +1,127 @@
 "use client";
 
 import { useMemo } from "react";
-import type { IqVisualCommand } from "@/lib/types";
+import type { IqAnswerCommand, IqVisualCommand } from "@/lib/types";
 
 interface IqVisualCardProps {
   command: IqVisualCommand | null;
+  answer?: IqAnswerCommand | null;
+  size?: "sm" | "lg";
   className?: string;
 }
 
-export function IqVisualCard({ command, className = "" }: IqVisualCardProps) {
+export function IqVisualCard({
+  command,
+  answer = null,
+  size = "sm",
+  className = "",
+}: IqVisualCardProps) {
   if (!command) return null;
+
+  const padding = size === "lg" ? "p-6 sm:p-8" : "p-5";
+  const titleSize = size === "lg" ? "text-sm" : "text-xs";
+  const scenarioSize =
+    size === "lg" ? "text-lg sm:text-xl leading-snug" : "text-sm leading-relaxed";
+  const optionSize = size === "lg" ? "text-base sm:text-lg" : "text-sm";
+  const optionPad = size === "lg" ? "px-4 py-3" : "px-3 py-2";
+  const optionBadgeSize = size === "lg" ? "h-7 w-7 text-sm" : "h-5 w-5 text-xs";
+  const footerSize = size === "lg" ? "text-xs" : "text-[11px]";
 
   return (
     <div
-      className={`animate-in fade-in slide-in-from-bottom-2 duration-300 rounded-2xl border border-indigo-400/30 bg-gradient-to-br from-indigo-950/90 to-zinc-900/90 p-5 shadow-xl backdrop-blur-md ${className}`}
+      className={`animate-in fade-in slide-in-from-bottom-2 duration-300 rounded-2xl border border-indigo-400/30 bg-gradient-to-br from-indigo-950/90 to-zinc-900/90 shadow-xl backdrop-blur-md ${padding} ${className}`}
     >
       <div className="mb-1 flex items-center gap-2">
-        <span className="text-lg">🧠</span>
-        <span className="text-xs font-semibold uppercase tracking-widest text-indigo-300">
+        <span className={size === "lg" ? "text-2xl" : "text-lg"}>🧠</span>
+        <span
+          className={`font-semibold uppercase tracking-widest text-indigo-300 ${titleSize}`}
+        >
           Hockey IQ
         </span>
       </div>
 
-      {command.diagram && <DiagramVisual diagram={command.diagram} />}
+      {command.diagram && <DiagramVisual diagram={command.diagram} size={size} />}
 
-      <p className="mt-3 text-sm leading-relaxed text-white/90">
-        {command.scenario}
-      </p>
+      <p className={`mt-3 text-white/90 ${scenarioSize}`}>{command.scenario}</p>
 
       {command.options.length > 0 && (
-        <div className="mt-3 flex flex-col gap-1.5">
-          {command.options.map((option, i) => (
-            <div
-              key={i}
-              className="flex items-start gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-200"
-            >
-              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-indigo-500/30 text-xs font-bold text-indigo-200">
-                {String.fromCharCode(65 + i)}
-              </span>
-              <span>{option}</span>
-            </div>
-          ))}
+        <div className={`mt-3 flex flex-col ${size === "lg" ? "gap-2" : "gap-1.5"}`}>
+          {command.options.map((option, i) => {
+            const letter = String.fromCharCode(65 + i);
+            const state = optionState(letter, answer);
+            return (
+              <div
+                key={i}
+                className={`flex items-start gap-2 rounded-lg border ${optionPad} ${optionSize} ${stateClasses(state)}`}
+              >
+                <span
+                  className={`mt-0.5 flex shrink-0 items-center justify-center rounded-full font-bold ${optionBadgeSize} ${badgeClasses(state)}`}
+                >
+                  {state === "correct"
+                    ? "✓"
+                    : state === "wrong"
+                      ? "✕"
+                      : letter}
+                </span>
+                <span>{option}</span>
+              </div>
+            );
+          })}
         </div>
       )}
 
-      <p className="mt-3 text-[11px] text-zinc-500">
-        Talk through your answer with Coach Buddy
+      <p className={`mt-3 text-zinc-500 ${footerSize}`}>
+        {answer
+          ? answer.was_correct
+            ? "Nice read — Coach Buddy will explain why."
+            : "Not quite — Coach Buddy will walk you through it."
+          : "Talk through your answer with Coach Buddy"}
       </p>
     </div>
   );
 }
 
-function DiagramVisual({ diagram }: { diagram: string }) {
+type OptionState = "correct" | "wrong" | "neutral";
+
+function optionState(letter: string, answer: IqAnswerCommand | null | undefined): OptionState {
+  if (!answer) return "neutral";
+  if (letter === answer.correct_choice) return "correct";
+  if (letter === answer.player_choice && !answer.was_correct) return "wrong";
+  return "neutral";
+}
+
+function stateClasses(state: OptionState): string {
+  switch (state) {
+    case "correct":
+      return "border-emerald-400/60 bg-emerald-500/15 text-emerald-100";
+    case "wrong":
+      return "border-red-400/60 bg-red-500/15 text-red-100";
+    default:
+      return "border-white/10 bg-white/[0.04] text-zinc-200";
+  }
+}
+
+function badgeClasses(state: OptionState): string {
+  switch (state) {
+    case "correct":
+      return "bg-emerald-500/40 text-emerald-100";
+    case "wrong":
+      return "bg-red-500/40 text-red-100";
+    default:
+      return "bg-indigo-500/30 text-indigo-200";
+  }
+}
+
+function DiagramVisual({ diagram, size = "sm" }: { diagram: string; size?: "sm" | "lg" }) {
   const positions = useMemo(() => parseDiagramPositions(diagram), [diagram]);
+  const heightClass = size === "lg" ? "h-72 sm:h-96" : "h-32";
+  const captionTextClass = size === "lg" ? "text-sm sm:text-base" : "text-[10px]";
 
   return (
-    <div className="relative mt-3 h-32 w-full overflow-hidden rounded-xl border border-white/10 bg-zinc-900/80">
+    <div
+      className={`relative mt-3 w-full overflow-hidden rounded-xl border border-white/10 bg-zinc-900/80 ${heightClass}`}
+    >
+
       {/* Half-rink background */}
       <svg
         viewBox="0 0 200 100"
@@ -113,7 +179,7 @@ function DiagramVisual({ diagram }: { diagram: string }) {
 
       {/* Diagram text overlay */}
       <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent px-3 py-2">
-        <p className="text-[10px] leading-tight text-zinc-300">{diagram}</p>
+        <p className={`leading-tight text-zinc-300 ${captionTextClass}`}>{diagram}</p>
       </div>
     </div>
   );

@@ -40,6 +40,7 @@ from app.tools import (
     analyze_rep,
     end_session_recap,
     get_rep_result,
+    mark_iq_answer,
     peek_camera,
     peek_warmup,
     recommend_drill,
@@ -71,7 +72,7 @@ def _build_iq_coach() -> Agent:
         ),
         model=model,
         instruction=IQ_COACH_PROMPT,
-        tools=[show_iq_visual],
+        tools=[show_iq_visual, mark_iq_answer],
         before_tool_callback=phase_guard,
     )
 
