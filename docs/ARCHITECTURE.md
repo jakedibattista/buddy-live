@@ -178,3 +178,69 @@ https://puck-buddy-model-api-dev-22317830094.us-central1.run.app
 ```
 
 See [FIRESTORE_RULES.md](./FIRESTORE_RULES.md) for safe rules deployment into the shared `puck-buddy` Firebase project.
+
+## Deferred ADK 2.0 work
+
+We're on `google-adk==2.0.0` and already use:
+
+- **Sub-agents** — `buddy_live_coach` (root) + `iq_coach` (sub-agent) via the
+  `sub_agents=[...]` pattern in [`services/buddy-live-adk/app/agent.py`](../services/buddy-live-adk/app/agent.py).
+  Root transfers via `transfer_to_agent("iq_coach")` when the player picks IQ mode.
+- **`before_tool_callback`** — `phase_guard` in
+  [`services/buddy-live-adk/app/callbacks.py`](../services/buddy-live-adk/app/callbacks.py)
+  structurally blocks `start_rep_capture` without framing and
+  `end_session_recap` without ready results.
+
+The following ADK 2.0 features are **intentionally deferred** and tracked here
+so they don't get lost:
+
+### 1. Graph workflow rewrite (HIGH effort, MEDIUM value)
+
+Replace the prompt-driven phase machine in `COACH_SETH_LIVE_PROMPT` with an
+explicit `google.adk.workflow.Workflow` graph:
+
+```
+[Opening] → [SpaceCheck] → branch
+                            ├─ has_space → [Warmup] → [Setup] → [DrillReadiness]
+                            │                                     → [ScoredRepsLoop] → [Recap]
+                            └─ no_space → [IQPracticeLoop] → [IQWrap]
+```
+
+**Why deferred:** the [`services/buddy-live-adk/app/main.py`](../services/buddy-live-adk/app/main.py)
+`/chat/completions` endpoint streams via `runner.run_async(agent=...)` which is wired
+to an `Agent`, not a `Workflow`. The ElevenLabs OpenAI-compatible SSE bridge would
+need to be re-implemented against the Workflow Runtime's event stream. Risk: high
+without local staging — we currently can't run locally (see Vercel-only testing rule).
+
+**Prerequisites before doing this:**
+1. Stand up a staging Cloud Run service (`buddy-live-adk-staging`) and point a staging
+   ElevenLabs agent at it.
+2. Verify the Workflow Runtime emits ADK `Event` objects compatible with the existing
+   SSE chunk format (`event.content.parts[].text`, `event.partial`).
+3. Migrate one phase at a time (start with `Recap` — lowest blast radius).
+4. Keep `Agent`-based path behind an env flag (`ADK_USE_WORKFLOW=false` default) for
+   instant rollback during the cutover.
+
+### 2. Persistent (Firestore-backed) `SessionService` (MEDIUM effort, LOW value today)
+
+Implement a `BaseSessionService` subclass that persists `Session.state` and `Event`
+log to Firestore so sessions survive Cloud Run scale-to-zero.
+
+**Why deferred:** the voice reconnect flow already restores `focus_drill`,
+`currentPhase`, `repCount`, and `setupFramingPassed` via a hidden context message
+(see [`apps/buddy-live/src/lib/hiddenAgentMessages.ts`](../apps/buddy-live/src/lib/hiddenAgentMessages.ts)).
+That covers the main failure mode (Cloud Run restart mid-session) without needing
+custom event serialization.
+
+**Revisit when:** we add features that depend on full conversation replay (e.g.
+session resume in a new browser tab, post-hoc transcript analysis, or evaluator runs
+that need the full event log).
+
+### 3. Split shooting flow further (LOW effort, LOW value today)
+
+Could split `buddy_live_coach` further into `warmup_coach`, `setup_coach`,
+`drill_coach`, `recap_coach`. Each gets a smaller prompt, easier to test in isolation.
+
+**Why deferred:** the current root prompt is mature and tested. The IQ split was the
+high-value one because IQ was a new feature; further splits are mostly tidiness.
+Revisit if a single sub-flow starts misbehaving frequently.
