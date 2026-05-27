@@ -112,6 +112,10 @@ firebase deploy --only firestore:rules,storage:rules --config infra/firebase.jso
 cd apps/buddy-live && vercel deploy --prod
 ```
 
+ADK errors are tracked in **Sentry** (`SENTRY_DSN` env var on Cloud Run). For the
+24h GCS + Firestore TTL cleanup and the per-session weekly-review summary, see
+[`infra/storage-lifecycle.md`](infra/storage-lifecycle.md).
+
 ## Architectural decisions
 
 ### Why hybrid (ElevenLabs + ADK + Gemini Flash on demand) instead of Gemini Live?

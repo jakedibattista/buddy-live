@@ -22,20 +22,24 @@ See the [root README](../../README.md) for setup, architecture, and deploy. Verc
 | `CoachPuckAvatar` | Talking puck mascot — baked-face PNG crossfade (neutral ↔ speak), volume-synced |
 | `CoachAudioMuteButton` | Mute coach output volume |
 | `CameraView` | Webcam preview |
-| `CountdownOverlay` | Shared **m:ss** countdown UI (amber warm-up + red REC variants) |
+| `CountdownOverlay` | Shared **m:ss** countdown UI (amber warm-up + red REC variants; pulses urgent ≤5s) |
 | `RecordingTimer` | 60s REC countdown + Stop & upload |
 | `WarmupTimerBridge` | Listens for `start_warmup_timer` commands; nudges agent when timer ends |
+| `CameraPeekNudge` | Silently re-pings `peek_camera` if the framing banner sticks > ~10s; logs to transcript |
+| `FramingIndicator` | Soft amber "out of frame" pill after the initial setup gate has already passed |
 | `DrillChip` | Current drill + rep armed / capturing states |
 | `RepScorecard` | Analysis results in sidebar |
 | `NextTurnCue` | Contextual “your turn” copy (warm-up timer, setup, reps) |
 | `VoiceQuickPrompts` | Chips: I'm ready, Wrap up, Repeat that, Next drill |
+
+Hidden agent-side messages (camera re-check, voice-reconnect, warm-up timer done) live in `src/lib/hiddenAgentMessages.ts` and are filtered out of the visible transcript.
 
 ## Key hooks (`src/hooks/`)
 
 | Hook | Role |
 |---|---|
 | `useLiveSession` | Anonymous auth, session doc, Firestore subscription |
-| `usePeekFrameUploader` | JPEG every ~2.5s → `/api/peek` |
+| `usePeekFrameUploader` | JPEG every ~2.5s → `/api/peek` (drops to 1.5s while a warm-up timer is active, to fill the ring buffer for `peek_warmup`) |
 | `useWarmupTimer` | `start_warmup_timer` commands → on-screen countdown |
 | `useRepCapture` | `start_capture` / `stop_capture` commands → MediaRecorder |
 | `useRepResultsPolling` | Refreshes rep analysis jobs |

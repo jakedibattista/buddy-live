@@ -107,14 +107,18 @@ data: [DONE]
 ## Firestore data model
 
 ```
-live_sessions/{sessionId}
-  session_id, user_id, startedAt, currentPhase
+live_sessions/{sessionId}                 (TTL: ~24h via expires_at)
+  session_id, user_id, startedAt, expires_at, currentPhase
   focus_drill, focus_drill_set_at
-  peek_url, peek_updated_at
-  last_peek_person_visible, peek_fail_streak, camera_hint
-  setup_framing_passed, full_body_in_frame, facing_camera
-  last_warmup_exercise, last_warmup_form, warmup_moves_checked, warmup_peek_updated_at
-  last_warmup_timer_label, last_warmup_timer_seconds, warmup_timer_started_at
+  peek_url, peek_updated_at, peek_url_history[]   (ring buffer, ≤8 frames)
+  last_peek_person_visible, last_peek_full_body_in_frame,
+  last_peek_facing_camera, last_peek_stick_visible, last_peek_setup,
+  setup_framing_passed, camera_hint, peek_status_updated_at,
+  framing_failure_count                       (counts pass→fail transitions)
+  last_warmup_exercise, last_warmup_form, last_warmup_moving,
+  last_warmup_motion_detected, last_warmup_frames_analyzed, last_warmup_setup,
+  warmup_moves_checked, warmup_motion_miss_count, warmup_peek_updated_at,
+  last_warmup_timer_label, last_warmup_timer_seconds, warmup_timer_started_at,
   results_ready_at, ended_at
 
   reps/{repId}
@@ -127,9 +131,29 @@ live_sessions/{sessionId}
 
   coach_log/{logId}        (reserved; not fully wired yet)
   ambient_notes/{noteId}   (reserved)
+
+session_summaries/{sessionId}              (kept forever — weekly review record)
+  session_id, started_at, created_at, drill, rep_count, by_drill,
+  weakest_metric, average_scores,
+  framing_struggles, warmup_motion_misses, warmup_moves_checked, final_phase
 ```
 
+`drill_id` is canonicalised to `wristshot | slapshot_form | backhand`; legacy
+`snapshot` / `skating` ids were retired in the 2026-05-26 cleanup pass.
+
 **Conversation turns** (chat history) live in ADK `InMemorySessionService` on Cloud Run — not in Firestore today. The UI transcript is in browser state from ElevenLabs `onMessage` callbacks plus client-side system events (`lib/transcript.ts`).
+
+## Storage cleanup + observability
+
+| Layer | Path | Mechanism |
+| --- | --- | --- |
+| GCS | `gs://puck-buddy.firebasestorage.app/live_sessions/**` | Object Lifecycle rule, delete after 1 day (`infra/storage-lifecycle.json`) |
+| Firestore | `live_sessions/{sid}` + subcollections | TTL policy on `expires_at` (≈24h) |
+| Firestore | `session_summaries/{sid}` | Not on TTL — durable per-session record for weekly review |
+| Errors | ADK service | Sentry FastAPI integration (`SENTRY_DSN` env var on Cloud Run) |
+
+See [`infra/storage-lifecycle.md`](../infra/storage-lifecycle.md) for the Sunday
+review workflow.
 
 ## Environment split (hackathon)
 
