@@ -498,16 +498,11 @@ export default function CoachPage() {
               sessionStartMs={sessionStartMs}
             />
 
-            {!inIqPractice && (
+            {!inIqPractice && reps.length > 0 && (
               <div className="flex flex-col gap-3">
                 <div className="px-1 text-xs uppercase tracking-widest text-zinc-400">
                   Reps ({reps.length})
                 </div>
-                {reps.length === 0 && (
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-zinc-400">
-                    Reps will appear here as Coach Buddy guides you through the drills.
-                  </div>
-                )}
                 {reps.map((rep) => (
                   <RepScorecard key={rep.rep_id} rep={rep} />
                 ))}
