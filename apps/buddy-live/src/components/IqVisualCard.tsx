@@ -76,7 +76,6 @@ export function IqVisualCard({
 
     </div>
   );
-  );
 }
 
 type OptionState = "correct" | "wrong" | "neutral";
