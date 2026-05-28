@@ -11,6 +11,11 @@
 #   MODELFORPUCKBUDDY_API_URL    -- e.g. https://api.buddysports.app
 #   MODELFORPUCKBUDDY_BEARER_TOKEN (optional) or MODELFORPUCKBUDDY_API_KEY
 #   CORS_ALLOW_ORIGINS           -- comma-separated origins for the Vercel web app
+#
+# Optional env (Track 2 observability):
+#   BUDDY_ENABLE_CLOUD_TRACE=1   -- export ADK + custom spans to Cloud Trace.
+#                                   Runtime SA needs roles/cloudtrace.agent.
+#   SENTRY_DSN                   -- forward errors + perf transactions to Sentry.
 
 steps:
   - id: build

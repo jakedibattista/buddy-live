@@ -21,14 +21,22 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from google.adk.agents.run_config import RunConfig, StreamingMode
 from google.genai import types as genai_types
+from opentelemetry import trace
 
 from app.agent import APP_NAME, ensure_session, get_runner, get_session_service
 from app.models import ChatCompletionRequest, HealthResponse
 from app.sse import sse_chunk, sse_done
+from app.telemetry import setup_cloud_trace
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 _logger = logging.getLogger("buddy_live_adk")
+
+# Set up Cloud Trace FIRST so ADK's global TracerProvider is installed before
+# any other library tries to register one. ADK's tool / agent / LLM spans
+# then flow to telemetry.googleapis.com without further wiring.
+setup_cloud_trace()
+_tracer = trace.get_tracer("buddy_live.main")
 
 # Initialize Sentry BEFORE FastAPI() so the FastAPI integration auto-wires
 # itself. Gated on SENTRY_DSN so local dev / unset envs are a no-op.
@@ -128,65 +136,84 @@ async def chat_completions(payload: ChatCompletionRequest, request: Request) -> 
 
     run_config = RunConfig(streaming_mode=StreamingMode.SSE, max_llm_calls=10)
 
+    is_reconnect = session_exists and not user_text
+
     async def event_stream():
         response_id = f"chatcmpl-{uuid.uuid4().hex[:12]}"
         sent_role = False
         sent_any_text = False
         full_text_parts: list[str] = []
-        try:
-            async with _session_locks[session_id]:
-                async with asyncio.timeout(_TURN_TIMEOUT_SECONDS):
-                    async for event in runner.run_async(
-                        user_id="player",
-                        session_id=session_id,
-                        new_message=new_message,
-                        run_config=run_config,
-                    ):
-                        if not event.content or not event.content.parts:
-                            continue
-                        text_pieces: list[str] = []
-                        for part in event.content.parts:
-                            piece = getattr(part, "text", None) or ""
-                            if piece:
-                                text_pieces.append(piece)
-                        text = "".join(text_pieces)
-                        if not text:
-                            continue
+        # Top-level span for the whole turn. ADK's agent / tool / LLM spans
+        # become children of this one so Cloud Trace shows the full
+        # session_id -> reasoning -> tool calls hierarchy in a single trace.
+        with _tracer.start_as_current_span("buddy_live.turn") as span:
+            span.set_attribute("buddy_live.session_id", session_id)
+            span.set_attribute("buddy_live.user_text_len", len(user_text))
+            span.set_attribute("buddy_live.is_reconnect", is_reconnect)
+            span.set_attribute("buddy_live.session_existed", session_exists)
+            try:
+                async with _session_locks[session_id]:
+                    async with asyncio.timeout(_TURN_TIMEOUT_SECONDS):
+                        async for event in runner.run_async(
+                            user_id="player",
+                            session_id=session_id,
+                            new_message=new_message,
+                            run_config=run_config,
+                        ):
+                            if not event.content or not event.content.parts:
+                                continue
+                            text_pieces: list[str] = []
+                            for part in event.content.parts:
+                                piece = getattr(part, "text", None) or ""
+                                if piece:
+                                    text_pieces.append(piece)
+                            text = "".join(text_pieces)
+                            if not text:
+                                continue
 
-                        is_partial = getattr(event, "partial", False)
-                        if is_partial:
-                            if not sent_role:
-                                yield sse_chunk(response_id, {"role": "assistant"})
-                                sent_role = True
-                            yield sse_chunk(response_id, {"content": text})
-                            full_text_parts.append(text)
-                            sent_any_text = True
-                        else:
-                            if not sent_any_text:
-                                yield sse_chunk(response_id, {"role": "assistant"})
-                                sent_role = True
+                            is_partial = getattr(event, "partial", False)
+                            if is_partial:
+                                if not sent_role:
+                                    yield sse_chunk(response_id, {"role": "assistant"})
+                                    sent_role = True
                                 yield sse_chunk(response_id, {"content": text})
+                                full_text_parts.append(text)
                                 sent_any_text = True
+                            else:
+                                if not sent_any_text:
+                                    yield sse_chunk(response_id, {"role": "assistant"})
+                                    sent_role = True
+                                    yield sse_chunk(response_id, {"content": text})
+                                    sent_any_text = True
 
-            if not sent_role:
-                yield sse_chunk(response_id, {"role": "assistant"})
-                yield sse_chunk(response_id, {"content": ""})
-            yield sse_chunk(response_id, {}, finish_reason="stop")
-            yield sse_done()
-        except TimeoutError:
-            _logger.warning("turn timed out session=%s after %ds", session_id, _TURN_TIMEOUT_SECONDS)
-            if not sent_role:
-                yield sse_chunk(response_id, {"role": "assistant"})
-            yield sse_chunk(response_id, {"content": "Hold on one sec — let me catch up. What were you saying?"})
-            yield sse_chunk(response_id, {}, finish_reason="stop")
-            yield sse_done()
-        except Exception:
-            _logger.exception("chat_completions stream failed")
-            if not sent_role:
-                yield sse_chunk(response_id, {"role": "assistant"})
-            yield sse_chunk(response_id, {"content": "Sorry, I glitched. Let's try that again."})
-            yield sse_chunk(response_id, {}, finish_reason="stop")
-            yield sse_done()
+                span.set_attribute(
+                    "buddy_live.response_text_len",
+                    sum(len(p) for p in full_text_parts),
+                )
+                span.set_attribute("buddy_live.turn_outcome", "ok")
+
+                if not sent_role:
+                    yield sse_chunk(response_id, {"role": "assistant"})
+                    yield sse_chunk(response_id, {"content": ""})
+                yield sse_chunk(response_id, {}, finish_reason="stop")
+                yield sse_done()
+            except TimeoutError:
+                _logger.warning("turn timed out session=%s after %ds", session_id, _TURN_TIMEOUT_SECONDS)
+                span.set_attribute("buddy_live.turn_outcome", "timeout")
+                if not sent_role:
+                    yield sse_chunk(response_id, {"role": "assistant"})
+                yield sse_chunk(response_id, {"content": "Hold on one sec — let me catch up. What were you saying?"})
+                yield sse_chunk(response_id, {}, finish_reason="stop")
+                yield sse_done()
+            except Exception as exc:
+                _logger.exception("chat_completions stream failed")
+                span.set_attribute("buddy_live.turn_outcome", "error")
+                span.record_exception(exc)
+                if not sent_role:
+                    yield sse_chunk(response_id, {"role": "assistant"})
+                yield sse_chunk(response_id, {"content": "Sorry, I glitched. Let's try that again."})
+                yield sse_chunk(response_id, {}, finish_reason="stop")
+                yield sse_done()
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 

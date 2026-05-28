@@ -7,3 +7,9 @@ firebase-admin==7.4.0
 pydantic==2.12.5
 python-dotenv==1.1.1
 sentry-sdk[fastapi]==2.30.0
+
+# Phase 2: Cloud Trace via OpenTelemetry. ADK emits spans natively; these two
+# packages provide the OTLP/HTTP exporter and Google Cloud resource detector
+# that the ADK `telemetry.google_cloud.get_gcp_exporters` helper depends on.
+opentelemetry-exporter-otlp-proto-http==1.41.1
+opentelemetry-resourcedetector-gcp==1.12.0a0
