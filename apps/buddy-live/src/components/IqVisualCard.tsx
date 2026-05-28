@@ -405,8 +405,12 @@ function parseDiagramPositions(diagram: string): Positions {
   }
 
   // 3. Determine Defender Position (Surgically relative to player coordinates!)
-  const px = positions.player.x;
-  const py = positions.player.y;
+  // `positions.player` is initialized with a default at the top of this function
+  // and never set to null after that, so the non-null assertion is safe. The
+  // type stays nullable because the JSX rendering path uses `positions.player &&`
+  // guards to keep the SVG defensive against future refactors.
+  const px = positions.player!.x;
+  const py = positions.player!.y;
 
   if (lower.includes("defender") || lower.includes("d ") || lower.includes("d-man") || lower.includes("opponent")) {
     if (lower.includes("on your hip") || lower.includes("on your left")) {
