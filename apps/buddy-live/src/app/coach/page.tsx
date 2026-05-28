@@ -21,6 +21,7 @@ import { useRepResultsPolling } from "@/hooks/useRepResultsPolling";
 import { humanSessionPhase } from "@/lib/phases";
 import { SCORED_REP_TARGET } from "@/lib/recording";
 import { systemTranscript } from "@/lib/transcript";
+import { cn } from "@/lib/utils";
 import type { TranscriptEntry } from "@/lib/types";
 import type { IqAnswerCommand, IqVisualCommand } from "@/lib/types";
 import type { VoiceResumeContext } from "@/lib/hiddenAgentMessages";
