@@ -1,5 +1,6 @@
 """Tools exposed to the Buddy Live ADK agent."""
 from app.tools.coaching import end_session_recap, recommend_drill
+from app.tools.grounding import lookup_drill_knowledge
 from app.tools.mark_iq_answer import mark_iq_answer
 from app.tools.peek_camera import peek_camera
 from app.tools.peek_warmup import peek_warmup
@@ -21,4 +22,5 @@ __all__ = [
     "get_rep_result",
     "recommend_drill",
     "end_session_recap",
+    "lookup_drill_knowledge",
 ]

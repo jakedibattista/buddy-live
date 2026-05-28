@@ -8,6 +8,7 @@ from typing import Any
 from google.adk.tools.tool_context import ToolContext
 
 from app.firestore_client import db, session_ref
+from app.tools.grounding import lookup_drill_knowledge
 
 _SESSION_SUMMARIES_COLLECTION = "session_summaries"
 
@@ -134,22 +135,101 @@ _DRILL_RECOMMENDATIONS: dict[str, dict[str, str]] = {
 def recommend_drill(weakest_metric: str) -> dict[str, Any]:
     """Recommend a homework drill targeting the player's weakest metric.
 
+    Resolution order:
+      1. Vertex AI Search grounding against the curated drill corpus
+         (Phase 3). Returns the top result with the source snippet so the
+         coach can cite a real, vetted drill instead of a YouTube search
+         results page.
+      2. Static dict lookup (legacy hand-curated mapping). Used when
+         grounding is disabled, returns nothing, or errors out.
+      3. Generic fallback ("50 wristshots a day") -- only when both above
+         miss, so the coach is never empty-handed.
+
     Args:
         weakest_metric: Human-readable metric name (e.g., "front knee bend",
             "weight transfer"). Case-insensitive.
 
     Returns:
-        Dict with `title`, `url`, and a one-line `cue` the coach can speak.
+        Dict with `title`, `url`, `cue`, and (when grounded) a `source`
+        snippet the coach can reference verbatim.
     """
-    key = (weakest_metric or "").lower().strip()
+    metric = (weakest_metric or "").strip()
+
+    if metric:
+        grounded = lookup_drill_knowledge(
+            f"recommended drill for {metric} weakness in hockey shooting"
+        )
+        if grounded.get("available"):
+            top = (grounded.get("results") or [None])[0]
+            if top and (top.get("snippet") or top.get("title")):
+                title = top.get("title") or f"{metric} drill"
+                snippet = top.get("snippet") or ""
+                cue = _cue_from_snippet(snippet, metric)
+                return {
+                    "title": title,
+                    "url": top.get("uri")
+                    or f"https://www.youtube.com/results?search_query=hockey+{metric.replace(' ', '+')}+drill",
+                    "cue": cue,
+                    "source": "vertex_ai_search",
+                    "snippet": snippet,
+                }
+
+    key = metric.lower()
     rec = _DRILL_RECOMMENDATIONS.get(key)
     if rec:
-        return rec
+        return {**rec, "source": "static_dict"}
     return {
         "title": "Daily 50 wristshots",
         "url": "https://www.youtube.com/results?search_query=hockey+50+wristshots+a+day",
         "cue": "50 wristshots a day, every day. Consistency wins.",
+        "source": "fallback",
     }
+
+
+_CUE_SECTION_BREAKS = (
+    "Recommended drill:",
+    "Search hint:",
+    "Good looks like:",
+    "Related metrics",
+)
+
+
+def _cue_from_snippet(snippet: str, metric: str) -> str:
+    """Extract a short spoken cue from a corpus snippet.
+
+    The drill corpus puts the spoken cue on a line that starts with
+    ``Fix cue:`` (see ``services/buddy-live-adk/knowledge/metrics-*.md``).
+    Vertex AI Search snippets sometimes flow paragraphs onto a single
+    line, so we look for a quoted cue first, then fall back to splitting
+    on the next known section header, then on a newline. If nothing
+    matches we return a generic metric-focused cue so the coach is
+    never speechless.
+    """
+    if not snippet:
+        return f"Focus on your {metric} this week. Small reps, big gains."
+
+    for marker in ("Fix cue:", "Cue:"):
+        if marker not in snippet:
+            continue
+        tail = snippet.split(marker, 1)[1].lstrip()
+        if tail.startswith('"'):
+            closing = tail.find('"', 1)
+            if closing > 1:
+                cue = tail[1:closing].strip()
+                if cue:
+                    return cue
+        line = tail.split("\n", 1)[0]
+        for delim in _CUE_SECTION_BREAKS:
+            if delim in line:
+                line = line.split(delim, 1)[0]
+                break
+        cue = line.strip().strip('"').strip()
+        if cue:
+            return cue
+
+    return snippet.split("\n", 1)[0].strip() or (
+        f"Focus on your {metric} this week. Small reps, big gains."
+    )
 
 
 def end_session_recap(tool_context: ToolContext) -> dict[str, Any]:

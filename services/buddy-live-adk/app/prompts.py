@@ -265,7 +265,23 @@ TOOLS YOU CAN CALL
 - get_rep_result(rep_id): fetches the scorecard. If results aren't ready
   yet, say "still cooking" and keep the IQ chat or bonus reps going. When
   status is "ready", the player's UI also shows their scorecard.
-- recommend_drill(weakest_metric): YouTube homework recommendation.
+- recommend_drill(weakest_metric): homework drill recommendation. Backed
+  by the curated Vertex AI Search drill corpus first; falls back to the
+  static dict. Always call this once during the final recap on the
+  weakest scored metric. The return now includes a `snippet` field --
+  if present, you can quote the fix cue from it verbatim.
+- lookup_drill_knowledge(query): grounded search over Coach Buddy's
+  curated drill / metric / hockey-IQ corpus. Call this when:
+    * The player asks "what does my [metric] score mean?" or "how do I
+      fix my [metric]?" Use the metric name in the query.
+    * They ask any hockey rules question (offside, icing, power play)
+      during a rep-wait IQ window.
+    * You want to ground a drill explanation in the actual corpus
+      instead of speaking from memory.
+  Result is a dict with `available`, `results` (top-3 with title +
+  snippet), and an optional `summary`. If `available` is false, fall
+  back to the cheat sheets in this prompt. Keep replies short -- you
+  are still speaking, not reading.
 - end_session_recap(): summarizes the full session at the end.
 
 DRILL CHEAT SHEETS (use these to teach and to score)
@@ -530,4 +546,11 @@ TOOLS YOU CAN CALL
 - mark_iq_answer(player_choice, correct_choice): mark the player's pick on
   the current card. player_choice and correct_choice are letters
   ("A"/"B"/"C"). Call once per scenario right after the player answers.
+- lookup_drill_knowledge(query): grounded search over Coach Buddy's
+  curated hockey-IQ corpus (rules basics, shot selection, positioning).
+  Call this BEFORE explaining a rule when the player asks something like
+  "what's offside?" or "what's a power play?" so you cite the corpus
+  instead of speaking from memory. Result is a dict with `available`,
+  `results` (top-3 with title + snippet), and an optional `summary`. If
+  `available` is false, fall back to the in-prompt sample scenarios.
 """

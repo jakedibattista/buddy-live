@@ -16,6 +16,20 @@
 #   BUDDY_ENABLE_CLOUD_TRACE=1   -- export ADK + custom spans to Cloud Trace.
 #                                   Runtime SA needs roles/cloudtrace.agent.
 #   SENTRY_DSN                   -- forward errors + perf transactions to Sentry.
+#
+# Optional env (Track 2 grounding / RAG, Phase 3):
+#   BUDDY_VERTEX_SEARCH_DATA_STORE_ID
+#                                -- full Vertex AI Search data store resource path,
+#                                   e.g. projects/puck-buddy/locations/global/
+#                                   collections/default_collection/dataStores/buddy-live-drills
+#                                   When set, `lookup_drill_knowledge` retrieves from
+#                                   the curated drill corpus; when unset the tool
+#                                   no-ops and `recommend_drill` falls back to its
+#                                   legacy hand-curated dict. Runtime SA needs
+#                                   roles/discoveryengine.viewer.
+#   BUDDY_VERTEX_SEARCH_SERVING_CONFIG
+#                                -- optional serving config id override
+#                                   (defaults to default_search).
 
 steps:
   - id: build

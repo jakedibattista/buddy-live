@@ -159,6 +159,52 @@ def _mark_iq_answer_success() -> dict[str, Any]:
     return {"status": "recorded", "answered_correctly": True}
 
 
+def _lookup_drill_knowledge_success() -> dict[str, Any]:
+    """Synthetic grounded retrieval hit.
+
+    Mirrors the shape returned by :func:`app.tools.grounding.lookup_drill_knowledge`
+    when the real Vertex AI Search data store has matching documents. The
+    snippet quotes the corpus's "Fix cue:" line so the coach can speak it
+    verbatim during the recap, which is the demo path Phase 3 unlocks.
+    """
+    return {
+        "available": True,
+        "query": "weight transfer wristshot drill",
+        "results": [
+            {
+                "title": "metrics-wristshot.md",
+                "snippet": (
+                    "weight transfer -- Drives power into the shot via the legs, "
+                    "not just the arms. Fix cue: \"Drive your weight from back "
+                    "foot to front foot through the puck.\" Recommended drill: "
+                    "wall-shoot weight-transfer drill."
+                ),
+                "uri": "gs://puck-buddy-drill-knowledge/metrics-wristshot.md",
+            }
+        ],
+        "summary": (
+            "Weight transfer drills focus on shifting body weight from the back "
+            "foot to the front foot through the puck to add lower-body power."
+        ),
+    }
+
+
+def _lookup_drill_knowledge_miss() -> dict[str, Any]:
+    """Synthetic grounded retrieval miss.
+
+    Use for the negative-path eval: prove the agent falls back gracefully
+    (uses prompt knowledge / `recommend_drill`) when the data store has
+    nothing on the query.
+    """
+    return {
+        "available": False,
+        "query": "reverse triple axel windshot drill",
+        "results": [],
+        "summary": "",
+        "reason": "no matching documents",
+    }
+
+
 _ALWAYS = 1.0
 _FRAMING_FAILURE_SEED = 42
 _RESULT_PROCESSING_SEED = 137
@@ -194,6 +240,7 @@ def _happy_tool_configs() -> list[ToolSimulationConfig]:
         _tool("end_session_recap", _end_session_recap_success()),
         _tool("show_iq_visual", _show_iq_visual_success()),
         _tool("mark_iq_answer", _mark_iq_answer_success()),
+        _tool("lookup_drill_knowledge", _lookup_drill_knowledge_success()),
     ]
 
 
@@ -240,6 +287,17 @@ def _failure_tool_configs() -> list[ToolSimulationConfig]:
         _tool("end_session_recap", _end_session_recap_success()),
         _tool("show_iq_visual", _show_iq_visual_success()),
         _tool("mark_iq_answer", _mark_iq_answer_success()),
+        _tool(
+            "lookup_drill_knowledge",
+            _lookup_drill_knowledge_success(),
+            extras=[
+                InjectionConfig(
+                    injection_probability=0.3,
+                    random_seed=_RESULT_PROCESSING_SEED,
+                    injected_response=_lookup_drill_knowledge_miss(),
+                )
+            ],
+        ),
     ]
 
 

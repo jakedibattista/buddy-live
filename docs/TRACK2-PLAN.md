@@ -39,7 +39,7 @@ observability, evaluation, optimizer.
 | **No Environment Simulation** | Tools call real Firestore / modelforpuckbuddy — evals can't run hermetically and can't inject error edge cases | All tools (`peek_camera`, `analyze_rep`, …) talk to live infra |
 | **No observability beyond Sentry errors** | "Use Agent Observability to visually trace complex reasoning and debug stalled logic." Sentry catches exceptions but not reasoning traces | `main.py` initialises Sentry only; no OpenTelemetry / Cloud Trace |
 | **No Agent Optimizer** | "Use Agent Optimizer to programmatically refine system instructions." | Prompt is hand-tuned in `prompts.py` |
-| **No grounding / RAG** | Resource guide: "Strategically employ Grounding … and RAG to enhance the knowledge and reliability of individual agents." | Coaching knowledge baked into `COACH_SETH_LIVE_PROMPT` |
+| ~~No grounding / RAG~~ | **Closed in Phase 3.** Curated drill corpus at `services/buddy-live-adk/knowledge/`, served via `lookup_drill_knowledge` (Vertex AI Search). `recommend_drill` now grounds first, falls back to the dict. | |
 | **`InMemorySessionService`** | Sessions die on container restart; managed Memory Bank shows production discipline | `app/agent.py:108` |
 | **Cloud Run (not Agent Runtime)** | Resource guide encourages "Deploy to Agent Runtime" for managed sessions + auto-tracing | `infra/cloudbuild.yaml` is plain Cloud Run; no `adk deploy` |
 
@@ -51,7 +51,7 @@ observability, evaluation, optimizer.
 | --- | --- | --- | --- | --- |
 | 1 | **ADK Eval + User Simulation + Environment Simulation** | 2–3 days | **Critical** — the heart of Track 2 | **Done** |
 | 2 | **OpenTelemetry tracing → Cloud Trace** | 1 day | **High** — needed for the "show your reasoning" demo | **Done** |
-| 3 | **Vertex AI Search grounding for drill knowledge** | 2 days | **High** — explicit ask in resource guide | Pending |
+| 3 | **Vertex AI Search grounding for drill knowledge** | 2 days | **High** — explicit ask in resource guide | **Done** |
 | 4 | **Persistent sessions + Memory Bank** | 0.5 day | Medium — production-readiness signal | Pending |
 | 5 | **Multi-agent decomposition (vision / drill / IQ / memory)** | 2 days | Medium — judges reward orchestration | Pending |
 | 6 | **Agent Optimizer loop** | 1 day | Medium — closes the optimization story; depends on Phase 1 | Pending |
@@ -249,14 +249,158 @@ the demo run.
 
 ---
 
-## Phase 3–6 — follow-ups (not in this PR)
+## Phase 3 — Vertex AI Search grounding (shipped)
 
-### Phase 3 — Grounding / RAG (next)
+### Goals
 
-Move the embedded drill cheat sheets, rubrics, and IQ scenario bank out of
-`COACH_SETH_LIVE_PROMPT` into a Vertex AI Search Data Store. Add a
-`search_coaching_knowledge` tool. Demonstrate via eval scores that grounded
-recommendations beat prompt-baked ones.
+1. Replace the static `_DRILL_RECOMMENDATIONS` dict and its YouTube-search
+   URLs with curated, citable drill knowledge retrieved at runtime.
+2. Give Coach Buddy a way to ground metric explanations and Hockey-IQ
+   rules answers in a source the player could read after the session
+   instead of relying on baked-in prompt content.
+3. Keep the demo path bulletproof: grounding is opt-in via env var, and
+   every grounded code path has a deterministic fallback so an outage
+   or unconfigured data store never breaks a live session.
+
+### What's shipped
+
+- `services/buddy-live-adk/knowledge/` — version-controlled markdown
+  corpus (10 docs: README, three per-drill cheat sheets, three per-drill
+  metric guides, three hockey-IQ topics) that we ingest into the data
+  store. Each doc is self-contained because Vertex AI Search chunks
+  independently. The `Fix cue:` convention on metric docs lets the
+  coach quote spoken cues verbatim.
+- `services/buddy-live-adk/app/tools/grounding.py` — `lookup_drill_knowledge`
+  function tool wrapping `google.cloud.discoveryengine_v1.SearchServiceClient`.
+  Lazy-initialised, gated on `BUDDY_VERTEX_SEARCH_DATA_STORE_ID`, returns
+  `{available, query, results, summary}` with snippet + URI per result.
+  Function tool (not the built-in `VertexAiSearchTool`) so it appears as
+  a regular `tool.call` span in Cloud Trace and can be mocked by the
+  Phase 1 Environment Simulation harness.
+- `services/buddy-live-adk/app/tools/coaching.py` — `recommend_drill`
+  now tries grounded retrieval first, then the legacy hand-curated dict,
+  then a generic homework fallback. Return shape adds a `source` field
+  (`vertex_ai_search` | `static_dict` | `fallback`) so the recap can show
+  which path served the recommendation.
+- `services/buddy-live-adk/app/prompts.py` — both coaches learn the new
+  tool via short additions to their `TOOLS YOU CAN CALL` sections. The
+  rest of the prompt is unchanged so existing behaviour stays intact.
+- `services/buddy-live-adk/app/agent.py` + `evals/agent_module/agent.py`
+  — `lookup_drill_knowledge` registered on `buddy_live_coach` (11 tools)
+  and `iq_coach` (3 tools); mirrored in the eval agent module.
+- `services/buddy-live-adk/evals/environment_simulation.py` — both
+  `happy_path_config()` and `failure_config()` mock the new tool. The
+  failure config also injects a 30%-probability "no matching documents"
+  miss so we can eval the fallback-on-empty path.
+- `services/buddy-live-adk/tests/test_grounding.py` — 9 hermetic unit
+  tests covering: env-unset no-op, empty-query short-circuit, the
+  three-tier `recommend_drill` fallback chain, and the `_cue_from_snippet`
+  extractor (quoted cue, unquoted line, section-break handling).
+
+### Why a function tool (and not built-in `VertexAiSearchTool`)
+
+The built-in flavour wires the data store straight into Gemini's tool
+config; we already ship 12 function tools on this agent and prefer to
+keep retrieval observable and mockable. As a function tool,
+`lookup_drill_knowledge` shows up as a regular span alongside `analyze_rep`
+in Cloud Trace (Phase 2), and the Environment Simulation can stub it
+deterministically (Phase 1) — the rest of the toolset already follows
+that pattern, so this stays consistent.
+
+### Deployment
+
+Three one-time setup steps on the GCP project (you do these once when
+you first turn grounding on):
+
+```bash
+# 1. Create the Discovery Engine data store for the drill corpus.
+#    Generic / unstructured data so we can ingest markdown directly.
+gcloud alpha discovery-engine data-stores create buddy-live-drills \
+  --project=puck-buddy \
+  --location=global \
+  --industry-vertical=GENERIC \
+  --solution-types=SOLUTION_TYPE_SEARCH \
+  --content-config=CONTENT_REQUIRED
+
+# 2. Upload the corpus and ingest. Bucket name is illustrative -- use any
+#    GCS bucket in the same project.
+gsutil mb -p puck-buddy -l us gs://puck-buddy-drill-knowledge
+gsutil -m cp services/buddy-live-adk/knowledge/*.md \
+  gs://puck-buddy-drill-knowledge/
+gcloud alpha discovery-engine documents import \
+  --data-store=buddy-live-drills --location=global \
+  --gcs-source=gs://puck-buddy-drill-knowledge/ \
+  --reconciliation-mode=FULL
+
+# 3. Grant the Cloud Run runtime SA read access to the data store, then
+#    set the env var on the service.
+gcloud projects add-iam-policy-binding puck-buddy \
+  --member="serviceAccount:buddy-live-adk@puck-buddy.iam.gserviceaccount.com" \
+  --role="roles/discoveryengine.viewer"
+
+gcloud run services update buddy-live-adk \
+  --region=us-central1 \
+  --update-env-vars=BUDDY_VERTEX_SEARCH_DATA_STORE_ID=projects/puck-buddy/locations/global/collections/default_collection/dataStores/buddy-live-drills
+```
+
+To **update** the corpus (no Cloud Run redeploy needed), edit the
+markdown, re-upload, and re-import — the agent picks up the new content
+on the next turn.
+
+### Verifying it works
+
+Cloud Trace (Phase 2 wiring) is the canonical verification surface — a
+session that hits the grounded path shows a `tool.call [lookup_drill_knowledge]`
+span as a child of `agent_run [buddy_live_coach]`. If `available=true`
+on the tool result, the data store served the answer; if `available=false`,
+the coach is on a fallback path and you can decide whether the corpus
+needs more content.
+
+Local verification (no GCP creds required):
+
+```bash
+cd services/buddy-live-adk
+make test                                  # 25 unit tests pass (9 new in test_grounding.py)
+.venv/bin/python -c "from app.main import app"   # boots clean, env unset -> no-op log
+.venv/bin/python -c "
+from app.tools.grounding import lookup_drill_knowledge
+print(lookup_drill_knowledge('weight transfer wristshot drill'))
+# -> {available: False, reason: 'grounding disabled...'} when env unset
+"
+```
+
+### Why this is better than what we had
+
+#### What "the current search we do" actually was
+
+Two surfaces before Phase 3:
+
+1. **`recommend_drill(weakest_metric)`** — a hand-coded Python dict in
+   `app/tools/coaching.py` mapping 30 metric strings to
+   `{title, url, cue}`. The URLs were **YouTube search result pages**
+   (`youtube.com/results?search_query=...`), not specific videos.
+   Whatever ranked #1 today won. No matching → generic
+   "50 wristshots a day" default.
+2. **The prompt itself** — `COACH_SETH_LIVE_PROMPT` shipped ~5 KB of
+   baked-in coaching knowledge every turn (DRILL CHEAT SHEETS, SCORING
+   RUBRIC, HOCKEY IQ samples). Updates required code changes; the
+   player had no source citations.
+
+#### Why Vertex AI Search grounding is materially better
+
+| Dimension | Current dict + prompt (before) | Vertex AI Search data store (after) |
+| --- | --- | --- |
+| **Match quality** | Exact-string lookup. "front knee was a 6" only matched the literal key `front knee bend`. | Semantic embedding search. Matches synonyms, paraphrases, partial concepts. |
+| **Content quality** | Points at YouTube *search pages* — whatever ranks today, possibly a 30-min adult breakdown when the player is 11. | Returns **specific docs you curated**, with citations the coach can name out loud. |
+| **Update cycle** | New cue / fix / drill = code change + Cloud Build + Cloud Run rev. | Drop a doc into the data store; live without a deploy. |
+| **Hallucination control** | LLM invents from training data when a question falls outside the prompt. | Retrieval forces grounded answers; "no result" is explicit and the coach can say "let me find that for next time." |
+| **Token cost / latency** | Full DRILL CHEAT SHEETS shipped every turn even for a 3-word answer. | Only retrieved snippets in context when needed. |
+| **Track 2 evidence** | Zero. | Exactly what the resource guide asks for ("Strategically employ Grounding using Vertex AI Search… and RAG"). |
+| **Eval-able** | `recommend_drill("reverse-triple-axel")` returned the generic fallback silently — no hallucination signal. | Phase 1 evals can ask about a fake drill and verify the coach declines instead of hallucinating. |
+
+---
+
+## Phase 4–6 — follow-ups (not in this PR)
 
 ### Phase 4 — Persistent sessions + Memory Bank
 
