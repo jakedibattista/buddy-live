@@ -362,6 +362,10 @@ def _write_session_summary(
         "warmup_motion_misses": int(session_doc.get("warmup_motion_miss_count") or 0),
         "warmup_moves_checked": int(session_doc.get("warmup_moves_checked") or 0),
         "final_phase": session_doc.get("currentPhase"),
+        "player_name": session_doc.get("player_name"),
+        "player_age": session_doc.get("player_age"),
+        "player_name_normalized": session_doc.get("player_name_normalized"),
+        "user_id": session_doc.get("user_id"),
     }
     client.collection(_SESSION_SUMMARIES_COLLECTION).document(session_id).set(
         summary_doc,

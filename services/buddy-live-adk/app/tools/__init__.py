@@ -2,6 +2,7 @@
 from app.tools.coaching import end_session_recap, recommend_drill
 from app.tools.grounding import lookup_drill_knowledge
 from app.tools.mark_iq_answer import mark_iq_answer
+from app.tools.player_memory import load_player_memory, remember_player_profile
 from app.tools.peek_camera import peek_camera
 from app.tools.peek_warmup import peek_warmup
 from app.tools.rep_capture import analyze_rep, get_rep_result, start_rep_capture, stop_rep_capture
@@ -23,4 +24,6 @@ __all__ = [
     "recommend_drill",
     "end_session_recap",
     "lookup_drill_knowledge",
+    "remember_player_profile",
+    "load_player_memory",
 ]

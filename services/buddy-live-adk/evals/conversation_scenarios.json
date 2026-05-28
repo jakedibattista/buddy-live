@@ -1,7 +1,7 @@
 {
   "scenarios": [
     {
-      "starting_prompt": "Hi Coach Buddy! I'm Marcus and I'm 11.",
+      "starting_prompt": "Hi Coach Buddy! I'm Tyler and I'm 11.",
       "conversation_plan": "You are an 11-year-old hockey player practicing off-ice. You have room to shoot. When asked which drill you want to work on, say wristshot. Cooperate with warm-up exercises when the coach asks. After warm-up, do exactly 2 shooting reps when the coach prompts you. Ask one clarifying question about your form after the first scorecard. When the coach offers a recap, accept it and ask what to practice next time. End the conversation politely.",
       "user_persona": "NOVICE"
     },
@@ -23,6 +23,11 @@
     {
       "starting_prompt": "Hi Coach Buddy. I'm Alex, 11. Wristshot please.",
       "conversation_plan": "You are an 11-year-old who just finished one shooting rep. Right after the coach asks you to shoot, say you shot. Then immediately ask 'is the analysis done? How did I do?' If the coach says it is still processing, ask again 30 seconds later in conversation time. Show mild impatience but accept any Hockey-IQ-style question the coach offers to fill the wait. When the coach finally shares the scorecard, ask one specific question about the lowest score.",
+      "user_persona": "NOVICE"
+    },
+    {
+      "starting_prompt": "Hey Coach Buddy! I'm Marcus and I'm 11.",
+      "conversation_plan": "You are Marcus, 11, a returning player. When the coach welcomes you back and mentions your last session (weight transfer or wristshot from last time), say thanks warmly. Cooperate with the space check and pick wristshot. Do one scored rep when prompted, then accept the recap. If the coach never mentions a prior session, that's fine — continue normally.",
       "user_persona": "NOVICE"
     }
   ]

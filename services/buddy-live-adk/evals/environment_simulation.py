@@ -189,6 +189,38 @@ def _lookup_drill_knowledge_success() -> dict[str, Any]:
     }
 
 
+def _remember_player_profile_success() -> dict[str, Any]:
+    return {"status": "saved", "player_name": "Marcus", "age": 11}
+
+
+def _load_player_memory_returning() -> dict[str, Any]:
+    return {
+        "available": True,
+        "has_prior_session": True,
+        "player_name": "Marcus",
+        "sessions_found": 1,
+        "drill": "wristshot",
+        "rep_count": 2,
+        "weakest_metric": "weight_transfer",
+        "weakest_metric_label": "weight transfer",
+        "summary_hint": (
+            "Last time you worked on wristshot — 2 reps. "
+            "Biggest unlock was your weight transfer."
+        ),
+        "session_date": "2026-05-27T18:00:00+00:00",
+        "prior_session_id": "eval-session-prior-001",
+    }
+
+
+def _load_player_memory_new_player() -> dict[str, Any]:
+    return {
+        "available": True,
+        "has_prior_session": False,
+        "player_name": "Marcus",
+        "sessions_found": 0,
+    }
+
+
 def _lookup_drill_knowledge_miss() -> dict[str, Any]:
     """Synthetic grounded retrieval miss.
 
@@ -241,6 +273,8 @@ def _happy_tool_configs() -> list[ToolSimulationConfig]:
         _tool("show_iq_visual", _show_iq_visual_success()),
         _tool("mark_iq_answer", _mark_iq_answer_success()),
         _tool("lookup_drill_knowledge", _lookup_drill_knowledge_success()),
+        _tool("remember_player_profile", _remember_player_profile_success()),
+        _tool("load_player_memory", _load_player_memory_new_player()),
     ]
 
 
@@ -298,6 +332,8 @@ def _failure_tool_configs() -> list[ToolSimulationConfig]:
                 )
             ],
         ),
+        _tool("remember_player_profile", _remember_player_profile_success()),
+        _tool("load_player_memory", _load_player_memory_new_player()),
     ]
 
 

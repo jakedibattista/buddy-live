@@ -1,4 +1,4 @@
-.PHONY: install run test deploy clean eval-setup eval eval-failures
+.PHONY: install run test deploy clean eval-setup eval eval-failures optimize
 
 PORT ?= 8080
 SERVICE ?= buddy-live-adk
@@ -50,6 +50,13 @@ eval-failures: eval-setup
 		$(EVAL_DIR)/agent_module \
 		--config_file_path $(EVAL_DIR)/eval_config.json \
 		$(EVAL_SET_FILE) \
+		--print_detailed_results
+
+optimize: eval-setup install-dev
+	.venv/bin/adk optimize \
+		$(EVAL_DIR)/agent_module \
+		--sampler_config_file_path $(EVAL_DIR)/optimize_sampler_config.json \
+		--optimizer_config_file_path $(EVAL_DIR)/optimize_config.json \
 		--print_detailed_results
 
 clean:

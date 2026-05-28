@@ -5,7 +5,7 @@
     {
       "eval_id": "f8dd685a",
       "conversation_scenario": {
-        "starting_prompt": "Hi Coach Buddy! I'm Marcus and I'm 11.",
+        "starting_prompt": "Hi Coach Buddy! I'm Tyler and I'm 11.",
         "conversation_plan": "You are an 11-year-old hockey player practicing off-ice. You have room to shoot. When asked which drill you want to work on, say wristshot. Cooperate with warm-up exercises when the coach asks. After warm-up, do exactly 2 shooting reps when the coach prompts you. Ask one clarifying question about your form after the first scorecard. When the coach offers a recap, accept it and ask what to practice next time. End the conversation politely.",
         "user_persona": {
           "id": "NOVICE",

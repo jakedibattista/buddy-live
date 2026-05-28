@@ -52,9 +52,9 @@ observability, evaluation, optimizer.
 | 1 | **ADK Eval + User Simulation + Environment Simulation** | 2–3 days | **Critical** — the heart of Track 2 | **Done** |
 | 2 | **OpenTelemetry tracing → Cloud Trace** | 1 day | **High** — needed for the "show your reasoning" demo | **Done** |
 | 3 | **Vertex AI Search grounding for drill knowledge** | 2 days | **High** — explicit ask in resource guide | **Done** |
-| 4 | **Persistent sessions + Memory Bank** | 0.5 day | Medium — production-readiness signal | Pending |
+| 4 | **Persistent sessions + Memory Bank** | 0.5 day | Medium — production-readiness signal | **Done** |
 | 5 | **Multi-agent decomposition (vision / drill / IQ / memory)** | 2 days | Medium — judges reward orchestration | Pending |
-| 6 | **Agent Optimizer loop** | 1 day | Medium — closes the optimization story; depends on Phase 1 | Pending |
+| 6 | **Agent Optimizer loop** | 1 day | Medium — closes the optimization story; depends on Phase 1 | **Done** |
 
 ---
 
@@ -400,17 +400,108 @@ Two surfaces before Phase 3:
 
 ---
 
-## Phase 4–6 — follow-ups (not in this PR)
+## Phase 4 — Cross-session player memory (shipped)
 
-### Phase 4 — Persistent sessions + Memory Bank
+### Goals
 
-Replace `InMemorySessionService` with either:
+1. Returning players hear a one-sentence callback to their last session
+   (drill, rep count, weakest metric) in the opening.
+2. `session_summaries/` (already written by `end_session_recap`) becomes
+   queryable by player name — no new analytics pipeline.
+3. Hermetic evals keep working; production never hard-fails when Firestore
+   is unavailable.
 
-- `DatabaseSessionService` (Cloud SQL) for durability, or
-- `VertexAiMemoryBankService` for cross-session player memory.
+### What's shipped
 
-This is a ~10-line change; it just needs the Cloud SQL / Memory Bank backend
-provisioned.
+- `app/tools/player_memory.py` — `remember_player_profile(name, age)` persists
+  to the live session doc + ADK state; `load_player_memory(name)` reads the
+  most recent matching row from `session_summaries/` (excludes current session).
+- `app/tools/coaching.py` — `_write_session_summary` now stores
+  `player_name`, `player_age`, `player_name_normalized`, `user_id`.
+- `app/prompts.py` — opening flow calls both tools after age is learned;
+  speaks `summary_hint` when `has_prior_session` is true.
+- Eval harness mocks both tools; first scenario renamed to Tyler so Marcus
+  returning scenario does not false-positive in future eval-set refreshes.
+- `tests/test_player_memory.py` — 6 hermetic unit tests.
+
+### Why Firestore summaries (not Vertex Memory Bank yet)
+
+Vertex AI Memory Bank (`VertexAiMemoryBankService` + `load_memory`) requires
+an Agent Engine id and async `add_session_to_memory` after each session.
+Our `session_summaries/` collection already captures the exact fields judges
+care about (drill, weakest metric, rep count) with zero new infra. Memory
+Bank remains the documented upgrade path for semantic recall over full
+transcripts.
+
+### Demo: seed a returning player
+
+After any real session where the player said their name, a summary row exists.
+For a scripted demo, write one doc in Firebase console → `session_summaries`:
+
+```json
+{
+  "session_id": "demo-prior-marcus",
+  "created_at": "2026-05-27T18:00:00Z",
+  "player_name": "Marcus",
+  "player_name_normalized": "marcus",
+  "drill": "wristshot",
+  "rep_count": 2,
+  "weakest_metric": "weight_transfer"
+}
+```
+
+Next live session: Marcus says his name → coach calls `load_player_memory`
+→ "Welcome back, Marcus — last time wristshot, work on weight transfer."
+
+### Optional: Vertex AI Memory Bank
+
+```bash
+# After Agent Engine + Memory Bank are provisioned:
+# BUDDY_VERTEX_AGENT_ENGINE_ID=projects/.../reasoningEngines/...
+# Wire VertexAiMemoryBankService on Runner + ADK load_memory tool
+```
+
+---
+
+## Phase 6 — Agent Optimizer / GEPA (shipped)
+
+### Goals
+
+Close the Track 2 optimization loop: eval → diagnose weak scenarios →
+programmatically refine the system prompt → re-eval with scores.
+
+### What's shipped
+
+- `evals/optimize_sampler_config.json` — trains on edge cases (`9840778e`
+  framing, `b12a9a4d` analysis timeout), validates on happy path + IQ handoff.
+- `evals/optimize_config.json` — GEPA budget (`max_metric_calls: 12`,
+  `reflection_minibatch_size: 2`, output dir `evals/optimize_runs/`).
+- `evals/OPTIMIZE.md` — how to run, apply results, refresh eval sets.
+- `make optimize` — runs `adk optimize` against `evals/agent_module`.
+- `requirements-dev.txt` — adds `pandas` (ADK optimize dependency).
+
+### Run it
+
+```bash
+cd services/buddy-live-adk
+make install-dev
+export GOOGLE_API_KEY=...
+make optimize
+```
+
+Review the best instruction printed at the end, merge into `app/prompts.py`,
+then `make eval` / `make eval-failures` for before/after scores.
+
+### Demo narrative tie-in
+
+1. **Before** — `make eval-failures` scores on framing/timeout cases.
+2. **Optimize** — `make optimize` (GEPA refines prompt using same harness).
+3. **After** — re-run evals; show improved `hallucinations_v1` / `safety_v1`
+   in Cloud Trace + eval output.
+
+---
+
+## Phase 5 — follow-up (not in this PR)
 
 ### Phase 5 — Multi-agent decomposition
 
