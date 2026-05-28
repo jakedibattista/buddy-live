@@ -1,0 +1,29 @@
+{
+  "scenarios": [
+    {
+      "starting_prompt": "Hi Coach Buddy! I'm Marcus and I'm 11.",
+      "conversation_plan": "You are an 11-year-old hockey player practicing off-ice. You have room to shoot. When asked which drill you want to work on, say wristshot. Cooperate with warm-up exercises when the coach asks. After warm-up, do exactly 2 shooting reps when the coach prompts you. Ask one clarifying question about your form after the first scorecard. When the coach offers a recap, accept it and ask what to practice next time. End the conversation politely.",
+      "user_persona": "NOVICE"
+    },
+    {
+      "starting_prompt": "Hey Coach. I'm Sam, I'm 12, and I don't have any room to actually shoot today.",
+      "conversation_plan": "You are a 12-year-old hockey player who is stuck in a small space. When the coach offers to switch to Hockey IQ Practice instead of shooting, say yes. Engage with at least 3 scenario questions the coach shows you. Give thoughtful answers (you know hockey). Accept the coach's wrap-up when they offer it.",
+      "user_persona": "NOVICE"
+    },
+    {
+      "starting_prompt": "Hi I'm Jordan, I'm 13. Let's work on slapshots today.",
+      "conversation_plan": "You are a 13-year-old experienced player. Pick slapshot when asked. During warm-up, mention that you already warmed up before the call. If the coach insists on the full warm-up sequence, push back politely once then comply. After your first rep, if the coach's feedback feels generic, ask a sharper follow-up like 'which metric specifically should I focus on?'. Take 2 reps total, then ask for a recap.",
+      "user_persona": "EXPERT"
+    },
+    {
+      "starting_prompt": "Coach, I'm Riley, I'm 10. I'm ready to shoot!",
+      "conversation_plan": "You are a 10-year-old who is eager but keeps moving around. Pick wristshot. When the coach asks you to set up the camera, say 'I'm here!' but stay confused about where to stand. If the coach's framing check fails, get a little frustrated and ask 'can we just start?'. Comply with positioning instructions on the third try. After you finally do one rep, ask if it's good. Be patient with the coach's pace.",
+      "user_persona": "NOVICE"
+    },
+    {
+      "starting_prompt": "Hi Coach Buddy. I'm Alex, 11. Wristshot please.",
+      "conversation_plan": "You are an 11-year-old who just finished one shooting rep. Right after the coach asks you to shoot, say you shot. Then immediately ask 'is the analysis done? How did I do?' If the coach says it is still processing, ask again 30 seconds later in conversation time. Show mild impatience but accept any Hockey-IQ-style question the coach offers to fill the wait. When the coach finally shares the scorecard, ask one specific question about the lowest score.",
+      "user_persona": "NOVICE"
+    }
+  ]
+}
