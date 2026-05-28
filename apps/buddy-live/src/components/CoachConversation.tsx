@@ -97,6 +97,10 @@ function CoachConversationInner({
 
   const convo = useConversation({
     onConnect: () => {
+      if (userEndedRef.current) {
+        convo.endSession();
+        return;
+      }
       hadConnectedRef.current = true;
       reconnectAttemptRef.current = 0;
       setReconnecting(false);
@@ -120,6 +124,9 @@ function CoachConversationInner({
       onStatusChange?.("disconnected");
 
       if (userEndedRef.current || details?.reason === "user") return;
+      if (resumeContextRef.current.currentPhase === "recap" || resumeContextRef.current.currentPhase === "ended") {
+        return;
+      }
       if (!hadConnectedRef.current) return;
 
       scheduleReconnect();
@@ -161,17 +168,25 @@ function CoachConversationInner({
 
       try {
         let signedUrl: string | undefined;
+        let conversationToken: string | undefined;
         try {
           const resp = await fetch(`/api/eleven/signed-url?agentId=${encodeURIComponent(agentId)}`);
           if (resp.ok) {
-            const body = (await resp.json()) as { signedUrl?: string };
+            const body = (await resp.json()) as { signedUrl?: string; conversationToken?: string };
             signedUrl = body.signedUrl;
+            conversationToken = body.conversationToken;
           }
         } catch {
           // public agent path
         }
 
-        if (signedUrl) {
+        if (conversationToken) {
+          await convo.startSession({
+            conversationToken,
+            connectionType: "webrtc",
+            ...sessionOptions,
+          });
+        } else if (signedUrl) {
           await convo.startSession({
             signedUrl,
             connectionType: "websocket",

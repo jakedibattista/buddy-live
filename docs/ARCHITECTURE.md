@@ -53,8 +53,8 @@ Player (browser)
   │                            ADK Service (Cloud Run)
   │                                 │
   │                                 ├─ Gemini Flash (conversation)
-  │                                 ├─ peek_camera → Gemini Flash (setup framing)
-  │                                 ├─ peek_warmup → Gemini Flash (warm-up form)
+  │                                 ├─ peek_camera → Fallback setup framing (verbal confirmation preferred)
+  │                                 ├─ peek_warmup → Fallback warm-up check (verbal confirmation preferred)
   │                                 ├─ start_warmup_timer → Firestore command (UI countdown)
   │                                 ├─ start_rep_capture → Firestore command
   │                                 ├─ stop_rep_capture → Firestore stop_capture command
@@ -84,12 +84,14 @@ The `/coach` page is voice-first but follows conversational UI patterns from [`U
 | Timeline | `TranscriptPanel` — user/coach bubbles + system pills (record, upload, peek, connection) |
 | Next action | `NextTurnCue` + `VoiceQuickPrompts` chips |
 | Mascot | `CoachPuckAvatar` on camera — crossfades `coach-puck.png` ↔ `coach-puck-speak.png` via `getOutputByteFrequencyData()` (baked face, no SVG overlay) |
-| Recording | `RecordingTimer` — 60s REC countdown + Stop & upload; driven by `useRepCapture` |
+| Recording | `RecordingTimer` — 60s REC countdown + verbal / click stop instructions; driven by `useRepCapture` |
 | Warm-up timer | `WarmupTimerBridge` + `CountdownOverlay` — amber m:ss countdown per move; driven by `start_warmup_timer` command |
-| Voice resilience | `CoachConversation` — auto-reconnect on ElevenLabs drop (via clean startSession without unauthorized overrides) combined with ADK backend reconnect detection to suppress double greetings |
+| Voice resilience | `CoachConversation` — auto-reconnect on ElevenLabs drop (using a secure backend-mints WebRTC token and no unauthorized overrides) combined with ADK backend reconnect detection to suppress double greetings |
 | Session phase | Sidebar label from Firestore `currentPhase` (`lib/phases.ts`) |
-| Setup framing | Coach speaks fixes (`peek_camera`); sidebar `NextTurnCue` during `stance_check` |
+| Setup framing | Verbal confirmation by default (framing automatically passes when focus drill is set); fallback to `peek_camera` tool |
 | Errors | Retry connect (ElevenLabs) and retry camera permission |
+| Recap Dashboard | Full-screen interactive recap of all scored reps in the center panel during `recap` and `ended` phases |
+| Picture-in-Picture | Camera view smoothly scales down to a floating PiP in the bottom-right corner during final recap |
 
 Transcript text is **in-memory only** (ElevenLabs `onMessage`). Rep scores and session metadata persist in Firestore.
 

@@ -37,7 +37,7 @@ export function IqVisualCard({
       {questionIndex ? (
         <div className="mb-2">
           <span
-            className={`font-semibold uppercase tracking-wider text-indigo-300/80 ${titleSize}`}
+            className={`font-semibold uppercase tracking-wider text-emerald-400/90 ${titleSize}`}
           >
             Question {questionIndex} of {totalQuestions}
           </span>
@@ -46,17 +46,17 @@ export function IqVisualCard({
 
       {command.diagram && <DiagramVisual diagram={command.diagram} size={size} />}
 
-      <p className={`mt-3 text-white/90 ${scenarioSize}`}>{command.scenario}</p>
+      <p className={`mt-3 text-white/90 font-medium ${scenarioSize}`}>{command.scenario}</p>
 
       {command.options.length > 0 && (
-        <div className={`mt-3 flex flex-col ${size === "lg" ? "gap-2" : "gap-1.5"}`}>
+        <div className={`mt-4 flex flex-col ${size === "lg" ? "gap-2.5" : "gap-1.5"}`}>
           {command.options.map((option, i) => {
             const letter = String.fromCharCode(65 + i);
             const state = optionState(letter, answer);
             return (
               <div
                 key={i}
-                className={`flex items-start gap-2 rounded-lg border ${optionPad} ${optionSize} ${stateClasses(state)}`}
+                className={`flex items-start gap-3 rounded-lg border transition-colors duration-150 ${optionPad} ${optionSize} ${stateClasses(state)}`}
               >
                 <span
                   className={`mt-0.5 flex shrink-0 items-center justify-center rounded-full font-bold ${optionBadgeSize} ${badgeClasses(state)}`}
@@ -67,13 +67,12 @@ export function IqVisualCard({
                       ? "✕"
                       : letter}
                 </span>
-                <span>{option}</span>
+                <span className="font-medium">{option}</span>
               </div>
             );
           })}
         </div>
       )}
-
     </div>
   );
 }
@@ -90,160 +89,371 @@ function optionState(letter: string, answer: IqAnswerCommand | null | undefined)
 function stateClasses(state: OptionState): string {
   switch (state) {
     case "correct":
-      return "border-emerald-400/60 bg-emerald-500/15 text-emerald-100";
+      return "border-emerald-500 bg-emerald-500/10 text-emerald-100";
     case "wrong":
-      return "border-red-400/60 bg-red-500/15 text-red-100";
+      return "border-red-500 bg-red-500/10 text-red-100";
     default:
-      return "border-zinc-800/60 bg-zinc-900/40 text-zinc-200";
+      return "border-zinc-800 bg-zinc-900/40 text-zinc-200 hover:border-zinc-700/60";
   }
 }
 
 function badgeClasses(state: OptionState): string {
   switch (state) {
     case "correct":
-      return "bg-emerald-500/40 text-emerald-100";
+      return "bg-emerald-500 text-white";
     case "wrong":
-      return "bg-red-500/40 text-red-100";
+      return "bg-red-500 text-white";
     default:
       return "bg-zinc-800 text-zinc-300";
   }
 }
 
+interface Position {
+  x: number;
+  y: number;
+}
+
+interface Positions {
+  player: Position | null;
+  goalie: Position | null;
+  defender: Position | null;
+  teammate: Position | null;
+  playerStart?: Position | null;
+  defenderStart?: Position | null;
+  drawPassLine?: boolean;
+}
+
 function DiagramVisual({ diagram, size = "sm" }: { diagram: string; size?: "sm" | "lg" }) {
   const positions = useMemo(() => parseDiagramPositions(diagram), [diagram]);
-  const heightClass = size === "lg" ? "h-72 sm:h-96" : "h-32";
-  const captionTextClass = size === "lg" ? "text-sm sm:text-base" : "text-[10px]";
+  const heightClass = size === "lg" ? "h-72 sm:h-96" : "h-36";
 
   return (
     <div
-      className={`relative mt-3 w-full overflow-hidden rounded-xl border border-zinc-800/60 bg-zinc-900/40 ${heightClass}`}
+      className={`relative mt-3 w-full overflow-hidden rounded-xl border-4 border-zinc-400/80 bg-[#fbfcfd] shadow-lg ${heightClass}`}
+      style={{
+        boxShadow: "inset 0 2px 10px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.15)",
+      }}
     >
+      {/* Aluminum Board Trim top indicator */}
+      <div className="absolute top-0 inset-x-0 h-[3px] bg-zinc-300 opacity-60 z-10" />
 
-      {/* Half-rink background */}
+      {/* Vertical 1:1 Proportional Rink Rendering */}
       <svg
-        viewBox="0 0 200 100"
+        viewBox="0 0 100 100"
         className="absolute inset-0 h-full w-full"
         preserveAspectRatio="xMidYMid meet"
       >
-        {/* Ice surface */}
-        <rect x="0" y="0" width="200" height="100" fill="#1a2744" />
-        {/* Blue line */}
-        <line x1="0" y1="85" x2="200" y2="85" stroke="#3b82f6" strokeWidth="1.5" opacity="0.4" />
-        {/* Center line hint */}
-        <line x1="0" y1="50" x2="200" y2="50" stroke="#ef4444" strokeWidth="0.5" opacity="0.3" />
-        {/* Circles */}
-        <circle cx="50" cy="35" r="15" fill="none" stroke="#ef4444" strokeWidth="0.5" opacity="0.3" />
-        <circle cx="150" cy="35" r="15" fill="none" stroke="#ef4444" strokeWidth="0.5" opacity="0.3" />
-        {/* Goal crease */}
-        <path d="M 85 5 Q 100 18 115 5" fill="none" stroke="#3b82f6" strokeWidth="1" opacity="0.5" />
-        {/* Goal line */}
-        <line x1="70" y1="5" x2="130" y2="5" stroke="#ef4444" strokeWidth="1" opacity="0.4" />
-        {/* Net */}
-        <rect x="90" y="1" width="20" height="5" fill="none" stroke="#fff" strokeWidth="0.5" opacity="0.3" />
+        <defs>
+          {/* Organic Felt Marker Stroke Filter (smooth but hand-drawn felt-tip pen look) */}
+          <filter id="marker" x="-5%" y="-5%" width="110%" height="110%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.6" numOctaves="1" result="noise" />
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale="0.4" xChannelSelector="R" yChannelSelector="G" />
+          </filter>
 
-        {/* Player position */}
-        {positions.player && (
-          <g>
-            <circle cx={positions.player.x} cy={positions.player.y} r="5" fill="#22c55e" opacity="0.9" />
-            <text x={positions.player.x} y={positions.player.y + 1.5} textAnchor="middle" fontSize="5" fill="white" fontWeight="bold">Y</text>
-          </g>
+          {/* Marker arrowhead for defender movement (Red) */}
+          <marker
+            id="marker-arrow-defender"
+            viewBox="0 0 10 10"
+            refX="6"
+            refY="5"
+            markerWidth="6"
+            markerHeight="6"
+            orient="auto-start-reverse"
+          >
+            <path d="M 0 2 L 8 5 L 0 8 z" fill="#dc2626" opacity="0.9" filter="url(#marker)" />
+          </marker>
+
+          {/* Marker arrowhead for player movement (Black/Blue) */}
+          <marker
+            id="marker-arrow-player"
+            viewBox="0 0 10 10"
+            refX="6"
+            refY="5"
+            markerWidth="6"
+            markerHeight="6"
+            orient="auto-start-reverse"
+          >
+            <path d="M 0 2 L 8 5 L 0 8 z" fill="#1e293b" opacity="0.9" filter="url(#marker)" />
+          </marker>
+        </defs>
+
+        {/* --- TRADITIONAL WHITEBOARD RINK MARKINGS (Red, Blue, Black/Grey) --- */}
+        <g fill="none" strokeWidth="0.8" filter="url(#marker)">
+          {/* Outer Boards (Subtle grey boundary) */}
+          <rect x="2" y="2" width="96" height="96" rx="10" stroke="#94a3b8" strokeWidth="1" strokeOpacity="0.45" />
+
+          {/* Goal Line (y=12) - Red */}
+          <line x1="10" y1="12" x2="90" y2="12" stroke="#ef4444" strokeWidth="0.75" strokeOpacity="0.8" />
+
+          {/* Goal Crease - Light Blue fill, Blue border */}
+          <path d="M 42 12 Q 50 18 58 12" stroke="#2563eb" strokeWidth="0.85" strokeOpacity="0.8" fill="#eff6ff" fillOpacity="0.5" />
+
+          {/* Goal Net - Grey mesh outline */}
+          <rect x="44" y="6" width="12" height="6" stroke="#64748b" strokeWidth="0.65" strokeOpacity="0.6" strokeDasharray="1 1" />
+
+          {/* Faceoff Circles (y=35, x=25 and x=75) - Red */}
+          <circle cx="25" cy="35" r="12" stroke="#ef4444" strokeWidth="0.55" strokeOpacity="0.7" strokeDasharray="1.5 1.5" />
+          <circle cx="75" cy="35" r="12" stroke="#ef4444" strokeWidth="0.55" strokeOpacity="0.7" strokeDasharray="1.5 1.5" />
+          
+          {/* Faceoff Dots - Red */}
+          <circle cx="25" cy="35" r="0.8" fill="#ef4444" fillOpacity="0.8" />
+          <circle cx="75" cy="35" r="0.8" fill="#ef4444" fillOpacity="0.8" />
+
+          {/* Offensive Blue Line (y=75) - Solid Blue */}
+          <line x1="2" y1="75" x2="98" y2="75" stroke="#2563eb" strokeWidth="1.5" strokeOpacity="0.85" />
+
+          {/* Red Center Line (y=100) at bottom of offensive half-rink - Solid Red */}
+          <line x1="2" y1="99" x2="98" y2="99" stroke="#ef4444" strokeWidth="1.3" strokeOpacity="0.8" />
+        </g>
+
+        {/* --- TACTICAL MOVEMENT ARROWS & PASS LINES --- */}
+        {/* Pass Line (fine dotted blue marker line from player to teammate) */}
+        {positions.drawPassLine && positions.player && positions.teammate && (
+          <line
+            x1={positions.player.x}
+            y1={positions.player.y}
+            x2={positions.teammate.x}
+            y2={positions.teammate.y}
+            stroke="#2563eb"
+            strokeWidth="1.1"
+            strokeDasharray="1.5 2.5"
+            opacity="0.85"
+            filter="url(#marker)"
+          />
         )}
 
-        {/* Goalie */}
-        {positions.goalie && (
-          <g>
-            <rect x={positions.goalie.x - 4} y={positions.goalie.y - 3} width="8" height="6" rx="1" fill="#f59e0b" opacity="0.8" />
-            <text x={positions.goalie.x} y={positions.goalie.y + 1.5} textAnchor="middle" fontSize="4" fill="white" fontWeight="bold">G</text>
-          </g>
+        {/* Player Movement Arrow (breakaways / rushes) - Black Marker */}
+        {positions.playerStart && positions.player && (
+          <line
+            x1={positions.playerStart.x}
+            y1={positions.playerStart.y}
+            x2={positions.player.x}
+            y2={positions.player.y}
+            stroke="#1e293b"
+            strokeWidth="1.3"
+            strokeDasharray="2.5 2.5"
+            opacity="0.9"
+            markerEnd="url(#marker-arrow-player)"
+            filter="url(#marker)"
+          />
         )}
 
-        {/* Defender */}
-        {positions.defender && (
-          <g>
-            <circle cx={positions.defender.x} cy={positions.defender.y} r="4" fill="#ef4444" opacity="0.8" />
-            <text x={positions.defender.x} y={positions.defender.y + 1.5} textAnchor="middle" fontSize="4" fill="white" fontWeight="bold">D</text>
-          </g>
+        {/* Defender Closing / Sliding Arrow - Red Marker */}
+        {positions.defenderStart && positions.defender && (
+          <line
+            x1={positions.defenderStart.x}
+            y1={positions.defenderStart.y}
+            x2={positions.defender.x}
+            y2={positions.defender.y}
+            stroke="#dc2626"
+            strokeWidth="1.3"
+            strokeDasharray="2.5 2.5"
+            opacity="0.9"
+            markerEnd="url(#marker-arrow-defender)"
+            filter="url(#marker)"
+          />
         )}
 
-        {/* Teammate */}
+        {/* --- TEAMMATE (Blue Marker X / T) --- */}
         {positions.teammate && (
-          <g>
-            <circle cx={positions.teammate.x} cy={positions.teammate.y} r="4" fill="#22c55e" opacity="0.6" />
-            <text x={positions.teammate.x} y={positions.teammate.y + 1.5} textAnchor="middle" fontSize="4" fill="white">T</text>
+          <g filter="url(#marker)">
+            <circle cx={positions.teammate.x} cy={positions.teammate.y} r="3" fill="#eff6ff" stroke="#2563eb" strokeWidth="0.95" />
+            <text
+              x={positions.teammate.x}
+              y={positions.teammate.y + 1}
+              textAnchor="middle"
+              fontSize="3.2"
+              fill="#1d4ed8"
+              fontWeight="bold"
+              fontFamily="monospace"
+            >
+              T
+            </text>
+          </g>
+        )}
+
+        {/* --- DEFENDER (Red Marker O / D) --- */}
+        {positions.defender && (
+          <g filter="url(#marker)">
+            <circle cx={positions.defender.x} cy={positions.defender.y} r="3" fill="#fef2f2" stroke="#dc2626" strokeWidth="0.95" />
+            <text
+              x={positions.defender.x}
+              y={positions.defender.y + 1}
+              textAnchor="middle"
+              fontSize="3.2"
+              fill="#b91c1c"
+              fontWeight="bold"
+              fontFamily="monospace"
+            >
+              D
+            </text>
+          </g>
+        )}
+
+        {/* --- GOALIE (Blue marker G) --- */}
+        {positions.goalie && (
+          <g filter="url(#marker)">
+            <rect
+              x={positions.goalie.x - 3.5}
+              y={positions.goalie.y - 2.5}
+              width="7"
+              height="4.5"
+              rx="1"
+              fill="#eff6ff"
+              stroke="#2563eb"
+              strokeWidth="1"
+            />
+            <text
+              x={positions.goalie.x}
+              y={positions.goalie.y + 1}
+              textAnchor="middle"
+              fontSize="3"
+              fill="#1d4ed8"
+              fontWeight="bold"
+              fontFamily="monospace"
+            >
+              G
+            </text>
+          </g>
+        )}
+
+        {/* --- ACTIVE PLAYER (Black Marker X / YOU) --- */}
+        {positions.player && (
+          <g filter="url(#marker)">
+            <circle cx={positions.player.x} cy={positions.player.y} r="3.5" fill="#f1f5f9" stroke="#1e293b" strokeWidth="1.2" />
+            <text
+              x={positions.player.x}
+              y={positions.player.y + 1.1}
+              textAnchor="middle"
+              fontSize="3.5"
+              fill="#0f172a"
+              fontWeight="bold"
+              fontFamily="monospace"
+            >
+              X
+            </text>
+            <text
+              x={positions.player.x}
+              y={positions.player.y + 6.5}
+              textAnchor="middle"
+              fontSize="2.5"
+              fill="#0f172a"
+              fontWeight="black"
+              opacity="0.9"
+            >
+              YOU
+            </text>
           </g>
         )}
       </svg>
+
+      {/* Traditional Whiteboard Marker Tray Label */}
+      <div className="absolute bottom-2 right-3 rounded bg-zinc-800/80 px-2 py-0.5 text-[8px] font-bold tracking-wider text-zinc-100 uppercase backdrop-blur-sm shadow-sm">
+        Coach's Whiteboard
+      </div>
     </div>
   );
 }
 
-interface Positions {
-  player: { x: number; y: number } | null;
-  goalie: { x: number; y: number } | null;
-  defender: { x: number; y: number } | null;
-  teammate: { x: number; y: number } | null;
-}
-
+// Upgraded, relative-aware positional parser (Vertical 1:1 format)
 function parseDiagramPositions(diagram: string): Positions {
   const lower = diagram.toLowerCase();
   const positions: Positions = {
-    player: null,
-    goalie: null,
+    player: { x: 50, y: 55 }, // Default to high slot / breakaway ready
+    goalie: { x: 50, y: 13 }, // Default to crease center
     defender: null,
     teammate: null,
+    playerStart: null,
+    defenderStart: null,
+    drawPassLine: false,
   };
 
-  // Player position based on keywords
+  // 1. Determine Player Position
   if (lower.includes("behind the net") || lower.includes("behind the goal")) {
-    positions.player = { x: 100, y: 8 };
-  } else if (lower.includes("crease") || lower.includes("in front of the net")) {
-    positions.player = { x: 100, y: 22 };
-  } else if (lower.includes("slot") || lower.includes("hash marks")) {
-    positions.player = { x: 100, y: 40 };
-  } else if (lower.includes("left circle") || lower.includes("left faceoff")) {
-    positions.player = { x: 50, y: 35 };
-  } else if (lower.includes("right circle") || lower.includes("right faceoff")) {
-    positions.player = { x: 150, y: 35 };
+    positions.player = { x: 50, y: 6 };
+  } else if (lower.includes("crease") || lower.includes("in front of the net") || lower.includes("doorstep")) {
+    positions.player = { x: 50, y: 22 };
+  } else if (lower.includes("left circle") || lower.includes("left faceoff") || lower.includes("left wing")) {
+    positions.player = { x: 25, y: 40 };
+  } else if (lower.includes("right circle") || lower.includes("right faceoff") || lower.includes("right wing")) {
+    positions.player = { x: 75, y: 40 };
+  } else if (lower.includes("left point") || lower.includes("left blue line")) {
+    positions.player = { x: 25, y: 82 };
+  } else if (lower.includes("right point") || lower.includes("right blue line")) {
+    positions.player = { x: 75, y: 82 };
   } else if (lower.includes("blue line") || lower.includes("point")) {
-    positions.player = { x: 100, y: 80 };
+    positions.player = { x: 50, y: 82 };
+  } else if (lower.includes("slot") || lower.includes("hash marks")) {
+    positions.player = { x: 50, y: 45 };
   } else if (lower.includes("breakaway")) {
-    positions.player = { x: 100, y: 55 };
+    positions.player = { x: 50, y: 65 };
+    // Draw breakaway movement line starting further down the ice
+    positions.playerStart = { x: 50, y: 85 };
+  }
+
+  // 2. Determine Goalie Position
+  if (lower.includes("goalie is way out") || lower.includes("goalie out") || lower.includes("goalie aggressive")) {
+    positions.goalie = { x: 50, y: 25 }; // Out challenging
+  } else if (lower.includes("goalie is down") || lower.includes("goalie down") || lower.includes("butterfly")) {
+    positions.goalie = { x: 50, y: 14 }; // Butterfly
+  } else if (lower.includes("left post")) {
+    positions.goalie = { x: 44, y: 12 }; // Left side of goal line
+  } else if (lower.includes("right post")) {
+    positions.goalie = { x: 56, y: 12 }; // Right side of goal line
   } else {
-    positions.player = { x: 100, y: 50 };
+    positions.goalie = { x: 50, y: 13 }; // Standard crease center
   }
 
-  // Goalie
-  if (lower.includes("goalie") || lower.includes("goaltender") || lower.includes("netminder")) {
-    if (lower.includes("goalie is way out") || lower.includes("goalie out")) {
-      positions.goalie = { x: 100, y: 18 };
-    } else if (lower.includes("goalie goes down") || lower.includes("goalie down")) {
-      positions.goalie = { x: 100, y: 10 };
+  // 3. Determine Defender Position (Surgically relative to player coordinates!)
+  const px = positions.player.x;
+  const py = positions.player.y;
+
+  if (lower.includes("defender") || lower.includes("d ") || lower.includes("d-man") || lower.includes("opponent")) {
+    if (lower.includes("on your hip") || lower.includes("on your left")) {
+      positions.defender = { x: px - 11, y: py + 2 };
+    } else if (lower.includes("on your right")) {
+      positions.defender = { x: px + 11, y: py + 2 };
+    } else if (lower.includes("drops to block") || lower.includes("shot block") || lower.includes("sliding")) {
+      positions.defender = { x: px, y: py - 12 };
+      // Show slide path from side to center
+      positions.defenderStart = { x: px + 16, y: py - 15 };
+    } else if (lower.includes("backing up")) {
+      positions.defender = { x: px, y: py - 14 };
+      positions.defenderStart = { x: px, y: py - 6 }; // Backing away from player
+    } else if (lower.includes("closing") || lower.includes("charging") || lower.includes("rushing")) {
+      // If player is at the point, defender closes down from slot. Otherwise closes up.
+      if (py > 70) {
+        positions.defender = { x: px, y: py - 14 };
+        positions.defenderStart = { x: px, y: py - 28 };
+      } else {
+        positions.defender = { x: px + 8, y: py - 2 };
+        positions.defenderStart = { x: px + 22, y: py - 10 };
+      }
     } else {
-      positions.goalie = { x: 100, y: 8 };
+      // Fallback wing-aware tactical placement (prevents defender on opposite side of rink!)
+      if (px < 40) {
+        positions.defender = { x: px + 16, y: py - 4 }; // Defending inside cut on left wing
+      } else if (px > 60) {
+        positions.defender = { x: px - 16, y: py - 4 }; // Defending inside cut on right wing
+      } else {
+        positions.defender = { x: 50, y: py - 15 }; // Block high slot center
+      }
     }
-  } else {
-    positions.goalie = { x: 100, y: 8 };
   }
 
-  // Defender
-  if (lower.includes("defender") || lower.includes("d ") || lower.includes("d-man")) {
-    if (lower.includes("closing") || lower.includes("on your hip")) {
-      const px = positions.player?.x ?? 100;
-      const py = positions.player?.y ?? 50;
-      positions.defender = { x: px + 15, y: py + 10 };
-    } else if (lower.includes("drops to block") || lower.includes("shot block")) {
-      positions.defender = { x: 100, y: 65 };
-    } else if (lower.includes("pinch")) {
-      positions.defender = { x: 60, y: 60 };
+  // 4. Determine Teammate Position
+  if (lower.includes("2-on-1") || lower.includes("2 on 1") || lower.includes("teammate") || lower.includes("trailer") || lower.includes("pass")) {
+    if (lower.includes("trailer") || lower.includes("trailing")) {
+      positions.teammate = { x: px, y: py + 16 };
     } else {
-      positions.defender = { x: 130, y: 50 };
+      // Place teammate on opposite wing for lateral cross-crease passes
+      positions.teammate = { x: px > 50 ? px - 35 : px + 35, y: py - 4 };
     }
-  }
 
-  // Teammate (2-on-1 scenarios)
-  if (lower.includes("2-on-1") || lower.includes("2 on 1") || lower.includes("teammate") || lower.includes("trailer")) {
-    const px = positions.player?.x ?? 100;
-    positions.teammate = { x: px > 100 ? px - 40 : px + 40, y: (positions.player?.y ?? 50) - 5 };
+    // Draw pass guidance indicator if pass scenario is mentioned
+    if (lower.includes("pass") || lower.includes("saucer")) {
+      positions.drawPassLine = true;
+    }
   }
 
   return positions;

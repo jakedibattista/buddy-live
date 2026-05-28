@@ -50,6 +50,12 @@ export function CountdownOverlay({
             )}
           />
           REC {countdown}
+          <span className="hidden sm:inline text-zinc-300 text-xs font-normal border-l border-white/20 pl-2">
+            Say &quot;stop&quot; or hit the button when done
+          </span>
+          <span className="inline sm:hidden text-zinc-300 text-[10px] font-normal border-l border-white/20 pl-2">
+            Say &quot;stop&quot; or hit button
+          </span>
           {warn && !urgent && (
             <span className="ml-1 text-[10px] uppercase tracking-widest text-amber-200">
               auto-stop soon

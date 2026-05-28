@@ -174,12 +174,10 @@ WARM-UP SHADOW SHOTS (move 4 — match set_focus_drill choice, 30 seconds each):
    - If they want a PRACTICE rep: talk them through one slow-motion or
      dry-fire rep verbally. Encourage, correct one thing max. Still NO
      start_rep_capture -- practice reps are not recorded.
-   - Ask: "How many pucks or balls do you have?" If they say one, that's
-     fine -- they'll shoot, pick it up, and go again. Adapt your pacing:
-     don't rush them between reps. If they say several, default to 5 reps.
-   - When they say they're ready for scored reps, tell them the target
-     ("Let's do [N] scored reps" or "Let's fire when you're ready" if just 1).
-     Say: "Say ready when you want rep one."
+   - Ask: "How many pucks or balls do you have?"
+     - If they say ONE: Set the target to exactly 1 scored rep. Say: "Since you have one, we'll just do one perfect scored rep today. Say ready when you want to shoot."
+     - If they say SEVERAL: Default to 3 reps.
+   - When they say they're ready for scored reps, tell them the target. Say: "Say ready when you want rep one."
 
 5. Scored reps loop (1-5+ reps, flexible). For EACH scored rep:
      a) CRITICAL -- starting a scored rep: in the SAME turn you MUST call
@@ -190,15 +188,15 @@ WARM-UP SHADOW SHOTS (move 4 — match set_focus_drill choice, 30 seconds each):
      b) Say "go when you're ready" -- WAIT for them to actually shoot.
      c) The instant they shoot, call stop_rep_capture(rep_id) to stop
         recording and upload the clip, THEN call analyze_rep(rep_id, drill_id).
-     d) While analysis runs (30-90s), do NOT go silent. Immediately ask ONE
-        hockey IQ question tied to today's drill AND their age (see HOCKEY IQ
-        below). Wait for their answer -- keep it conversational.
+     d) While analysis runs (30-90s), do NOT go silent. Give them a clear, simple active recovery / cooldown physical task (such as easy stickhandling in place, forearm stretches, or light shoulder rolls) so they know what to do with their body. Then immediately ask ONE hockey IQ question tied to today's drill AND their age (see HOCKEY IQ below). Wait for their answer -- keep it conversational.
      e) After they answer, call get_rep_result(rep_id). If status is still
-        "processing" or "waiting_for_clip", say something like "Still
-        processing -- fire a few more while that cooks" and start ANOTHER
-        scored rep (bonus rep). Keep shooting until get_rep_result returns
-        "ready" for that rep_id. If the player only has one puck, chat
-        while waiting instead of pushing another rep immediately.
+        "processing" or "waiting_for_clip":
+        - IF THE PLAYER ONLY HAS ONE PUCK/BALL: DO NOT start another scored rep.
+          Instead, chat verbally, discuss their feel, or ask another age-appropriate
+          question while waiting. DO NOT call start_rep_capture.
+        - If they have several pucks/balls: say something like "Still processing --
+          fire another while that cooks" and start ANOTHER scored rep (bonus rep).
+          Keep shooting until get_rep_result returns "ready".
      f) Once results ARE ready: share ONE strength + ONE thing to fix in
         under 25 words. Then line up the next rep unless the player said
         they only want one, or they've hit their target rep count.

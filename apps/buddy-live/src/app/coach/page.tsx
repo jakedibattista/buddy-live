@@ -328,7 +328,47 @@ export default function CoachPage() {
                   )}
                 </div>
               ) : (
-                <CameraView ref={videoRef} stream={stream} recording={capture.recording} />
+                <div className="relative h-full w-full rounded-2xl overflow-hidden bg-black">
+                  {/* Performance dashboard when in recap or ended phase */}
+                  {(currentPhase === "recap" || currentPhase === "ended") && (
+                    <div className="absolute inset-0 z-10 flex items-center justify-center overflow-y-auto bg-zinc-950 p-4 sm:p-6 pb-24 md:pb-6">
+                      <div className="w-full max-w-4xl space-y-6 my-auto">
+                        <div className="text-center space-y-2">
+                          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold uppercase tracking-wider">
+                            🏆 Session Completed
+                          </div>
+                          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
+                            Your Performance Report
+                          </h2>
+                          <p className="text-xs text-zinc-400 max-w-lg mx-auto">
+                            Review your biomechanics scorecard with Coach Buddy. Your strongest areas and focus points are summarized below.
+                          </p>
+                        </div>
+
+                        <div className={cn(
+                          "grid gap-4 max-h-[42vh] overflow-y-auto p-1 custom-scrollbar",
+                          reps.length > 1 ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"
+                        )}>
+                          {reps.map((rep) => (
+                            <RepScorecard key={rep.rep_id} rep={rep} />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <CameraView
+                    ref={videoRef}
+                    stream={stream}
+                    recording={capture.recording}
+                    className={cn(
+                      "transition-all duration-500 ease-in-out",
+                      (currentPhase === "recap" || currentPhase === "ended")
+                        ? "absolute bottom-4 right-4 z-20 w-44 h-28 border border-zinc-800 shadow-xl rounded-xl"
+                        : "h-full w-full"
+                    )}
+                  />
+                </div>
               )}
               {!inIqPractice && permissionError && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/70 p-6 text-center">
