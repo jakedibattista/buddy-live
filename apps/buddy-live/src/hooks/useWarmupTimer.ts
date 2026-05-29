@@ -6,18 +6,25 @@ import { getDb } from "@/lib/firebase";
 import { commandsCollectionPath } from "@/lib/paths";
 import type { CoachCommand } from "@/lib/types";
 
+/** "3, 2, 1" lead-in shown before the exercise timer actually starts. */
+const LEAD_IN_MS = 3000;
+
 interface ActiveWarmupTimer {
   exercise: string;
   label: string;
   durationMs: number;
+  /** Moment the lead-in began. The exercise runs after LEAD_IN_MS. */
   startedAt: number;
 }
 
 export interface WarmupTimerState {
   active: boolean;
+  /** "leadin" while counting 3-2-1, then "running" for the exercise timer. */
+  phase: "leadin" | "running";
   label: string | null;
   exercise: string | null;
   remainingMs: number;
+  leadInRemainingMs: number;
 }
 
 interface Options {
@@ -29,6 +36,7 @@ interface Options {
 export function useWarmupTimer({ sessionId, commands, onComplete }: Options): WarmupTimerState {
   const [activeTimer, setActiveTimer] = useState<ActiveWarmupTimer | null>(null);
   const [remainingMs, setRemainingMs] = useState(0);
+  const [leadInRemainingMs, setLeadInRemainingMs] = useState(0);
   const handledIdsRef = useRef<Set<string>>(new Set());
   const completedRef = useRef<string | null>(null);
 
@@ -48,6 +56,7 @@ export function useWarmupTimer({ sessionId, commands, onComplete }: Options): Wa
         startedAt: Date.now(),
       });
       setRemainingMs(durationMs);
+      setLeadInRemainingMs(LEAD_IN_MS);
       completedRef.current = null;
 
       const db = getDb();
@@ -62,11 +71,23 @@ export function useWarmupTimer({ sessionId, commands, onComplete }: Options): Wa
   useEffect(() => {
     if (!activeTimer) {
       setRemainingMs(0);
+      setLeadInRemainingMs(0);
       return;
     }
 
     const tick = () => {
-      const elapsed = Date.now() - activeTimer.startedAt;
+      const sinceStart = Date.now() - activeTimer.startedAt;
+
+      // Phase 1: 3-2-1 lead-in. The exercise timer stays full until it ends.
+      if (sinceStart < LEAD_IN_MS) {
+        setLeadInRemainingMs(LEAD_IN_MS - sinceStart);
+        setRemainingMs(activeTimer.durationMs);
+        return;
+      }
+
+      // Phase 2: exercise timer counts down.
+      setLeadInRemainingMs(0);
+      const elapsed = sinceStart - LEAD_IN_MS;
       const next = Math.max(0, activeTimer.durationMs - elapsed);
       setRemainingMs(next);
 
@@ -78,17 +99,19 @@ export function useWarmupTimer({ sessionId, commands, onComplete }: Options): Wa
     };
 
     tick();
-    const handle = window.setInterval(tick, 250);
+    const handle = window.setInterval(tick, 200);
     return () => window.clearInterval(handle);
   }, [activeTimer, onComplete]);
 
   return useMemo(
     () => ({
       active: activeTimer != null,
+      phase: leadInRemainingMs > 0 ? "leadin" : "running",
       label: activeTimer?.label ?? null,
       exercise: activeTimer?.exercise ?? null,
       remainingMs,
+      leadInRemainingMs,
     }),
-    [activeTimer, remainingMs],
+    [activeTimer, remainingMs, leadInRemainingMs],
   );
 }

@@ -47,6 +47,8 @@ export function WarmupTimerBridge({
       remainingMs={timer.remainingMs}
       variant="warmup"
       label={timer.label ?? undefined}
+      phase={timer.phase}
+      leadInRemainingMs={timer.leadInRemainingMs}
     />
   );
 }
