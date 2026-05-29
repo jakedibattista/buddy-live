@@ -1,6 +1,7 @@
 import type { SessionPhase } from "@/lib/types";
 
 const PHASE_LABELS: Record<SessionPhase, string> = {
+  intro: "Intro",
   warmup: "Warm-up",
   stance_check: "Setup check",
   drill_readiness: "Drill readiness",

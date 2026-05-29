@@ -54,7 +54,10 @@ export async function POST(req: NextRequest) {
       session_id: sessionId,
       user_id: userId,
       startedAt: now.toISOString(),
-      currentPhase: "warmup",
+      // Opening conversation (name/age/space/drill pick) shows "Intro". Flips to
+      // "warmup" once the player commits to shooting (set_focus_drill /
+      // start_warmup_timer) or to "iq_practice" on hand-off to the IQ coach.
+      currentPhase: "intro",
       // Firestore TTL policy on `live_sessions.expires_at` auto-deletes the
       // doc (and its subcollections) ~24h after creation. See
       // infra/storage-lifecycle.md for the matching GCS prefix cleanup.

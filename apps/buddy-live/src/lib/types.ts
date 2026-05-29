@@ -10,6 +10,7 @@ export type DrillId = "wristshot" | "slapshot_form" | "backhand";
 export type FocusDrill = "wristshot" | "slapshot" | "backhand";
 
 export type SessionPhase =
+  | "intro"
   | "warmup"
   | "stance_check"
   | "drill_readiness"
