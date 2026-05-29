@@ -31,8 +31,10 @@ import logging
 import os
 
 from google.adk.agents import Agent
+from google.adk.models import Gemini
 from google.adk.runners import Runner
 from google.adk.sessions import BaseSessionService, InMemorySessionService
+from google.genai import types as genai_types
 
 from app.callbacks import phase_guard
 from app.prompts import COACH_SETH_LIVE_PROMPT, IQ_COACH_PROMPT
@@ -58,6 +60,29 @@ _logger = logging.getLogger(__name__)
 
 APP_NAME = "buddy-live"
 
+
+def _build_model() -> Gemini:
+    """Gemini model with transient-error retries.
+
+    Gemini periodically returns 503 UNAVAILABLE (and occasionally 5xx/429)
+    during brief capacity blips. Without retries these surface as a failed
+    turn -- the player hears "I glitched" and the ElevenLabs conversation can
+    drop. The google-genai client retries these status codes in-process
+    (including mid-stream), with short backoff so a live voice turn still
+    resolves quickly.
+    """
+    model_name = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
+    return Gemini(
+        model=model_name,
+        retry_options=genai_types.HttpRetryOptions(
+            attempts=3,
+            initial_delay=1.0,
+            max_delay=4.0,
+            exp_base=2.0,
+            http_status_codes=[429, 500, 502, 503, 504],
+        ),
+    )
+
 _agent: Agent | None = None
 _runner: Runner | None = None
 _session_service: BaseSessionService | None = None
@@ -65,7 +90,6 @@ _session_service: BaseSessionService | None = None
 
 def _build_iq_coach() -> Agent:
     """IQ Coach sub-agent: handles Hockey IQ Practice mode end-to-end."""
-    model = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
     return Agent(
         name="iq_coach",
         description=(
@@ -73,7 +97,7 @@ def _build_iq_coach() -> Agent:
             "space to shoot. Runs 8-10 game-situation scenarios with the "
             "show_iq_visual tool, encourages discussion, then wraps up."
         ),
-        model=model,
+        model=_build_model(),
         instruction=IQ_COACH_PROMPT,
         tools=[show_iq_visual, mark_iq_answer, lookup_drill_knowledge],
         before_tool_callback=phase_guard,
@@ -82,11 +106,10 @@ def _build_iq_coach() -> Agent:
 
 def _build_agent() -> Agent:
     """Root coach agent: opening, shooting flow, recap. Delegates IQ mode."""
-    model = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
     return Agent(
         name="buddy_live_coach",
         description="Real-time hockey shooting coach (voice + webcam).",
-        model=model,
+        model=_build_model(),
         instruction=COACH_SETH_LIVE_PROMPT,
         tools=[
             peek_camera,
