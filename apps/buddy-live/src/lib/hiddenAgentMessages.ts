@@ -43,7 +43,10 @@ export function buildVoiceReconnectMessage(ctx: VoiceResumeContext): string {
 }
 
 export function buildWarmupTimerDoneMessage(exercise: string): string {
-  return `(Warm-up timer finished for ${exercise} — call peek_warmup now and give feedback.)`;
+  return (
+    `(Warm-up timer finished for ${exercise}. Do NOT call peek_warmup or any vision tool. ` +
+    `Ask the player verbally how that felt in one short sentence, then introduce and start the next move.)`
+  );
 }
 
 export const CAMERA_RECHECK_MESSAGE =

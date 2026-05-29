@@ -464,6 +464,23 @@ function parseDiagramPositions(diagram: string): Positions {
   } else if (lower.includes("2-on-1") || lower.includes("2 on 1") || lower.includes("teammate") || lower.includes("trailer") || lower.includes("pass")) {
     if (lower.includes("trailer") || lower.includes("trailing")) {
       positions.teammate = { x: px, y: py + 16 };
+    } else if (
+      lower.includes("in the slot") ||
+      lower.includes("in front") ||
+      lower.includes("net front") ||
+      lower.includes("net-front") ||
+      lower.includes("doorstep") ||
+      lower.includes("crease")
+    ) {
+      // Teammate parked in the slot / in front of the net (e.g. "behind the
+      // net, teammate open in the slot"). Sits in the high slot, not on a wing.
+      positions.teammate = { x: 50, y: 40 };
+    } else if (lower.includes("left circle") || lower.includes("left wing") || lower.includes("left faceoff")) {
+      positions.teammate = { x: 25, y: 40 };
+    } else if (lower.includes("right circle") || lower.includes("right wing") || lower.includes("right faceoff")) {
+      positions.teammate = { x: 75, y: 40 };
+    } else if (lower.includes("point") || lower.includes("blue line")) {
+      positions.teammate = { x: 50, y: 80 };
     } else {
       // Place teammate on opposite wing for lateral cross-crease passes
       positions.teammate = { x: px > 50 ? px - 35 : px + 35, y: py - 4 };
