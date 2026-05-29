@@ -74,8 +74,13 @@ substitutions:
   _REPO: buddy-live
   _TAG: dev
   _CONTEXT_DIR: services/buddy-live-adk
+  # Pinned to a single warm instance: the ADK backend keeps conversation
+  # history (InMemorySessionService) and per-turn dedupe/locks in process
+  # memory. Scaling out routed reconnects to cold instances, which cold-started
+  # the agent (re-greet), lost the rep scorecard, and bypassed turn dedupe
+  # (duplicate goodbye). One instance @ concurrency=20 handles current load.
   _MIN_INSTANCES: "1"
-  _MAX_INSTANCES: "5"
+  _MAX_INSTANCES: "1"
   _RUNTIME_SERVICE_ACCOUNT: ""
 
 images:

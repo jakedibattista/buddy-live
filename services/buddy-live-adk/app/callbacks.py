@@ -65,11 +65,28 @@ def phase_guard(
     if not session_id:
         return None
 
-    if tool_name not in {"start_rep_capture", "end_session_recap"}:
+    _vision_tools = {"peek_camera", "peek_warmup"}
+    if tool_name not in {"start_rep_capture", "end_session_recap"} | _vision_tools:
         return None
 
     doc = _read_session_doc(session_id)
     if not doc:
+        return None
+
+    # Once the session is wrapping up, no more vision calls. A stray peek loop
+    # after recap/ended just burns Gemini vision quota and writes dead peek
+    # frames (we saw 8 fire ~8 min after a session ended).
+    if tool_name in _vision_tools:
+        if doc.get("currentPhase") in {"recap", "ended"} or doc.get("ended_at"):
+            _logger.info(
+                "phase_guard blocked %s after session wrap session=%s",
+                tool_name,
+                session_id,
+            )
+            return {
+                "status": "blocked_session_over",
+                "reason": "The session is wrapping up. Do not call vision tools; just talk the player through their results and the recap.",
+            }
         return None
 
     if tool_name == "start_rep_capture":
@@ -87,6 +104,32 @@ def phase_guard(
             return {
                 "status": "blocked_framing_not_passed",
                 "reason": "Cannot start a scored rep until camera framing passes. Call peek_camera and walk the player through any framing fix until setup_framing_passed=true.",
+            }
+        # Single-rep policy: we assume the player records ONE video. Once a rep
+        # has scored, never auto-start another -- this is the structural backstop
+        # against a reconnect (lost history) re-recording instead of reviewing
+        # the existing scorecard.
+        try:
+            completed = (
+                session_ref(session_id)
+                .collection("reps")
+                .where("status", "==", "completed")
+                .limit(1)
+                .get()
+            )
+        except Exception as exc:
+            _logger.warning(
+                "phase_guard reps lookup failed session=%s: %s", session_id, exc
+            )
+            completed = []
+        if completed:
+            _logger.info(
+                "phase_guard blocked start_rep_capture: rep already scored session=%s",
+                session_id,
+            )
+            return {
+                "status": "blocked_rep_already_scored",
+                "reason": "A scored rep already exists for this session. Do NOT record again. Call get_rep_result on the existing rep and review the scorecard with the player, then move to the recap.",
             }
 
     if tool_name == "end_session_recap":

@@ -29,15 +29,27 @@ export interface VoiceResumeContext {
   currentPhase?: string | null;
   repCount: number;
   setupFramingPassed: boolean;
+  /** Most recent rep id, so the agent can re-fetch its scorecard after a drop. */
+  lastRepId?: string | null;
+  /** True when a scored rep's results are ready but not yet reviewed. */
+  awaitingReview?: boolean;
 }
 
 export function buildVoiceReconnectMessage(ctx: VoiceResumeContext): string {
   const drill = ctx.focusDrill ?? "not set yet";
   const phase = ctx.currentPhase ?? "unknown";
+  const review =
+    ctx.awaitingReview && ctx.lastRepId
+      ? `A scored rep (id ${ctx.lastRepId}) is awaiting review — its results are ready. ` +
+        `Call get_rep_result on it and walk the player through the scorecard. Do NOT record a new rep. `
+      : ctx.lastRepId
+        ? `Last rep id: ${ctx.lastRepId}. Do NOT start a new recording. `
+        : "";
   return (
-    `(Voice reconnected — continue this existing session. Do NOT restart from name, age, or drill selection. ` +
+    `(Voice reconnected — continue this existing session. Do NOT restart from name, age, or drill selection, and do NOT re-greet. ` +
     `Focus drill: ${drill}. Phase: ${phase}. Reps completed: ${ctx.repCount}. ` +
     `Setup framing passed: ${ctx.setupFramingPassed ? "yes" : "no"}. ` +
+    review +
     `Acknowledge the reconnect in one short sentence, then continue exactly where we left off.)`
   );
 }

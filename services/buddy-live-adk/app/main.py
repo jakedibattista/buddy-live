@@ -172,6 +172,12 @@ def _trim_user_text(text: str) -> str:
     exists so the coach gets a clean, recent fragment to react to."""
     if not text or len(text) <= _MAX_USER_TEXT_CHARS:
         return text
+    # Never trim hidden/system context messages (wrapped in parentheses, e.g.
+    # the voice-reconnect note). Keeping only the tail would amputate the
+    # leading "(Voice reconnected …" cue the agent keys off of, so the reconnect
+    # rule never fires and the coach cold-restarts.
+    if text.lstrip().startswith("("):
+        return text
     tail = text[-_MAX_USER_TEXT_CHARS:]
     boundary = re.search(r'[.!?]\s+(\S)', tail)
     if boundary:

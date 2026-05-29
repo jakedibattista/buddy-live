@@ -173,6 +173,12 @@ function CoachConversationInner({
         customLlmExtraBody: { arbitrary_identifier: sessionId },
         userId: sessionId,
         useWakeLock: true,
+        // On reconnect, override the agent's cold first message so it doesn't
+        // re-greet ("Hey! I'm Coach Buddy. What's your name?"). We immediately
+        // follow with the reconnect-context message in onConnect.
+        ...(resume
+          ? { overrides: { agent: { firstMessage: VOICE_RESUME_FIRST_MESSAGE } } }
+          : {}),
       };
 
       try {

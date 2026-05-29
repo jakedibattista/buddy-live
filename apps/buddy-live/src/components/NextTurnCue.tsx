@@ -67,7 +67,7 @@ export function NextTurnCue({
   if (recording) {
     message = 'Perform your rep — say "stop" or hit the red button when done.';
   } else if (resultsReady && repCount > 0 && currentPhase !== "recap" && currentPhase !== "ended") {
-    message = "Scorecard ready — ask Coach to wrap up or tap Wrap up.";
+    message = "Your results are ready — review your scorecard in the center with Coach.";
   } else if (analyzingCount > 0) {
     message =
       "Analysis running — answer Coach's hockey question or keep shooting.";
@@ -95,9 +95,9 @@ export function NextTurnCue({
   } else if (currentPhase === "iq_practice") {
     message = "Hockey IQ — talk through the scenario with Coach Buddy.";
   } else if (focusDrill && setupFramingPassed && repCount === 0) {
-    message = "Say ready when you want rep 1 of 5 — Coach will start recording.";
+    message = "Say ready when you want your scored rep — Coach will start recording.";
   } else if (focusDrill && setupFramingPassed) {
-    message = "Say ready when you're set up for the next scored rep.";
+    message = "Say ready when you're set up for your scored rep.";
   } else if (coachStatus === "connected") {
     message = "Answer Coach Buddy — pick your drill when asked.";
   }

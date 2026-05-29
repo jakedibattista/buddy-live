@@ -19,7 +19,6 @@ import { usePeekFrameUploader } from "@/hooks/usePeekFrameUploader";
 import { useRepCapture } from "@/hooks/useRepCapture";
 import { useRepResultsPolling } from "@/hooks/useRepResultsPolling";
 import { humanSessionPhase } from "@/lib/phases";
-import { SCORED_REP_TARGET } from "@/lib/recording";
 import { systemTranscript } from "@/lib/transcript";
 import { cn } from "@/lib/utils";
 import type { TranscriptEntry } from "@/lib/types";
@@ -128,6 +127,15 @@ export default function CoachPage() {
   const resultsReady = Boolean(live.session?.results_ready_at);
   const currentPhase = live.session?.currentPhase;
 
+  // Show the Performance Report in the CENTER view (and shrink the camera to a
+  // PiP) the moment the single scored rep's results land -- not just at recap.
+  // The scorecard lives only here in the center; we deliberately do not also
+  // render it in the side panel under the chat.
+  const showReport =
+    currentPhase === "recap" ||
+    currentPhase === "ended" ||
+    (resultsReady && reps.length > 0 && !capture.recording);
+
   // Track whether the player has EVER cleared the setup framing check this
   // session. Once true, stays true — so the soft FramingIndicator can light
   // up mid-drill if a later peek sees them drift out, without flashing during
@@ -140,14 +148,19 @@ export default function CoachPage() {
     ? new Date(live.session.startedAt).getTime()
     : undefined;
 
+  const lastRepId = reps.length > 0 ? reps[reps.length - 1].rep_id : null;
+  const awaitingReview =
+    resultsReady && currentPhase !== "recap" && currentPhase !== "ended";
   const voiceResumeContext = useMemo<VoiceResumeContext>(
     () => ({
       focusDrill,
       currentPhase,
       repCount: reps.length,
       setupFramingPassed,
+      lastRepId,
+      awaitingReview,
     }),
-    [focusDrill, currentPhase, reps.length, setupFramingPassed],
+    [focusDrill, currentPhase, reps.length, setupFramingPassed, lastRepId, awaitingReview],
   );
 
   // Only show the framing banner when the agent is actively in the setup
@@ -168,7 +181,6 @@ export default function CoachPage() {
     "Step back — Coach Buddy needs to see you from head to toes, facing the camera.";
 
   const displayedDrillId = capture.activeDrillId ?? focusDrill;
-  const nextRepNumber = Math.min(reps.length + 1, SCORED_REP_TARGET);
   const inDrillReadiness =
     currentPhase === "drill_readiness" && setupFramingPassed && reps.length === 0;
 
@@ -189,9 +201,9 @@ export default function CoachPage() {
   const displayedHint = capture.activeDrillId
     ? capture.hint
     : focusDrill && setupFramingPassed && reps.length === 0
-      ? `Rep 1 — say ready to start recording`
+      ? `Say ready to record your scored rep`
       : focusDrill && setupFramingPassed && !capture.recording && reps.length > 0
-        ? `Rep ${nextRepNumber} — say ready`
+        ? `Hang tight — your scorecard is on the way`
         : focusDrill
           ? `Focus drill: ${focusDrill.charAt(0).toUpperCase() + focusDrill.slice(1)}.`
           : null;
@@ -330,31 +342,26 @@ export default function CoachPage() {
                 </div>
               ) : (
                 <div className="relative h-full w-full rounded-2xl overflow-hidden bg-black">
-                  {/* Performance dashboard when in recap or ended phase */}
-                  {(currentPhase === "recap" || currentPhase === "ended") && (
+                  {/* Performance dashboard: shown in the center the moment the
+                      scored rep's results land, through recap/ended. */}
+                  {showReport && (
                     <div className="absolute inset-0 z-10 flex items-center justify-center overflow-y-auto bg-zinc-950 p-4 sm:p-6 pb-24 md:pb-6">
-                      <div className="w-full max-w-4xl space-y-6 my-auto">
-                        <div className="text-center space-y-2">
-                          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold uppercase tracking-wider">
-                            🏆 Session Completed
+                      {reps.length === 1 ? (
+                        // Single rep (the norm): one scorecard takes the full
+                        // center stage. No "Session Completed" chrome — the card
+                        // header ("Slapshot Form / ID") is the heading.
+                        <div className="w-full max-w-3xl my-auto">
+                          <RepScorecard rep={reps[0]} />
+                        </div>
+                      ) : (
+                        <div className="w-full max-w-4xl space-y-4 my-auto">
+                          <div className="grid gap-4 max-h-[70vh] overflow-y-auto p-1 custom-scrollbar grid-cols-1 md:grid-cols-2">
+                            {reps.map((rep) => (
+                              <RepScorecard key={rep.rep_id} rep={rep} />
+                            ))}
                           </div>
-                          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
-                            Your Performance Report
-                          </h2>
-                          <p className="text-xs text-zinc-400 max-w-lg mx-auto">
-                            Review your biomechanics scorecard with Coach Buddy. Your strongest areas and focus points are summarized below.
-                          </p>
                         </div>
-
-                        <div className={cn(
-                          "grid gap-4 max-h-[42vh] overflow-y-auto p-1 custom-scrollbar",
-                          reps.length > 1 ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"
-                        )}>
-                          {reps.map((rep) => (
-                            <RepScorecard key={rep.rep_id} rep={rep} />
-                          ))}
-                        </div>
-                      </div>
+                      )}
                     </div>
                   )}
 
@@ -364,7 +371,7 @@ export default function CoachPage() {
                     recording={capture.recording}
                     className={cn(
                       "transition-all duration-500 ease-in-out",
-                      (currentPhase === "recap" || currentPhase === "ended")
+                      showReport
                         ? "absolute bottom-4 right-4 z-20 w-44 h-28 border border-zinc-800 shadow-xl rounded-xl"
                         : "h-full w-full"
                     )}
@@ -538,17 +545,6 @@ export default function CoachPage() {
               entries={transcript}
               sessionStartMs={sessionStartMs}
             />
-
-            {!inIqPractice && reps.length > 0 && (
-              <div className="flex flex-col gap-3">
-                <div className="px-1 text-xs uppercase tracking-widest text-zinc-400">
-                  Reps ({reps.length})
-                </div>
-                {reps.map((rep) => (
-                  <RepScorecard key={rep.rep_id} rep={rep} />
-                ))}
-              </div>
-            )}
           </aside>
         </div>
       </CoachVoiceShell>
