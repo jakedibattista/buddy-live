@@ -62,7 +62,8 @@ Player (browser)
   │
   ├─ webcam JPEG every ~2.5s ──▶ /api/peek (Vercel) ──▶ Firebase Storage + Firestore
   │
-  └─ rep clip on command ──────▶ /api/clips/upload (Vercel) ──▶ Storage + Firestore
+  └─ rep clip on command ──────▶ signed PUT URL (/api/clips/upload-url) ──▶ Storage (direct)
+                                      │  then /api/clips/upload finalises ──▶ Firestore
                                       │
                                       ▼
                                modelforpuckbuddy worker (30–90s)

@@ -41,7 +41,7 @@ Hidden agent-side messages (camera re-check, voice-reconnect, warm-up timer done
 | `useLiveSession` | Anonymous auth, session doc, Firestore subscription |
 | `usePeekFrameUploader` | JPEG every ~2.5s → `/api/peek` (drops to 1.5s while a warm-up timer is active, to fill the ring buffer for `peek_warmup`) |
 | `useWarmupTimer` | `start_warmup_timer` commands → on-screen countdown |
-| `useRepCapture` | `start_capture` / `stop_capture` commands → MediaRecorder |
+| `useRepCapture` | `start_capture` / `stop_capture` commands → MediaRecorder → signed-URL upload **direct to Firebase Storage** (avoids Vercel's 4.5 MB body limit), then finalises via `/api/clips/upload` |
 | `useRepResultsPolling` | Refreshes rep analysis jobs |
 
 ## Testing

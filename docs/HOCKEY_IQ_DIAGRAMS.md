@@ -80,7 +80,10 @@ To ensure players and defenders remain in tight tactical proximity (avoiding the
      * *Fallback:* Wing-aware calculations prevent defenders from appearing on the opposite wing. If player is on the left wing (`px < 40`), defender guards the inside cut (`x = px + 16, y = py - 4`).
 
 4. **Teammate Placement:**
-   * Placed on the opposite wing (`x = px > 50 ? px - 35 : px + 35, y = py - 4`) to set up lateral cross-crease passes, or behind as a trailer (`x = px, y = py + 16`).
+   * **Net-front screen** (teammate "in front of the net" / "screen" / "blocking the goalie's view"): teammate sits just in front of the goalie (`x = goalie.x, y = goalie.y + 7`) and the shooter stays back — no pass line.
+   * **Location-aware** (added 2026-05-29): if the diagram names where the teammate is, they go there instead of a generic wing — "in the slot" / "in front" / "doorstep" / "crease" → high slot (`50, 40`); "left circle/wing" → `25, 40`; "right circle/wing" → `75, 40`; "point"/"blue line" → `50, 80`. This fixes scenarios like *"behind the net, teammate open in the slot"*, which previously dumped the **T** in a top corner.
+   * **Trailer** ("trailer"/"trailing"): behind the player (`x = px, y = py + 16`).
+   * **Fallback:** opposite wing (`x = px > 50 ? px - 35 : px + 35, y = py - 4`) for lateral cross-crease passes.
 
 ---
 
