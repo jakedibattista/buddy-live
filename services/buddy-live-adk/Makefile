@@ -7,6 +7,9 @@ REGION ?= us-central1
 EVAL_SET ?= coaching_scenarios
 EVAL_DIR ?= evals
 
+# evals/ is a package rooted here; adk CLI needs PYTHONPATH set.
+export PYTHONPATH := $(CURDIR)
+
 install:
 	python3 -m venv .venv
 	.venv/bin/pip install --upgrade pip

@@ -4,9 +4,6 @@
       "hallucinations_v1": {
         "threshold": 0.5,
         "evaluate_intermediate_nl_responses": true
-      },
-      "safety_v1": {
-        "threshold": 0.8
       }
     },
     "user_simulator_config": {
@@ -14,7 +11,7 @@
       "max_allowed_invocations": 24
     }
   },
-  "app_name": "buddy-live",
+  "app_name": "agent_module",
   "train_eval_set": "coaching_scenarios",
   "train_eval_case_ids": ["9840778e", "b12a9a4d"],
   "validation_eval_set": "coaching_scenarios",

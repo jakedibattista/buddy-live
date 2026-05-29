@@ -1,3 +1,4 @@
 -r requirements.txt
+google-adk[eval]==2.0.0
 pytest==8.3.4
 pandas==2.2.3

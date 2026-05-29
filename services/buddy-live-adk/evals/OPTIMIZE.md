@@ -36,8 +36,16 @@ best candidate instruction at the end.
 1. Copy the optimized instruction from the CLI output or `optimize_runs/`.
 2. Paste into `app/prompts.py` as `COACH_SETH_LIVE_PROMPT` (review diff carefully).
 3. Re-run baseline evals: `make eval` and `make eval-failures`.
-4. Compare `hallucinations_v1` / `safety_v1` scores before vs after for the
-   demo narrative in `docs/TRACK2-PLAN.md`.
+4. Compare `hallucinations_v1` scores before vs after; run full `make eval`
+   separately for `safety_v1` (see note below).
+
+## Optimize uses `hallucinations_v1` only
+
+GEPA's sampler crashes when any criterion returns `score: null` (ADK bug in
+`local_eval_sampler._extract_eval_data`). The **analysis timeout** train case
+(`b12a9a4d`) can leave `safety_v1` unevaluated (`Response is required but
+missing`), so `optimize_sampler_config.json` omits `safety_v1`. Baseline evals
+(`make eval`) still run both criteria.
 
 ## Config knobs
 
