@@ -53,8 +53,8 @@ The half-rink markings are mapped in their true physical progression and traditi
 * **Goal Crease (Blue):** Curved blue boundary peaking at `y=18` (`stroke="#2563eb"`) with a light blue fill (`#eff6ff`).
 * **Faceoff Circles (Red):** Drawn on the left (`x=25`) and right (`x=75`) wings, centered at `y=35` with dashed red lines (`stroke="#ef4444"`) to mimic ice markings.
 * **Faceoff Dots (Red):** Solid red dots drawn at circle centers.
-* **Offensive Blue Line (Blue):** Solid blue marker boundary (`stroke="#2563eb"`) drawn at `y=75` separating the attack zone.
-* **Center Red Line (Red):** Solid red marker line (`stroke="#ef4444"`) drawn at the very bottom (`y=99`) to ground the half-rink representation.
+* **Offensive Blue Line (Blue):** Solid blue marker boundary (`stroke="#2563eb"`) drawn at `y=75` separating the attack zone. This is the deepest marking shown.
+* **(Removed 2026-05-29)** The center red line used to sit at `y=99`, but it crammed against the bottom board (`y=98`) and read as a stray line, so it was removed — the offensive-zone half-rink ends cleanly at the blue line.
 
 ---
 
@@ -65,7 +65,8 @@ To ensure players and defenders remain in tight tactical proximity (avoiding the
 ### Coordinates Hierarchy
 
 1. **Player Position (`px`, `py`):**
-   * Identified first from NLP keywords in the `diagram` description (e.g., *behind the net*, *left circle*, *point*, *slot*, etc.).
+   * Identified first from NLP keywords in the `diagram` description (e.g., *behind the net*, *left/right corner*, *left circle*, *point*, *slot*, etc.).
+   * *left corner* → `18, 20`; *right corner* → `82, 20` (deep beside the net); bare *corner* defaults to the left corner.
    * Defaults to high slot/breakaway zone (`x=50`, `y=55`).
 
 2. **Goalie Position:**

@@ -475,10 +475,17 @@ For EACH scenario, follow this order STRICTLY:
    - options: 2 (or at most 3) very short answer choices.
    - diagram: plain-language spatial description so the UI can place
      markers. Use phrases the renderer understands: "at the left circle",
-     "in the slot", "at the blue line", "behind the net", "on a breakaway",
-     "defender closing", "goalie square / down / way out", "2-on-1",
-     "teammate trailing". Example: "You have the puck at the right circle.
-     Goalie is square. Defender closing from the blue line."
+     "in the slot", "at the blue line", "behind the net", "in the left/right
+     corner", "on a breakaway", "defender closing", "goalie square / down /
+     way out", "2-on-1", "teammate in the slot / trailing". Example: "You
+     have the puck at the right circle. Goalie is square. Defender closing
+     from the blue line."
+   - KEEP THE WORDS AND THE PICTURE CONSISTENT: the spot you name in the
+     spoken scenario MUST match the diagram (if you say "in the corner",
+     the diagram must say "corner"; don't say "corner" then draw center
+     ice). Phrase the question and both options in plain, concrete words --
+     avoid vague phrases like "the open space in front of them" unless the
+     diagram clearly shows it.
 3. Stop and wait for the player to answer.
 4. AS SOON AS they pick an option (or describe one in words), call
    mark_iq_answer(player_choice, correct_choice) so the card lights up

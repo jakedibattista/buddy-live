@@ -199,11 +199,10 @@ function DiagramVisual({ diagram, size = "sm" }: { diagram: string; size?: "sm" 
           <circle cx="25" cy="35" r="0.8" fill="#ef4444" fillOpacity="0.8" />
           <circle cx="75" cy="35" r="0.8" fill="#ef4444" fillOpacity="0.8" />
 
-          {/* Offensive Blue Line (y=75) - Solid Blue */}
+          {/* Offensive Blue Line (y=75) - Solid Blue. This is the deepest
+              marking in the offensive-zone half-rink; no center red line is
+              drawn (it sat at the very bottom edge and read as a stray line). */}
           <line x1="2" y1="75" x2="98" y2="75" stroke="#2563eb" strokeWidth="1.5" strokeOpacity="0.85" />
-
-          {/* Red Center Line (y=100) at bottom of offensive half-rink - Solid Red */}
-          <line x1="2" y1="99" x2="98" y2="99" stroke="#ef4444" strokeWidth="1.3" strokeOpacity="0.8" />
         </g>
 
         {/* --- TACTICAL MOVEMENT ARROWS & PASS LINES --- */}
@@ -379,6 +378,13 @@ function parseDiagramPositions(diagram: string): Positions {
   // 1. Determine Player Position
   if (lower.includes("behind the net") || lower.includes("behind the goal")) {
     positions.player = { x: 50, y: 6 };
+  } else if (lower.includes("left corner")) {
+    positions.player = { x: 18, y: 20 };
+  } else if (lower.includes("right corner")) {
+    positions.player = { x: 82, y: 20 };
+  } else if (lower.includes("corner")) {
+    // Deep in the zone beside the net (default to the left corner).
+    positions.player = { x: 18, y: 20 };
   } else if (
     !teammateScreens &&
     (lower.includes("crease") || lower.includes("in front of the net") || lower.includes("doorstep"))
