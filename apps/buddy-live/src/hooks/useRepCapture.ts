@@ -108,13 +108,44 @@ export function useRepCapture({
       }
       setState((s) => ({ ...s, lastUpload: { repId, status: "uploading" } }));
       try {
-        const form = new FormData();
-        form.append("sessionId", sessionId);
-        form.append("repId", repId);
-        form.append("drillId", drillId);
-        form.append("clip", blob, `${repId}.webm`);
-        const resp = await fetch("/api/clips/upload", { method: "POST", body: form });
-        if (!resp.ok) throw new Error(`upload ${resp.status}`);
+        const contentType = blob.type.includes("mp4") ? "video/mp4" : "video/webm";
+
+        // 1. Mint a signed upload URL (tiny request — avoids Vercel's 4.5 MB
+        //    serverless body cap that previously 413'd multi-second clips).
+        const urlResp = await fetch("/api/clips/upload-url", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId, repId, contentType }),
+        });
+        if (!urlResp.ok) throw new Error(`upload-url ${urlResp.status}`);
+        const { uploadUrl, storagePath, stub } = (await urlResp.json()) as {
+          uploadUrl?: string;
+          storagePath?: string;
+          stub?: boolean;
+        };
+
+        // Admin not configured (e.g. local without keys): nothing to upload to.
+        if (stub || !uploadUrl || !storagePath) {
+          setState((s) => ({ ...s, lastUpload: { repId, status: "uploaded" } }));
+          return;
+        }
+
+        // 2. PUT the clip straight to Firebase Storage (no Vercel size limit).
+        const putResp = await fetch(uploadUrl, {
+          method: "PUT",
+          headers: { "Content-Type": contentType },
+          body: blob,
+        });
+        if (!putResp.ok) throw new Error(`storage ${putResp.status}`);
+
+        // 3. Finalize: write the rep doc + signed read URL so analyze_rep runs.
+        const finResp = await fetch("/api/clips/upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId, repId, drillId, storagePath, contentType }),
+        });
+        if (!finResp.ok) throw new Error(`finalize ${finResp.status}`);
+
         setState((s) => ({ ...s, lastUpload: { repId, status: "uploaded" } }));
         await queueAnalysis(sessionId, repId);
       } catch (e) {
