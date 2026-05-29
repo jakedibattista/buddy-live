@@ -110,6 +110,15 @@ _TURN_TIMEOUT_SECONDS = 30
 _DEDUPE_WINDOW_SECONDS = float(os.getenv("TURN_DEDUPE_WINDOW_SECS", "4"))
 _recent_turns: dict[str, tuple[str, float]] = {}
 
+# An open mic (e.g. the player chatting to someone in the room) makes
+# ElevenLabs send an ever-growing transcript. Feed the agent only the tail so
+# turn latency doesn't balloon and the coach reacts to the most recent words.
+_MAX_USER_TEXT_CHARS = int(os.getenv("MAX_USER_TEXT_CHARS", "240"))
+
+# Sessions whose Firestore phase we've already flipped to iq_practice on the
+# iq_coach hand-off, so we write it at most once per session.
+_iq_phase_marked: set[str] = set()
+
 
 @app.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
@@ -157,6 +166,65 @@ def _clean_speaker_labels(text: str) -> str:
     return cleaned.strip()
 
 
+def _trim_user_text(text: str) -> str:
+    """Keep only the tail of a long transcript so a rambling open mic can't
+    balloon agent latency. We start the tail at a sentence boundary when one
+    exists so the coach gets a clean, recent fragment to react to."""
+    if not text or len(text) <= _MAX_USER_TEXT_CHARS:
+        return text
+    tail = text[-_MAX_USER_TEXT_CHARS:]
+    boundary = re.search(r'[.!?]\s+(\S)', tail)
+    if boundary:
+        tail = tail[boundary.start(1):]
+    return tail.strip() or text[-_MAX_USER_TEXT_CHARS:].strip()
+
+
+def _clean_coach_text(text: str) -> str:
+    """Strip artifacts that leak into spoken output before they reach TTS:
+    speaker-label prefixes ("Stafford:", "Coach Buddy:") and chain-of-thought /
+    stage-direction parentheticals ("(thought) I must never ..."). The model
+    occasionally narrates its own rules aloud despite the prompt forbidding it,
+    so this backend guard is the reliable fix."""
+    if not text:
+        return text
+    cleaned = re.sub(
+        r'(?im)\b(?:stafford|coach\s*buddy|coach|buddy|player|user|assistant)\s*:\s*',
+        '',
+        text,
+    )
+    cleaned = re.sub(
+        r'\((?:thought|thinking|internal|aside|note)\b[^)]*\)',
+        '',
+        cleaned,
+        flags=re.IGNORECASE,
+    )
+    cleaned = re.sub(r'[ \t]{2,}', ' ', cleaned)
+    return cleaned.strip()
+
+
+def _set_iq_phase(session_id: str) -> None:
+    sref = session_ref(session_id)
+    if sref is None:
+        return
+    sref.set(
+        {"currentPhase": "iq_practice", "iq_updated_at": datetime.now(timezone.utc).isoformat()},
+        merge=True,
+    )
+
+
+async def _mark_iq_phase_async(session_id: str) -> None:
+    """Flip the session phase to iq_practice the moment the iq_coach sub-agent
+    takes over (the hand-off bridge turn), so the UI doesn't sit on a stale
+    "Warm-up" label until the first show_iq_visual fires. Once per session."""
+    if not session_id or session_id in _iq_phase_marked:
+        return
+    _iq_phase_marked.add(session_id)
+    try:
+        await asyncio.to_thread(_set_iq_phase, session_id)
+    except Exception:
+        _logger.exception("set iq phase failed session=%s", session_id)
+
+
 def _is_silence(text: str) -> bool:
     return text.strip() in _SILENCE_FILLERS
 
@@ -165,8 +233,14 @@ def _is_silence(text: str) -> bool:
 async def chat_completions(payload: ChatCompletionRequest, request: Request) -> StreamingResponse:
     session_id = payload.session_identifier()
     raw_user_text = payload.latest_user_text()
-    user_text = _clean_speaker_labels(raw_user_text)
-    _logger.info("turn session=%s raw_user_text=%r user_text=%r", session_id, raw_user_text[:200], user_text[:200])
+    cleaned_user_text = _clean_speaker_labels(raw_user_text)
+    user_text = _trim_user_text(cleaned_user_text)
+    _logger.info(
+        "turn session=%s raw_user_text=%r user_text=%r",
+        session_id,
+        raw_user_text[:200],
+        user_text[:200],
+    )
 
     if _is_silence(user_text):
         _logger.info("skipping silence filler session=%s", session_id)
@@ -217,7 +291,6 @@ async def chat_completions(payload: ChatCompletionRequest, request: Request) -> 
     async def event_stream():
         response_id = f"chatcmpl-{uuid.uuid4().hex[:12]}"
         sent_role = False
-        sent_any_text = False
         full_text_parts: list[str] = []
         # Top-level span for the whole turn. ADK's agent / tool / LLM spans
         # become children of this one so Cloud Trace shows the full
@@ -227,21 +300,33 @@ async def chat_completions(payload: ChatCompletionRequest, request: Request) -> 
             span.set_attribute("buddy_live.user_text_len", len(user_text))
             span.set_attribute("buddy_live.is_reconnect", is_reconnect)
             span.set_attribute("buddy_live.session_existed", session_exists)
+            iq_active = False
             try:
                 async with _session_locks[session_id]:
-                    # Collapse duplicate utterances fired in a tight burst.
+                    # Collapse duplicate / accumulating utterances. An open mic
+                    # makes ElevenLabs resend an ever-growing transcript, so a
+                    # new utterance that is a prefix/superset of the last one
+                    # within the debounce window is treated as a duplicate --
+                    # we don't run the agent on every incremental copy. The
+                    # window slides on each copy, so the storm collapses until
+                    # the player actually pauses.
                     now = time.monotonic()
                     prev = _recent_turns.get(session_id)
+                    is_dupe = False
                     if (
-                        user_text
+                        cleaned_user_text
                         and prev is not None
-                        and prev[0] == user_text
                         and (now - prev[1]) < _DEDUPE_WINDOW_SECONDS
                     ):
+                        a, b = cleaned_user_text, prev[0]
+                        is_dupe = a == b or a.startswith(b) or b.startswith(a)
+                    if cleaned_user_text:
+                        _recent_turns[session_id] = (cleaned_user_text, now)
+                    if is_dupe:
                         _logger.info(
-                            "deduped duplicate utterance session=%s text=%r",
+                            "deduped duplicate/accumulating utterance session=%s text=%r",
                             session_id,
-                            user_text[:80],
+                            cleaned_user_text[:80],
                         )
                         span.set_attribute("buddy_live.turn_outcome", "deduped")
                         yield sse_chunk(response_id, {"role": "assistant"})
@@ -249,8 +334,6 @@ async def chat_completions(payload: ChatCompletionRequest, request: Request) -> 
                         yield sse_chunk(response_id, {}, finish_reason="stop")
                         yield sse_done()
                         return
-                    if user_text:
-                        _recent_turns[session_id] = (user_text, now)
 
                     async with asyncio.timeout(_TURN_TIMEOUT_SECONDS):
                         async for event in runner.run_async(
@@ -259,46 +342,38 @@ async def chat_completions(payload: ChatCompletionRequest, request: Request) -> 
                             new_message=new_message,
                             run_config=run_config,
                         ):
+                            if getattr(event, "author", None) == "iq_coach":
+                                iq_active = True
                             if not event.content or not event.content.parts:
                                 continue
-                            text_pieces: list[str] = []
-                            for part in event.content.parts:
-                                piece = getattr(part, "text", None) or ""
-                                if piece:
-                                    text_pieces.append(piece)
-                            text = "".join(text_pieces)
+                            text = "".join(
+                                getattr(part, "text", None) or ""
+                                for part in event.content.parts
+                            )
                             if not text:
                                 continue
-
+                            # Buffer the whole reply, then sanitize once before
+                            # sending. Streaming partials straight to TTS would
+                            # let leaked speaker labels / chain-of-thought
+                            # ("Stafford: (thought) ...") slip out un-strippable
+                            # mid-stream. Replies are short so the latency cost
+                            # is small.
                             is_partial = getattr(event, "partial", False)
-                            if is_partial:
-                                if not sent_role:
-                                    yield sse_chunk(response_id, {"role": "assistant"})
-                                    sent_role = True
-                                yield sse_chunk(response_id, {"content": text})
+                            if is_partial or not full_text_parts:
                                 full_text_parts.append(text)
-                                sent_any_text = True
-                            else:
-                                if not sent_any_text:
-                                    yield sse_chunk(response_id, {"role": "assistant"})
-                                    sent_role = True
-                                    yield sse_chunk(response_id, {"content": text})
-                                    full_text_parts.append(text)
-                                    sent_any_text = True
 
-                span.set_attribute(
-                    "buddy_live.response_text_len",
-                    sum(len(p) for p in full_text_parts),
-                )
+                coach_text = _clean_coach_text("".join(full_text_parts))
+                span.set_attribute("buddy_live.response_text_len", len(coach_text))
                 span.set_attribute("buddy_live.turn_outcome", "ok")
 
-                if not sent_role:
-                    yield sse_chunk(response_id, {"role": "assistant"})
-                    yield sse_chunk(response_id, {"content": ""})
+                yield sse_chunk(response_id, {"role": "assistant"})
+                yield sse_chunk(response_id, {"content": coach_text})
                 yield sse_chunk(response_id, {}, finish_reason="stop")
                 yield sse_done()
+                if iq_active:
+                    await _mark_iq_phase_async(session_id)
                 await _persist_turn_async(
-                    session_id, user_text, "".join(full_text_parts), "ok", is_reconnect
+                    session_id, user_text, coach_text, "ok", is_reconnect
                 )
             except TimeoutError:
                 _logger.warning("turn timed out session=%s after %ds", session_id, _TURN_TIMEOUT_SECONDS)
@@ -310,7 +385,7 @@ async def chat_completions(payload: ChatCompletionRequest, request: Request) -> 
                 yield sse_chunk(response_id, {}, finish_reason="stop")
                 yield sse_done()
                 await _persist_turn_async(
-                    session_id, user_text, "".join(full_text_parts) or fallback, "timeout", is_reconnect
+                    session_id, user_text, _clean_coach_text("".join(full_text_parts)) or fallback, "timeout", is_reconnect
                 )
             except Exception as exc:
                 _logger.exception("chat_completions stream failed")
@@ -323,7 +398,7 @@ async def chat_completions(payload: ChatCompletionRequest, request: Request) -> 
                 yield sse_chunk(response_id, {}, finish_reason="stop")
                 yield sse_done()
                 await _persist_turn_async(
-                    session_id, user_text, "".join(full_text_parts) or fallback, "error", is_reconnect
+                    session_id, user_text, _clean_coach_text("".join(full_text_parts)) or fallback, "error", is_reconnect
                 )
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")

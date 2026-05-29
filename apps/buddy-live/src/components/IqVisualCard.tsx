@@ -37,7 +37,7 @@ export function IqVisualCard({
       {questionIndex ? (
         <div className="mb-2">
           <span
-            className={`font-semibold uppercase tracking-wider text-emerald-400/90 ${titleSize}`}
+            className={`font-semibold uppercase tracking-widest text-zinc-400 ${titleSize}`}
           >
             Question {questionIndex} of {totalQuestions}
           </span>
@@ -346,11 +346,6 @@ function DiagramVisual({ diagram, size = "sm" }: { diagram: string; size?: "sm" 
           </g>
         )}
       </svg>
-
-      {/* Traditional Whiteboard Marker Tray Label */}
-      <div className="absolute bottom-2 right-3 rounded bg-zinc-800/80 px-2 py-0.5 text-[8px] font-bold tracking-wider text-zinc-100 uppercase backdrop-blur-sm shadow-sm">
-        Coach's Whiteboard
-      </div>
     </div>
   );
 }
@@ -368,10 +363,26 @@ function parseDiagramPositions(diagram: string): Positions {
     drawPassLine: false,
   };
 
+  // A teammate "in front of the net" / "blocking the goalie's view" is a
+  // SCREEN: the teammate stands at the net-front, the shooter stays back.
+  // Detect it up front so "in front of the net" doesn't get attributed to the
+  // player below (which used to plant YOU on the doorstep instead).
+  const teammateScreens =
+    lower.includes("teammate") &&
+    (lower.includes("in front of the net") ||
+      lower.includes("in front of the goal") ||
+      lower.includes("screen") ||
+      lower.includes("blocking the goalie") ||
+      lower.includes("goalie's view") ||
+      lower.includes("goalies view"));
+
   // 1. Determine Player Position
   if (lower.includes("behind the net") || lower.includes("behind the goal")) {
     positions.player = { x: 50, y: 6 };
-  } else if (lower.includes("crease") || lower.includes("in front of the net") || lower.includes("doorstep")) {
+  } else if (
+    !teammateScreens &&
+    (lower.includes("crease") || lower.includes("in front of the net") || lower.includes("doorstep"))
+  ) {
     positions.player = { x: 50, y: 22 };
   } else if (lower.includes("left circle") || lower.includes("left faceoff") || lower.includes("left wing")) {
     positions.player = { x: 25, y: 40 };
@@ -446,7 +457,11 @@ function parseDiagramPositions(diagram: string): Positions {
   }
 
   // 4. Determine Teammate Position
-  if (lower.includes("2-on-1") || lower.includes("2 on 1") || lower.includes("teammate") || lower.includes("trailer") || lower.includes("pass")) {
+  if (teammateScreens) {
+    // Net-front screen: teammate sits just in front of the goalie, between
+    // the shooter and the net. No pass line — this is a traffic/screen play.
+    positions.teammate = { x: positions.goalie!.x, y: positions.goalie!.y + 7 };
+  } else if (lower.includes("2-on-1") || lower.includes("2 on 1") || lower.includes("teammate") || lower.includes("trailer") || lower.includes("pass")) {
     if (lower.includes("trailer") || lower.includes("trailing")) {
       positions.teammate = { x: px, y: py + 16 };
     } else {
