@@ -6,6 +6,10 @@ reviewable; ingested into a Vertex AI Search data store so the agent can
 retrieve from it semantically at runtime (see Phase 3 in
 [`docs/TRACK2-PLAN.md`](../../../docs/TRACK2-PLAN.md)).
 
+**Provenance:** Authored for Buddy Live (prompt rubrics + legacy
+`_DRILL_RECOMMENDATIONS` in `app/tools/coaching.py`). Not scraped from the
+Puck Buddy app or YouTube. See [`docs/TRACK2-LAYMAN.md`](../../../docs/TRACK2-LAYMAN.md#phase-3--drill-knowledge-library-vertex-ai-search).
+
 ## Structure
 
 Each `.md` file is one retrieval unit. Docs are kept small (~2–5 KB) and

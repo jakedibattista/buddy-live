@@ -6,7 +6,9 @@ all tools intercepted by Environment Simulation so nothing touches Firebase,
 modelforpuckbuddy, or ElevenLabs.
 
 See [`docs/TRACK2-PLAN.md`](../../../docs/TRACK2-PLAN.md) for the full Track 2
-gap analysis and roadmap. This README only covers running the evals.
+gap analysis and roadmap. Plain-language phase guide (including **Hockey IQ-only
+eval** commands): [`docs/TRACK2-LAYMAN.md`](../../../docs/TRACK2-LAYMAN.md).
+This README only covers running the evals.
 
 ## Layout
 
@@ -70,7 +72,7 @@ the optimized prompt into `app/prompts.py`.
 | Scenario id (first eval case) | What it exercises |
 | --- | --- |
 | Scenario 1 — `NOVICE`, wristshot full session | Baseline happy path: drill pick → warmup → reps → recap |
-| Scenario 2 — `NOVICE`, no space | Sub-agent transfer from root coach to `iq_coach` |
+| Scenario 2 — `NOVICE`, no space (`285f6d24` in eval set) | Sub-agent transfer from root coach to `iq_coach` — **Hockey IQ eval** |
 | Scenario 3 — `EXPERT`, slapshot, pushes back on warmup | Robustness to user corrections, sharper follow-up questions |
 | Scenario 4 — `NOVICE`, eager but disorganized | Recovery from a player who can't follow setup instructions |
 | Scenario 5 — `NOVICE`, impatient for results | Graceful waiting behaviour while `get_rep_result` is still processing |

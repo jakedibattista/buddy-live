@@ -48,6 +48,31 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+# After the player shoots, the browser stops recording, uploads the .webm, and
+# writes storage_path to the rep doc. If that pipeline fails (too-short clip,
+# upload error, dropped connection) the rep would otherwise sit in
+# "awaiting_clip" forever and the coach would stall. This watchdog flips a
+# stuck rep to "clip_failed" so the coach can offer a quick reshoot.
+_CLIP_WATCHDOG_SECS = float(os.getenv("CLIP_WATCHDOG_SECS", "45"))
+_CLIP_PENDING_STATUSES = frozenset(
+    {"awaiting_clip", "capturing", "pending_capture"}
+)
+
+
+def _seconds_since(iso_ts: str | None) -> float:
+    """Seconds elapsed since an ISO timestamp. Returns 0.0 if unparseable so
+    the watchdog never fires prematurely on bad data."""
+    if not iso_ts:
+        return 0.0
+    try:
+        dt = datetime.fromisoformat(iso_ts)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return (datetime.now(timezone.utc) - dt).total_seconds()
+    except Exception:
+        return 0.0
+
+
 def _get_session_id(tool_context: ToolContext) -> str | None:
     state = tool_context.state or {}
     return state.get("session_id") or state.get("sessionId")
@@ -97,6 +122,10 @@ def start_rep_capture(
             {
                 "rep_id": rep_id,
                 "drill_id": canonical,
+                # The agent-facing drill name ("slapshot") before mapping to the
+                # analysis-API id ("slapshot_form"). Stored so monitoring can
+                # tell the two apart instead of seeing an apparent mismatch.
+                "requested_drill": drill_id,
                 "hint": hint,
                 "status": "pending_capture",
                 "created_at": _now_iso(),
@@ -320,7 +349,33 @@ def get_rep_result(rep_id: str, tool_context: ToolContext) -> dict[str, Any]:
 
     job_id = rep.get("job_id")
     if not job_id:
-        return {"status": rep.get("status", "pending"), "rep_id": rep_id}
+        status = rep.get("status", "pending")
+        # The browser already reported the upload failed.
+        if status == "clip_failed":
+            return {
+                "status": "clip_failed",
+                "rep_id": rep_id,
+                "error": rep.get("clip_error"),
+                "hint": "The recording didn't save. Offer the player a quick reshoot.",
+            }
+        # Watchdog: clip never arrived and we've waited long enough -- don't
+        # leave the coach hanging on a rep that will never analyze.
+        if status in _CLIP_PENDING_STATUSES:
+            started = rep.get("capture_stopped_at") or rep.get("created_at")
+            if _seconds_since(started) > _CLIP_WATCHDOG_SECS:
+                ref.update({"status": "clip_failed", "clip_failed_at": _now_iso()})
+                _logger.warning(
+                    "rep clip watchdog fired session=%s rep=%s status=%s",
+                    session_id,
+                    rep_id,
+                    status,
+                )
+                return {
+                    "status": "clip_failed",
+                    "rep_id": rep_id,
+                    "hint": "The recording didn't save. Offer the player a quick reshoot.",
+                }
+        return {"status": status, "rep_id": rep_id}
 
     api_url = os.getenv("MODELFORPUCKBUDDY_API_URL", "").rstrip("/")
     if api_url:

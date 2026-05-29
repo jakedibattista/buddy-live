@@ -1,5 +1,9 @@
 # Track 2: Optimize — Gap Analysis & Implementation Plan
 
+**Plain-language overview (phases 1–4 & 6, IQ evals, memory limits, corpus
+sources):** [`TRACK2-LAYMAN.md`](TRACK2-LAYMAN.md). **Backlog / do later:**
+[`TRACK2-TODOS.md`](TRACK2-TODOS.md).
+
 Reference: Google for Startups AI Agents Challenge ([resource guide PDF](https://services.google.com/fh/files/misc/ai_agents_challenge_designed_guide.pdf)).
 
 > **Track 2 (Optimize):** "Take an agent that works in a sandbox and apply rigorous engineering discipline to make it handle real-world edge cases."

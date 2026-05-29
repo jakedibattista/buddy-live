@@ -123,6 +123,15 @@ function CoachConversationInner({
       setReconnecting(false);
       onStatusChange?.("disconnected");
 
+      // Log the drop reason so unexpected reconnect churn (we saw 13 in one
+      // 16-min session) is diagnosable from the browser console.
+      if (!userEndedRef.current && details?.reason !== "user") {
+        console.warn(
+          `[voice] unexpected disconnect (attempt ${reconnectAttemptRef.current}/${MAX_RECONNECT_ATTEMPTS})`,
+          details,
+        );
+      }
+
       if (userEndedRef.current || details?.reason === "user") return;
       if (resumeContextRef.current.currentPhase === "recap" || resumeContextRef.current.currentPhase === "ended") {
         return;

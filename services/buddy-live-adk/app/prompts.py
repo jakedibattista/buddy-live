@@ -201,6 +201,10 @@ WARM-UP SHADOW SHOTS (move 4 — match set_focus_drill choice, 30 seconds each):
         - If they have several pucks/balls: say something like "Still processing --
           fire another while that cooks" and start ANOTHER scored rep (bonus rep).
           Keep shooting until get_rep_result returns "ready".
+        - If status is "clip_failed": the recording didn't save. Don't keep
+          waiting. Say something light like "Looks like that one didn't record --
+          let's grab it again." Then start a fresh scored rep with
+          start_rep_capture (new recording) when they're ready.
      f) Once results ARE ready: share ONE strength + ONE thing to fix in
         under 25 words. Then line up the next rep unless the player said
         they only want one, or they've hit their target rep count.
@@ -268,7 +272,9 @@ TOOLS YOU CAN CALL
   background). Tell the player you're processing -- don't wait.
 - get_rep_result(rep_id): fetches the scorecard. If results aren't ready
   yet, say "still cooking" and keep the IQ chat or bonus reps going. When
-  status is "ready", the player's UI also shows their scorecard.
+  status is "ready", the player's UI also shows their scorecard. If status
+  is "clip_failed", the recording didn't save -- offer a quick reshoot
+  instead of waiting (see scored reps loop step e).
 - recommend_drill(weakest_metric): homework drill recommendation. Backed
   by the curated Vertex AI Search drill corpus first; falls back to the
   static dict. Always call this once during the final recap on the

@@ -3,9 +3,27 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { doc, updateDoc } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
-import { commandsCollectionPath } from "@/lib/paths";
+import { commandsCollectionPath, repDocPath } from "@/lib/paths";
 import { MAX_REP_RECORDING_MS, MIN_REP_CLIP_BYTES } from "@/lib/recording";
 import type { CoachCommand } from "@/lib/types";
+
+/**
+ * Record a clip-upload failure where the backend watchdog, the coach
+ * (get_rep_result -> "clip_failed"), and session monitoring can all see it.
+ * Without this, a failed upload left the rep stuck in "awaiting_clip" forever
+ * and the failure was invisible (no frontend error tracking).
+ */
+function reportClipFailure(sessionId: string, repId: string, error: string) {
+  console.error(`[rep ${repId}] clip upload failed: ${error}`);
+  const db = getDb();
+  if (db) {
+    void updateDoc(doc(db, repDocPath(sessionId, repId)), {
+      status: "clip_failed",
+      clip_error: error,
+      clip_failed_at: new Date().toISOString(),
+    }).catch(() => {});
+  }
+}
 
 interface Options {
   sessionId: string | null;
@@ -80,14 +98,12 @@ export function useRepCapture({
     async (repId: string, drillId: string, blob: Blob) => {
       if (!sessionId) return;
       if (blob.size < MIN_REP_CLIP_BYTES) {
+        const error = "Clip too short — try again";
         setState((s) => ({
           ...s,
-          lastUpload: {
-            repId,
-            status: "error",
-            error: "Clip too short — try again",
-          },
+          lastUpload: { repId, status: "error", error },
         }));
+        reportClipFailure(sessionId, repId, error);
         return;
       }
       setState((s) => ({ ...s, lastUpload: { repId, status: "uploading" } }));
@@ -102,14 +118,12 @@ export function useRepCapture({
         setState((s) => ({ ...s, lastUpload: { repId, status: "uploaded" } }));
         await queueAnalysis(sessionId, repId);
       } catch (e) {
+        const error = e instanceof Error ? e.message : String(e);
         setState((s) => ({
           ...s,
-          lastUpload: {
-            repId,
-            status: "error",
-            error: e instanceof Error ? e.message : String(e),
-          },
+          lastUpload: { repId, status: "error", error },
         }));
+        reportClipFailure(sessionId, repId, error);
       }
     },
     [sessionId],

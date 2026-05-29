@@ -8,11 +8,14 @@ Exposes:
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import os
+import time
 import uuid
 import re
 from collections import defaultdict
+from datetime import datetime, timezone
 
 import sentry_sdk
 from dotenv import load_dotenv
@@ -24,12 +27,45 @@ from google.genai import types as genai_types
 from opentelemetry import trace
 
 from app.agent import APP_NAME, ensure_session, get_runner, get_session_service
+from app.firestore_client import session_ref
 from app.models import ChatCompletionRequest, HealthResponse
 from app.sse import sse_chunk, sse_done
 from app.telemetry import setup_cloud_trace
 
 load_dotenv()
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+
+
+class _CloudLoggingFormatter(logging.Formatter):
+    """Emit JSON lines with a `severity` field so Cloud Run's logging agent
+    maps Python levels to Cloud Logging severities. Without this, app WARNING/
+    ERROR logs land as INFO/DEFAULT and `severity>=WARNING` filtering misses
+    them."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        message = record.getMessage()
+        if record.exc_info:
+            message = f"{message}\n{self.formatException(record.exc_info)}"
+        return json.dumps(
+            {"severity": record.levelname, "message": message, "logger": record.name}
+        )
+
+
+def _configure_logging() -> None:
+    # K_SERVICE is set by Cloud Run. Use structured logs there; keep plain
+    # text locally for readability.
+    if os.getenv("K_SERVICE"):
+        handler = logging.StreamHandler()
+        handler.setFormatter(_CloudLoggingFormatter())
+        root = logging.getLogger()
+        root.handlers = [handler]
+        root.setLevel(logging.INFO)
+    else:
+        logging.basicConfig(
+            level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
+        )
+
+
+_configure_logging()
 _logger = logging.getLogger("buddy_live_adk")
 
 # Set up Cloud Trace FIRST so ADK's global TracerProvider is installed before
@@ -67,10 +103,50 @@ _SILENCE_FILLERS = frozenset({"...", "", ".", "..", "…"})
 
 _TURN_TIMEOUT_SECONDS = 30
 
+# ElevenLabs / a flaky connection can fire the same final transcript several
+# times in a burst (we saw 6 identical turns in one second). Collapse exact
+# repeats of the same utterance within this window so the agent doesn't run
+# (and double-fire tools) on every copy.
+_DEDUPE_WINDOW_SECONDS = float(os.getenv("TURN_DEDUPE_WINDOW_SECS", "4"))
+_recent_turns: dict[str, tuple[str, float]] = {}
+
 
 @app.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
     return HealthResponse()
+
+
+def _persist_turn(
+    session_id: str, user_text: str, coach_text: str, outcome: str, is_reconnect: bool
+) -> None:
+    """Write one turn (player utterance + coach reply) to the session's `turns`
+    subcollection so voice/screen mismatches are auditable after the fact.
+    Best-effort: never breaks the turn."""
+    sref = session_ref(session_id)
+    if sref is None:
+        return
+    sref.collection("turns").add(
+        {
+            "user_text": user_text,
+            "coach_text": coach_text,
+            "outcome": outcome,
+            "is_reconnect": is_reconnect,
+            "ts": datetime.now(timezone.utc).isoformat(),
+        }
+    )
+
+
+async def _persist_turn_async(
+    session_id: str, user_text: str, coach_text: str, outcome: str, is_reconnect: bool
+) -> None:
+    if not session_id or (not user_text and not coach_text):
+        return
+    try:
+        await asyncio.to_thread(
+            _persist_turn, session_id, user_text, coach_text, outcome, is_reconnect
+        )
+    except Exception:
+        _logger.exception("persist_turn failed session=%s", session_id)
 
 
 def _clean_speaker_labels(text: str) -> str:
@@ -153,6 +229,29 @@ async def chat_completions(payload: ChatCompletionRequest, request: Request) -> 
             span.set_attribute("buddy_live.session_existed", session_exists)
             try:
                 async with _session_locks[session_id]:
+                    # Collapse duplicate utterances fired in a tight burst.
+                    now = time.monotonic()
+                    prev = _recent_turns.get(session_id)
+                    if (
+                        user_text
+                        and prev is not None
+                        and prev[0] == user_text
+                        and (now - prev[1]) < _DEDUPE_WINDOW_SECONDS
+                    ):
+                        _logger.info(
+                            "deduped duplicate utterance session=%s text=%r",
+                            session_id,
+                            user_text[:80],
+                        )
+                        span.set_attribute("buddy_live.turn_outcome", "deduped")
+                        yield sse_chunk(response_id, {"role": "assistant"})
+                        yield sse_chunk(response_id, {"content": ""})
+                        yield sse_chunk(response_id, {}, finish_reason="stop")
+                        yield sse_done()
+                        return
+                    if user_text:
+                        _recent_turns[session_id] = (user_text, now)
+
                     async with asyncio.timeout(_TURN_TIMEOUT_SECONDS):
                         async for event in runner.run_async(
                             user_id="player",
@@ -184,6 +283,7 @@ async def chat_completions(payload: ChatCompletionRequest, request: Request) -> 
                                     yield sse_chunk(response_id, {"role": "assistant"})
                                     sent_role = True
                                     yield sse_chunk(response_id, {"content": text})
+                                    full_text_parts.append(text)
                                     sent_any_text = True
 
                 span.set_attribute(
@@ -197,23 +297,34 @@ async def chat_completions(payload: ChatCompletionRequest, request: Request) -> 
                     yield sse_chunk(response_id, {"content": ""})
                 yield sse_chunk(response_id, {}, finish_reason="stop")
                 yield sse_done()
+                await _persist_turn_async(
+                    session_id, user_text, "".join(full_text_parts), "ok", is_reconnect
+                )
             except TimeoutError:
                 _logger.warning("turn timed out session=%s after %ds", session_id, _TURN_TIMEOUT_SECONDS)
                 span.set_attribute("buddy_live.turn_outcome", "timeout")
+                fallback = "Hold on one sec — let me catch up. What were you saying?"
                 if not sent_role:
                     yield sse_chunk(response_id, {"role": "assistant"})
-                yield sse_chunk(response_id, {"content": "Hold on one sec — let me catch up. What were you saying?"})
+                yield sse_chunk(response_id, {"content": fallback})
                 yield sse_chunk(response_id, {}, finish_reason="stop")
                 yield sse_done()
+                await _persist_turn_async(
+                    session_id, user_text, "".join(full_text_parts) or fallback, "timeout", is_reconnect
+                )
             except Exception as exc:
                 _logger.exception("chat_completions stream failed")
                 span.set_attribute("buddy_live.turn_outcome", "error")
                 span.record_exception(exc)
+                fallback = "Sorry, I glitched. Let's try that again."
                 if not sent_role:
                     yield sse_chunk(response_id, {"role": "assistant"})
-                yield sse_chunk(response_id, {"content": "Sorry, I glitched. Let's try that again."})
+                yield sse_chunk(response_id, {"content": fallback})
                 yield sse_chunk(response_id, {}, finish_reason="stop")
                 yield sse_done()
+                await _persist_turn_async(
+                    session_id, user_text, "".join(full_text_parts) or fallback, "error", is_reconnect
+                )
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
