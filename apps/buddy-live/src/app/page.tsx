@@ -6,7 +6,7 @@ import { LandingSessionPreview } from "@/components/landing/LandingSessionPrevie
 const BEATS = [
   { icon: Flame, label: "Warm up" },
   { icon: Target, label: "Shoot" },
-  { icon: Award, label: "See your score" },
+  { icon: Award, label: "Full scorecard" },
 ] as const;
 
 export default function Home() {
@@ -31,7 +31,8 @@ export default function Home() {
         </h1>
 
         <p className="mx-auto mt-4 max-w-lg text-balance text-lg font-normal leading-[1.47] tracking-[-0.01em] text-zinc-400 sm:mt-5 sm:text-xl">
-          Practice your shot. Coach Buddy watches and helps you get better.
+          Talk to Coach Buddy. Get a full shot scorecard — or train your hockey IQ
+          with real game scenarios.
         </p>
 
         <div className="mt-8 w-full sm:mt-10">
@@ -50,7 +51,8 @@ export default function Home() {
             />
           </Link>
           <p className="mt-3 text-pretty text-sm leading-relaxed text-zinc-500">
-            Stick, puck or ball, and a little space in front of your camera.
+            Camera and mic on. Bring a stick and space to shoot — or start with Hockey
+            IQ if you&apos;re off the ice.
           </p>
         </div>
 

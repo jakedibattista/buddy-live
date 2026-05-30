@@ -61,7 +61,7 @@ export default async function OpenGraphImage() {
             lineHeight: 1.4,
           }}
         >
-          Practice your shot with Coach Buddy.
+          Practice your shot with Coach Buddy — or train your hockey IQ.
         </div>
       </div>
     ),
