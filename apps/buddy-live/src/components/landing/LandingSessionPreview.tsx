@@ -45,7 +45,7 @@ function MiniRinkDiagram() {
 export function LandingSessionPreview() {
   return (
     <div
-      className="landing-preview relative mx-auto w-full max-w-md space-y-3 lg:max-w-lg"
+      className="landing-preview relative mx-auto grid w-full gap-3 lg:grid-cols-2 lg:gap-4"
       aria-hidden
     >
       {/* Shooting path — matches in-session RepScorecard */}

@@ -11,8 +11,8 @@ const BEATS = [
 
 export default function Home() {
   return (
-    <main className="landing-page relative mx-auto flex min-h-[100dvh] max-w-4xl flex-col items-center justify-center overflow-hidden px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(2rem,env(safe-area-inset-top))] text-center select-none">
-      <div className="flex w-full max-w-2xl flex-col items-center">
+    <main className="landing-page relative flex min-h-[100dvh] w-full flex-col items-center justify-center overflow-hidden px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(2rem,env(safe-area-inset-top))] text-center select-none sm:px-6 lg:px-10">
+      <div className="flex w-full max-w-xl flex-col items-center sm:max-w-2xl lg:max-w-5xl">
         <div className="landing-puck-glow relative mb-6 sm:mb-8">
           <div className="animate-puck-hover motion-reduce:animate-none">
             <Image
@@ -30,16 +30,16 @@ export default function Home() {
           Buddy Live.
         </h1>
 
-        <p className="mx-auto mt-4 max-w-lg text-balance text-lg font-normal leading-[1.47] tracking-[-0.01em] text-zinc-400 sm:mt-5 sm:text-xl">
+        <p className="mx-auto mt-4 max-w-2xl text-balance text-lg font-normal leading-[1.47] tracking-[-0.01em] text-zinc-400 sm:mt-5 sm:text-xl lg:max-w-3xl">
           Talk to Coach Buddy. Get a full shot scorecard — or train your hockey IQ
           with real game scenarios.
         </p>
 
-        <div className="mt-8 w-full sm:mt-10">
+        <div className="mt-8 w-full sm:mt-10 lg:mt-12">
           <LandingSessionPreview />
         </div>
 
-        <div className="mt-8 w-full max-w-xs sm:mt-10">
+        <div className="mt-8 w-full max-w-sm sm:mt-10 lg:max-w-md">
           <Link
             href="/coach"
             className="group inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-[#0066cc] px-6 py-3.5 text-[17px] font-normal text-white transition-all hover:bg-[#0071e3] active:scale-[0.97] motion-reduce:active:scale-100"
