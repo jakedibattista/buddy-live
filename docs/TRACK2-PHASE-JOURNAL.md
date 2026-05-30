@@ -187,11 +187,23 @@ spoken name. `ensure_session` hydrates ADK state from Firestore. No valid
 
 ## What's next
 
-- [ ] Ops: Vertex Search data store, Marcus demo seed (with your `user_id`)
-- [x] **Cloud Trace** — `BUDDY_ENABLE_CLOUD_TRACE=1` on Cloud Run rev `00051-9gr`; IAM `roles/cloudtrace.agent` on runtime SA
-- [ ] Hackathon: demo video, 1-pager, architecture diagram refresh
-- [ ] Optional: GEPA re-run on post-split root prompt (expect seed may still win)
-- [ ] Optional: Vertex ADC for `safety_v1` in evals
+- [x] Ops: Vertex Search data store, Marcus demo seed, Cloud Trace
+- [x] **Pre-human eval gate:** `make eval` 6/6 passed (2026-05-30)
+- [ ] **Your smoke:** see [`PRE-HUMAN-TEST-CHECKLIST.md`](PRE-HUMAN-TEST-CHECKLIST.md)
+- [ ] Hackathon: demo video, 1-pager, architecture diagram (after smoke)
+- [ ] Optional: GEPA re-run, Vertex ADC for safety_v1
+
+---
+
+## Ops shipped (2026-05-30, pre-human test)
+
+| Item | Detail |
+| --- | --- |
+| **Vertex Search** | Data store `buddy-live-drills`, 9 docs via JSONL import; `lookup_drill_knowledge('wristshot')` → 3 results |
+| **Cloud Run env** | `BUDDY_ENABLE_CLOUD_TRACE=1` + `BUDDY_VERTEX_SEARCH_DATA_STORE_ID` (rev `00053-2rw`+) |
+| **Marcus seed** | Firestore `demo-prior-marcus-jake` (uid `UXNBj…`), `demo-prior-marcus-alt` (uid `PZGW…`) |
+| **Eval set** | 6th case Marcus returning (`5f36f631`); env sim returns prior memory for Marcus name |
+| **Scripts** | `infra/scripts/setup_vertex_search.py`, `infra/scripts/seed_demo_memory.py` |
 - [ ] Deferred: durable `SessionService`, Workflow graph
 
 ---

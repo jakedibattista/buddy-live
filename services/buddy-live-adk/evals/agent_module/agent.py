@@ -21,7 +21,9 @@ import logging
 import os
 
 from google.adk.agents import Agent
+from google.adk.tools.base_tool import BaseTool
 from google.adk.tools.environment_simulation import EnvironmentSimulationFactory
+from google.adk.tools.tool_context import ToolContext
 
 from app.prompts import (
     COACH_SETH_LIVE_PROMPT,
@@ -46,7 +48,11 @@ from app.tools import (
     start_warmup_timer,
     stop_rep_capture,
 )
-from evals.environment_simulation import failure_config, happy_path_config
+from evals.environment_simulation import (
+    failure_config,
+    happy_path_config,
+    marcus_returning_memory_response,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -60,7 +66,20 @@ def _build_callback():
     config = failure_config() if use_failures else happy_path_config()
     mode = "failures" if use_failures else "happy_path"
     _logger.info("env_simulation_mode=%s", mode)
-    return EnvironmentSimulationFactory.create_callback(config)
+    base = EnvironmentSimulationFactory.create_callback(config)
+
+    def callback(
+        tool: BaseTool,
+        args: dict,
+        tool_context: ToolContext,
+    ):
+        if tool.name == "load_player_memory":
+            name = str((args or {}).get("player_name") or "").strip().lower()
+            if name == "marcus":
+                return marcus_returning_memory_response()
+        return base(tool, args, tool_context)
+
+    return callback
 
 
 _env_sim_callback = _build_callback()

@@ -1,5 +1,8 @@
 # Infra
 
+Deploy configs and Firebase rules live here. One-off ops scripts are in
+[`scripts/`](./scripts/). Which rules file to deploy: [`RULES.md`](./RULES.md).
+
 For storage cleanup, the Firestore TTL policy, and the weekly review workflow,
 see [`storage-lifecycle.md`](./storage-lifecycle.md).
 

@@ -209,6 +209,7 @@ def _load_player_memory_returning() -> dict[str, Any]:
         ),
         "session_date": "2026-05-27T18:00:00+00:00",
         "prior_session_id": "eval-session-prior-001",
+        "user_id": "eval_player",
     }
 
 
@@ -337,6 +338,11 @@ def _failure_tool_configs() -> list[ToolSimulationConfig]:
     ]
 
 
+def marcus_returning_memory_response() -> dict[str, Any]:
+    """Eval mock: Marcus returning player with ``eval_player`` user_id."""
+    return _load_player_memory_returning()
+
+
 def happy_path_config() -> EnvironmentSimulationConfig:
     """Every tool succeeds. Use for baseline / persona scenarios."""
     return EnvironmentSimulationConfig(tool_simulation_configs=_happy_tool_configs())
@@ -350,4 +356,4 @@ def failure_config() -> EnvironmentSimulationConfig:
     return EnvironmentSimulationConfig(tool_simulation_configs=_failure_tool_configs())
 
 
-__all__ = ["happy_path_config", "failure_config"]
+__all__ = ["happy_path_config", "failure_config", "marcus_returning_memory_response"]

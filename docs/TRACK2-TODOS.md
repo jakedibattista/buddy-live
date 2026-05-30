@@ -9,23 +9,25 @@ use unless noted. Plain-language context:
 [`TRACK2-PHASE-JOURNAL.md`](TRACK2-PHASE-JOURNAL.md) — update this as each
 phase lands.
 
+**Before human testing:** [`PRE-HUMAN-TEST-CHECKLIST.md`](PRE-HUMAN-TEST-CHECKLIST.md)
+
 ---
 
 ## Docs (quick)
 
-- [ ] **Commit and push** `docs/TRACK2-LAYMAN.md` (and this file if new) to `main`
+- [x] **Commit and push** Track 2 docs to `main`
 - [ ] Skim [`TRACK2-LAYMAN.md`](TRACK2-LAYMAN.md) before demos so talking points match what shipped
 
 ---
 
 ## Phase 1 — Evals & Hockey IQ testing
 
-- [ ] **Prereqs:** `cd services/buddy-live-adk`, `make install`, `GOOGLE_API_KEY` in `.env`
-- [ ] **Baseline:** `make eval` (all scenarios, happy-path mocks)
-- [ ] **Edge cases:** `make eval-failures` (framing loop, analysis timeout injections)
-- [ ] **IQ-only run:** see [Hockey IQ testing](TRACK2-LAYMAN.md#hockey-iq-testing-synthetic-player) — usually eval id `285f6d24` (Sam / no space → `iq_coach`)
-- [ ] **Add IQ scenarios:** edit `evals/conversation_scenarios.json` → refresh eval set (`make eval-setup` or `adk eval_set add_eval_case`) → re-run
-- [ ] **Refresh eval set** if Marcus “returning player” scenario (6th entry) is missing from `coaching_scenarios.evalset.json`
+- [x] **Prereqs:** `cd services/buddy-live-adk`, `make install`, `GOOGLE_API_KEY` in `.env`
+- [x] **Baseline:** `make eval` — 6 scenarios (incl. Marcus returning player `5f36f631`)
+- [x] **Edge cases:** `make eval-failures` — logs in `evals/baselines/pre-human-*.log`
+- [x] **IQ-only run:** eval id `285f6d24` (Sam / no space → `iq_coach`)
+- [x] **Marcus returning scenario** in eval set (`coaching_scenarios.evalset.json` / `conversation_scenarios.json`)
+- [ ] **Add IQ scenarios:** only if new personas needed post-human-test
 
 **Budget:** ~$0.05–0.20 per scenario (agent + user sim + judges).
 
@@ -34,66 +36,63 @@ phase lands.
 ## Phase 2 — Cloud Trace (production demo)
 
 - [x] **One-time GCP:** grant `roles/cloudtrace.agent` to `buddy-live-adk@puck-buddy.iam.gserviceaccount.com`
-- [x] **Cloud Run env:** `BUDDY_ENABLE_CLOUD_TRACE=1` on `buddy-live-adk` (rev `00051-9gr`, 2026-05-30)
-- [ ] **Verify:** live session on Vercel → Trace Explorer → `buddy_live.turn` spans
+- [x] **Cloud Run env:** `BUDDY_ENABLE_CLOUD_TRACE=1` on `buddy-live-adk`
+- [ ] **Verify:** live session on Vercel → Trace Explorer → `buddy_live.turn` spans (during your smoke)
 
 ---
 
 ## Phase 3 — Vertex AI Search / knowledge corpus
 
-- [ ] **One-time:** create Discovery Engine data store, upload `knowledge/*.md` to GCS, import, set `BUDDY_VERTEX_SEARCH_DATA_STORE_ID` on Cloud Run (steps in [`TRACK2-PLAN.md`](TRACK2-PLAN.md#deployment-1))
-- [ ] **Verify:** Cloud Trace shows `tool.call [lookup_drill_knowledge]` with `available: true`
-- [ ] **Optional content:** pull real copy from Puck Buddy app / curated YouTube curriculum into `knowledge/*.md`, re-ingest (not scraped today — see [layman doc](TRACK2-LAYMAN.md#phase-3--drill-knowledge-library-vertex-ai-search))
+- [x] **One-time:** data store `buddy-live-drills`, JSONL ingest, IAM, Cloud Run env var
+- [x] **Verify (local):** `lookup_drill_knowledge('wristshot')` → `available: true`, 3 results
+- [ ] **Verify (live):** Cloud Trace shows `lookup_drill_knowledge` with `available: true` during recap
+- [ ] **Optional content:** Puck Buddy / YouTube copy into `knowledge/*.md`, re-run `infra/scripts/setup_vertex_search.py`
+
+Setup script: [`infra/scripts/setup_vertex_search.py`](../infra/scripts/setup_vertex_search.py)
 
 ---
 
 ## Phase 4 — Returning-player memory
 
-- [ ] **Demo seed:** add a `session_summaries` doc with **your** Firebase `user_id` (JSON in [`TRACK2-PLAN.md`](TRACK2-PLAN.md#demo-seed-a-returning-player))
-- [ ] **Verify on Vercel:** same browser, say seeded name → welcome-back line
+- [x] **Demo seed:** `session_summaries/demo-prior-marcus-jake` + `demo-prior-marcus-alt` (Jake uids)
+- [ ] **Verify on Vercel:** same browser, say "Marcus" → welcome-back (your smoke)
 - [x] **Memory scoped to `user_id`** — no first-name collision across devices
-- [ ] **Optional upgrade:** Vertex AI Memory Bank + Agent Engine (see Phase 4 optional block in `TRACK2-PLAN.md`)
+- [ ] **Optional upgrade:** Vertex AI Memory Bank + Agent Engine
+
+Seed helper: `python3 infra/scripts/seed_demo_memory.py <user_id>`
 
 ---
 
 ## Phase 6 — Agent Optimizer (GEPA)
 
-- [x] **Harness fixed** — `52f8652`+ (timeout, thinking_budget 0, null-score patch, session-level scoring)
-- [x] **Full run** — ~13 min, validation 1.0, seed retained (`best_idx=0`); see journal
-- [ ] **Optional re-run** after Phase 5 root prompt stabilizes (may still keep seed)
-- [ ] **Merge prompt only if** GEPA beats seed on post-split `make eval-failures` — do not merge blindly (prior merge would revert sub-agent prompts)
-- [ ] **Vertex ADC** if you want `safety_v1` during optimize (API key alone → NOT_EVALUATED)
-
-Details: [`evals/OPTIMIZE.md`](../services/buddy-live-adk/evals/OPTIMIZE.md), [`TRACK2-PHASE-JOURNAL.md`](TRACK2-PHASE-JOURNAL.md#phase-6--gepa-harness-fix--full-run).
+- [x] **Harness fixed** — timeout, null-score patch, session-level scoring
+- [x] **Full run** — validation 1.0, seed retained; see journal
+- [ ] **Optional re-run** after human smoke (likely keeps seed)
+- [x] **Do not merge** optimizer output blindly — reverts sub-agent prompts
+- [ ] **Optional:** Vertex ADC for `safety_v1` in local evals
 
 ---
 
 ## Phase 5 — Multi-agent
 
-- [x] **`vision_coach`** — `peek_camera`, `peek_warmup` (`dc1df1d`)
-- [x] **`drill_coach`** — scored rep, analysis wait, scorecard, recap (`68c7c11`)
-- [x] **`iq_coach`** — pre-existing
-- [x] **Eval baselines** — pre/post snapshots in journal + `evals/baselines/`
-- [ ] **Skipped (by design):** memory sub-agent (mid-opening transfer awkward)
-- [ ] **Deferred:** thin orchestrator-only root, Workflow graph — see [`ARCHITECTURE.md`](ARCHITECTURE.md)
+- [x] **`vision_coach`**, **`drill_coach`**, **`iq_coach`**, eval baselines
+- [x] **Skipped (by design):** memory sub-agent
+- [x] **Deferred:** thin orchestrator, Workflow graph
 
 ---
 
-## Hackathon / demo narrative (when ready)
+## Hackathon / demo narrative (after human smoke passes)
 
-- [ ] **Before:** `make eval-failures` on framing + analysis-timeout cases; screenshot low scores
-- [ ] **Toolkit:** Cloud Trace stall example + eval output
-- [ ] **After:** improved prompt (from Phase 6 or manual) + re-run evals; returning-player demo on production
+- [x] **Before:** eval-failures baselines captured for framing + analysis-timeout
+- [ ] **Toolkit:** Cloud Trace screenshot + eval output table from journal
+- [ ] **After:** returning-player demo on production + optional GEPA narrative
+- [ ] **Assets:** demo video, 1-pager, architecture diagram
 
 ---
 
 ## Done (reference — no action)
 
-- Phase 1 harness, scenarios, environment simulation
-- Phase 2 telemetry code (`BUDDY_ENABLE_CLOUD_TRACE` wiring)
-- Phase 3 corpus + `lookup_drill_knowledge` + fallbacks
-- Phase 4 `remember_player_profile` / `load_player_memory` + eval mocks
-- Phase 5 core sub-agents (`vision_coach`, `drill_coach`, `iq_coach`) — `68c7c11`
-- Phase 6 harness + full GEPA run (seed kept) — `52f8652`
-- Eval baselines documented in [`TRACK2-PHASE-JOURNAL.md`](TRACK2-PHASE-JOURNAL.md)
-- Vercel `cn` import fix; `IqVisualCard` null guard
+- Phase 1–6 core harness and production wiring
+- Phase 5 sub-agents (`68c7c11`), memory user_id fix (`ff8083c`)
+- Cloud Trace + Vertex Search enabled on Cloud Run (2026-05-30)
+- Eval baselines in [`TRACK2-PHASE-JOURNAL.md`](TRACK2-PHASE-JOURNAL.md)
