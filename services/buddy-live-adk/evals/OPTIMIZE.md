@@ -79,6 +79,11 @@ Three compounding issues:
 Also: train cases need `BUDDY_EVAL_FAILURES=1` so framing/timeout injections
 actually fire — the wrapper sets this automatically.
 
+**Reflection null-score crash:** GEPA's trace capture calls
+`LocalEvalSampler._extract_eval_data`, which crashes on `score=None`
+(`TypeError` in ADK 2.0.0). `evals/adk_patches.py` patches this before
+optimize runs in-process via `run_optimize.py`.
+
 ## Smoke test before a full run
 
 ```bash
