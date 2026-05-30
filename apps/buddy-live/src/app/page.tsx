@@ -1,13 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Award, ChevronRight, Flame, Target } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { LandingSessionPreview } from "@/components/landing/LandingSessionPreview";
-
-const BEATS = [
-  { icon: Flame, label: "Warm up" },
-  { icon: Target, label: "Shoot" },
-  { icon: Award, label: "Full scorecard" },
-] as const;
 
 export default function Home() {
   return (
@@ -31,7 +25,7 @@ export default function Home() {
         </h1>
 
         <p className="mx-auto mt-4 max-w-2xl text-balance text-lg font-normal leading-[1.47] tracking-[-0.01em] text-zinc-400 sm:mt-5 sm:text-xl lg:max-w-3xl">
-          Talk to Coach Buddy. Get a full shot scorecard — or train your hockey IQ
+          Talk to Coach Buddy. Get a full shot scorecard, or train your hockey IQ
           with real game scenarios.
         </p>
 
@@ -51,22 +45,10 @@ export default function Home() {
             />
           </Link>
           <p className="mt-3 text-pretty text-sm leading-relaxed text-zinc-500">
-            Camera and mic on. Bring a stick and space to shoot — or start with Hockey
+            Camera and mic on. Bring a stick and space to shoot, or start with Hockey
             IQ if you&apos;re off the ice.
           </p>
         </div>
-
-        <ul className="mt-8 flex flex-wrap items-center justify-center gap-x-5 gap-y-3 sm:mt-10 sm:gap-x-8">
-          {BEATS.map(({ icon: Icon, label }) => (
-            <li
-              key={label}
-              className="inline-flex items-center gap-2 text-sm text-zinc-500"
-            >
-              <Icon size={15} strokeWidth={1.75} className="text-zinc-600" />
-              <span>{label}</span>
-            </li>
-          ))}
-        </ul>
       </div>
     </main>
   );

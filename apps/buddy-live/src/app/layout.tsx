@@ -18,11 +18,11 @@ export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: "Buddy Live · Hockey coaching at home",
   description:
-    "Practice your shot with Coach Buddy. Warm up, shoot, and see your score — right from your webcam.",
+    "Practice your shot with Coach Buddy. Warm up, shoot, and see your scorecard right from your webcam.",
   openGraph: {
     title: "Buddy Live · Hockey coaching at home",
     description:
-      "Practice your shot with Coach Buddy. Warm up, shoot, and see your score — right from your webcam.",
+      "Practice your shot with Coach Buddy. Warm up, shoot, and see your scorecard right from your webcam.",
     url: siteUrl,
     siteName: "Buddy Live",
     locale: "en_US",
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Buddy Live · Hockey coaching at home",
     description:
-      "Practice your shot with Coach Buddy. Warm up, shoot, and see your score — right from your webcam.",
+      "Practice your shot with Coach Buddy. Warm up, shoot, and see your scorecard right from your webcam.",
   },
 };
 

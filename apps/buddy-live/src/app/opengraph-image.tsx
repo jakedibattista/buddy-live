@@ -2,7 +2,7 @@ import { ImageResponse } from "next/og";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-export const alt = "Buddy Live — practice your shot with Coach Buddy";
+export const alt = "Buddy Live: practice your shot with Coach Buddy";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -61,7 +61,7 @@ export default async function OpenGraphImage() {
             lineHeight: 1.4,
           }}
         >
-          Practice your shot with Coach Buddy — or train your hockey IQ.
+          Practice your shot with Coach Buddy, or train your hockey IQ.
         </div>
       </div>
     ),
