@@ -132,19 +132,16 @@ callback (last drill, rep count, weakest metric).
 | Mechanism | What it does |
 | --- | --- |
 | **Firebase Anonymous Auth** | On `/coach`, the app signs you in anonymously. That `uid` is stored on the session as `user_id` and is **stable on the same browser** as long as you do not clear site data. |
-| **New browser / cleared storage** | You get a **new** anonymous `uid`, but memory still works if you say the **same name** you used before. |
-| **What memory actually keys on** | **`player_name` only** (normalized), not `user_id`. Lookup scans recent `session_summaries` and matches the name you just spoke. |
+| **New browser / cleared storage** | New anonymous `uid` → treated as a **new player**, even if they say a name used before on another device. |
+| **What memory keys on** | **Firebase `user_id` (this browser) + spoken first name.** Two kids named "Alex" on different devices never share welcome-back text. |
 
-So there is **no login/password** today. Continuity is: “you told me you’re Marcus
-last time” + a summary doc for Marcus — not “this laptop remembered you.”
+So there is **no login/password**. Continuity is: **this browser** remembered
+you, and you say a consistent name.
 
 **Implications**
 
-- Two different kids named “Alex” could share the same welcome-back line
-  (collision by first name).
-- A returning player must say a name **consistent** with the saved summary.
-- `user_id` is stored on summaries for future use but is **not** used in the
-  lookup query yet; tying memory to anonymous `uid` would be a small follow-up.
+- Clearing site data resets memory (new anonymous user).
+- Demo seed must include **your** `user_id` from `live_sessions`, not name alone.
 
 Demo seed for Marcus: see Phase 4 in [`TRACK2-PLAN.md`](TRACK2-PLAN.md).
 

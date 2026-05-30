@@ -33,8 +33,8 @@ phase lands.
 
 ## Phase 2 — Cloud Trace (production demo)
 
-- [ ] **One-time GCP:** grant `roles/cloudtrace.agent` to `buddy-live-adk@puck-buddy.iam.gserviceaccount.com`
-- [ ] **Cloud Run env:** `BUDDY_ENABLE_CLOUD_TRACE=1` on `buddy-live-adk` (after deploy)
+- [x] **One-time GCP:** grant `roles/cloudtrace.agent` to `buddy-live-adk@puck-buddy.iam.gserviceaccount.com`
+- [x] **Cloud Run env:** `BUDDY_ENABLE_CLOUD_TRACE=1` on `buddy-live-adk` (rev `00051-9gr`, 2026-05-30)
 - [ ] **Verify:** live session on Vercel → Trace Explorer → `buddy_live.turn` spans
 
 ---
@@ -49,10 +49,9 @@ phase lands.
 
 ## Phase 4 — Returning-player memory
 
-- [ ] **Demo seed:** add a `session_summaries` doc for “Marcus” in Firebase console (JSON in [`TRACK2-PLAN.md`](TRACK2-PLAN.md#demo-seed-a-returning-player))
-- [ ] **Verify on Vercel:** new session, say name Marcus → welcome-back line
-- [ ] **Understand limit:** memory keys on **first name only**, not device; new browser works if they say the same name ([layman doc](TRACK2-LAYMAN.md#phase-4--welcome-back-memory))
-- [ ] **Optional improvement:** filter `load_player_memory` by `user_id` (anonymous Firebase `uid`) to avoid two “Alex” kids colliding
+- [ ] **Demo seed:** add a `session_summaries` doc with **your** Firebase `user_id` (JSON in [`TRACK2-PLAN.md`](TRACK2-PLAN.md#demo-seed-a-returning-player))
+- [ ] **Verify on Vercel:** same browser, say seeded name → welcome-back line
+- [x] **Memory scoped to `user_id`** — no first-name collision across devices
 - [ ] **Optional upgrade:** Vertex AI Memory Bank + Agent Engine (see Phase 4 optional block in `TRACK2-PLAN.md`)
 
 ---

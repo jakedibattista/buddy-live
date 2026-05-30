@@ -172,9 +172,23 @@ Post–`68c7c11`: Vercel READY; Cloud Run deploy ~3m18s success.
 
 ---
 
+## Phase 4 fix — memory scoped to `user_id` (2026-05-30)
+
+**Problem:** `load_player_memory` matched first name only — two kids named Alex
+could get each other's welcome-back line.
+
+**Fix:** Lookup requires Firebase anonymous `user_id` (from `live_sessions`) and
+spoken name. `ensure_session` hydrates ADK state from Firestore. No valid
+`user_id` → `has_prior_session: false`.
+
+**Tests:** collision regression test added; 45/45 pass.
+
+---
+
 ## What's next
 
-- [ ] Ops: `BUDDY_ENABLE_CLOUD_TRACE=1`, Vertex Search data store, Marcus demo seed
+- [ ] Ops: Vertex Search data store, Marcus demo seed (with your `user_id`)
+- [x] **Cloud Trace** — `BUDDY_ENABLE_CLOUD_TRACE=1` on Cloud Run rev `00051-9gr`; IAM `roles/cloudtrace.agent` on runtime SA
 - [ ] Hackathon: demo video, 1-pager, architecture diagram refresh
 - [ ] Optional: GEPA re-run on post-split root prompt (expect seed may still win)
 - [ ] Optional: Vertex ADC for `safety_v1` in evals

@@ -37,6 +37,7 @@ from google.adk.sessions import BaseSessionService, InMemorySessionService
 from google.genai import types as genai_types
 
 from app.callbacks import phase_guard
+from app.firestore_client import session_ref
 from app.prompts import (
     COACH_SETH_LIVE_PROMPT,
     DRILL_COACH_PROMPT,
@@ -200,9 +201,13 @@ async def ensure_session(session_id: str, user_id: str = "player") -> str:
     """Get-or-create an ADK session and return its id.
 
     Seeds session state with `session_id` so tools can address the matching
-    Firestore live_sessions document. The drill choice is no longer seeded
-    here -- Coach Buddy asks the player at the top of the conversation and
-    relies on ADK session memory to carry the answer through the session.
+    Firestore live_sessions document. When the Firestore doc exists, copies its
+    Firebase ``user_id`` into ADK state so ``load_player_memory`` can scope
+    lookups to this browser's anonymous auth (avoids first-name collisions).
+
+    The drill choice is no longer seeded here -- Coach Buddy asks the player
+    at the top of the conversation and relies on ADK session memory to carry
+    the answer through the session.
     """
     svc = get_session_service()
     try:
@@ -212,14 +217,34 @@ async def ensure_session(session_id: str, user_id: str = "player") -> str:
     except Exception:
         session = None
 
+    firebase_user_id: str | None = None
+    ref = session_ref(session_id)
+    if ref is not None:
+        try:
+            snap = ref.get()
+            if snap.exists:
+                raw = (snap.to_dict() or {}).get("user_id")
+                if raw and str(raw).strip().lower() not in {"", "anonymous"}:
+                    firebase_user_id = str(raw).strip()
+        except Exception:
+            _logger.exception("ensure_session firestore user_id read failed")
+
+    initial_state: dict[str, str] = {"session_id": session_id}
+    if firebase_user_id:
+        initial_state["user_id"] = firebase_user_id
+
     if session is None:
         session = await svc.create_session(
             app_name=APP_NAME,
             user_id=user_id,
             session_id=session_id,
-            state={
-                "session_id": session_id,
-                "user_id": user_id,
-            },
+            state=initial_state,
         )
+    elif firebase_user_id and (session.state or {}).get("user_id") != firebase_user_id:
+        # ADK has no update_session; merge into existing state dict in-place.
+        if session.state is None:
+            session.state = {}
+        session.state["session_id"] = session_id
+        session.state["user_id"] = firebase_user_id
+
     return session.id

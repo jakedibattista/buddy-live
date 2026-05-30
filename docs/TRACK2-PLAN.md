@@ -440,12 +440,16 @@ transcripts.
 ### Demo: seed a returning player
 
 After any real session where the player said their name, a summary row exists.
-For a scripted demo, write one doc in Firebase console → `session_summaries`:
+For a scripted demo, write one doc in Firebase console → `session_summaries`.
+**Required:** set `user_id` to the Firebase anonymous uid from your browser's
+`live_sessions/{sessionId}` doc (same device you will demo on). Name alone is
+not enough — memory is scoped per browser.
 
 ```json
 {
   "session_id": "demo-prior-marcus",
   "created_at": "2026-05-27T18:00:00Z",
+  "user_id": "<paste uid from live_sessions.user_id>",
   "player_name": "Marcus",
   "player_name_normalized": "marcus",
   "drill": "wristshot",
@@ -454,8 +458,8 @@ For a scripted demo, write one doc in Firebase console → `session_summaries`:
 }
 ```
 
-Next live session: Marcus says his name → coach calls `load_player_memory`
-→ "Welcome back, Marcus — last time wristshot, work on weight transfer."
+Next live session **on that same browser**: Marcus says his name → coach calls
+`load_player_memory` → welcome-back with last drill and focus area.
 
 ### Optional: Vertex AI Memory Bank
 

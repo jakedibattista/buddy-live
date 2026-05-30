@@ -27,6 +27,39 @@ def _normalize_name(name: str) -> str:
     return (name or "").strip().lower()
 
 
+_PLACEHOLDER_USER_IDS = frozenset({"", "player", "anonymous"})
+
+
+def _is_valid_user_id(user_id: str | None) -> bool:
+    """True when ``user_id`` is a real Firebase anonymous uid (not a placeholder)."""
+    uid = (user_id or "").strip()
+    return bool(uid) and uid.lower() not in _PLACEHOLDER_USER_IDS
+
+
+def _resolve_user_id(state: dict[str, Any]) -> str | None:
+    """Firebase ``user_id`` for this session — Firestore doc is source of truth."""
+    session_id = state.get("session_id") or state.get("sessionId")
+    if session_id:
+        ref = session_ref(str(session_id))
+        if ref is not None:
+            try:
+                snap = ref.get()
+                if snap.exists:
+                    doc_uid = (snap.to_dict() or {}).get("user_id")
+                    if _is_valid_user_id(str(doc_uid) if doc_uid else None):
+                        return str(doc_uid).strip()
+            except Exception:
+                _logger.exception(
+                    "load_player_memory firestore user_id read failed session=%s",
+                    session_id,
+                )
+
+    state_uid = state.get("user_id")
+    if _is_valid_user_id(str(state_uid) if state_uid else None):
+        return str(state_uid).strip()
+    return None
+
+
 def remember_player_profile(
     player_name: str,
     age: int,
@@ -84,11 +117,13 @@ def load_player_memory(
 ) -> dict[str, Any]:
     """Load the player's most recent prior session summary for a returning-player greeting.
 
-    Queries ``session_summaries`` for rows matching this player's name (case-
-    insensitive), excluding the current session. Use in the opening after you
-    learn their name — if ``has_prior_session`` is true, greet them warmly and
-    reference ``weakest_metric`` / ``drill`` / ``rep_count`` in one short sentence
-    before continuing the normal flow.
+    Queries ``session_summaries`` for rows matching this player's **Firebase
+    ``user_id``** (same browser / anonymous auth) and spoken name, excluding the
+    current session. Two different kids named "Alex" on different devices never
+    collide. Use in the opening after you learn their name — if
+    ``has_prior_session`` is true, greet them warmly and reference
+    ``weakest_metric`` / ``drill`` / ``rep_count`` in one short sentence before
+    continuing the normal flow.
 
     Args:
         player_name: First name to look up (same spelling the player just gave).
@@ -117,6 +152,16 @@ def load_player_memory(
     state = tool_context.state or {}
     current_session_id = state.get("session_id") or state.get("sessionId")
     normalized = _normalize_name(name)
+    current_user_id = _resolve_user_id(state)
+
+    if not _is_valid_user_id(current_user_id):
+        return {
+            "available": True,
+            "has_prior_session": False,
+            "player_name": name,
+            "sessions_found": 0,
+            "reason": "no stable user_id for this session",
+        }
 
     try:
         # Scan recent summaries and sort in-process (avoids composite indexes).
@@ -142,6 +187,9 @@ def load_player_memory(
         doc = snap.to_dict() or {}
         doc_name = _normalize_name(str(doc.get("player_name") or ""))
         if doc_name != normalized:
+            continue
+        prior_uid = str(doc.get("user_id") or "").strip()
+        if prior_uid != current_user_id:
             continue
         matches.append({"id": snap.id, **doc})
 
