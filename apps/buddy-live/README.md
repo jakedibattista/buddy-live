@@ -8,7 +8,7 @@ See the [root README](../../README.md) for setup, architecture, and deploy. Verc
 
 | Path | Purpose |
 |---|---|
-| `/` | Landing — Coach Puck hero, session preview, **Start practice** CTA |
+| `/` | Landing — Coach Puck hero, **dual-path preview** (scorecard + Hockey IQ), **Start practice** CTA |
 | `/coach` | Live session (camera, voice, transcript, reps) |
 
 ## Components (`src/components/`)
@@ -52,7 +52,15 @@ Grouped by feature area:
 
 | Component | Role |
 |---|---|
-| `LandingSessionPreview` | Static coach-session mock on the landing page (REC timer, puck, score bars) |
+| `LandingSessionPreview` | Static mocks on `/`: scored-rep **RepScorecard**-style panel + **IqVisualCard**-style breakaway drill |
+
+## Design system
+
+Shared landing + coach styling lives in `src/app/globals.css`:
+
+- **Brand:** `--brand-blue` (`#0066cc`), `--brand-blue-hover` (`#0071e3`)
+- **Layouts:** `.landing-page`, `.coach-shell` (vignette background)
+- **Surfaces:** `.panel-surface`, `.btn-primary`, `.text-brand`, `.badge-brand`
 
 Hidden agent-side messages (camera re-check, voice-reconnect, warm-up timer done) live in `src/lib/hiddenAgentMessages.ts` and are filtered out of the visible transcript.
 
