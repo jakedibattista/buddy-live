@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -12,10 +12,32 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteUrl = "https://buddy-live-indol.vercel.app";
+
 export const metadata: Metadata = {
-  title: "Buddy Live · AI hockey coach",
+  metadataBase: new URL(siteUrl),
+  title: "Buddy Live · Hockey coaching at home",
   description:
-    "A real-time AI hockey coach. Talk to it, it watches your reps via webcam, and gives feedback in real time.",
+    "Practice your shot with Coach Buddy. Warm up, shoot, and see your score — right from your webcam.",
+  openGraph: {
+    title: "Buddy Live · Hockey coaching at home",
+    description:
+      "Practice your shot with Coach Buddy. Warm up, shoot, and see your score — right from your webcam.",
+    url: siteUrl,
+    siteName: "Buddy Live",
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Buddy Live · Hockey coaching at home",
+    description:
+      "Practice your shot with Coach Buddy. Warm up, shoot, and see your score — right from your webcam.",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#000000",
 };
 
 export default function RootLayout({

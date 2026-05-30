@@ -8,7 +8,7 @@ See the [root README](../../README.md) for setup, architecture, and deploy. Verc
 
 | Path | Purpose |
 |---|---|
-| `/` | Landing — single **Talk to Coach Buddy** CTA |
+| `/` | Landing — Coach Puck hero, session preview, **Start practice** CTA |
 | `/coach` | Live session (camera, voice, transcript, reps) |
 
 ## Key components (`src/components/`)
@@ -20,6 +20,7 @@ See the [root README](../../README.md) for setup, architecture, and deploy. Verc
 | `TranscriptPanel` | User/coach bubbles, system pills, activity row |
 | `CoachActivityIndicator` | Speaking / listening / thinking |
 | `CoachPuckAvatar` | Talking puck mascot — baked-face PNG crossfade (neutral ↔ speak), volume-synced |
+| `LandingSessionPreview` | Static coach-session mock on the landing page (REC timer, puck, score bars) |
 | `CoachAudioMuteButton` | Mute coach output volume |
 | `CameraView` | Webcam preview |
 | `CountdownOverlay` | Shared **m:ss** countdown UI (amber warm-up + red REC variants; pulses urgent ≤5s) |
