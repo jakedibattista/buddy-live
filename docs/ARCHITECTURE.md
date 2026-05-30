@@ -187,9 +187,22 @@ See [FIRESTORE_RULES.md](./FIRESTORE_RULES.md) for safe rules deployment into th
 
 We're on `google-adk==2.0.0` and already use:
 
-- **Sub-agents** — `buddy_live_coach` (root) + `iq_coach` (sub-agent) via the
-  `sub_agents=[...]` pattern in [`services/buddy-live-adk/app/agent.py`](../services/buddy-live-adk/app/agent.py).
-  Root transfers via `transfer_to_agent("iq_coach")` when the player picks IQ mode.
+- **Sub-agents** — `buddy_live_coach` (root) delegates to three specialists via
+  ADK 2.0 `sub_agents=[...]` in
+  [`services/buddy-live-adk/app/agent.py`](../services/buddy-live-adk/app/agent.py):
+
+  | Agent | Tools / role |
+  | --- | --- |
+  | `vision_coach` | `peek_camera`, `peek_warmup` — framing and warm-up vision |
+  | `drill_coach` | Rep capture, `analyze_rep`, scorecard, recap, drill knowledge |
+  | `iq_coach` | Hockey IQ visuals and answer marking |
+
+  Root keeps opening → warm-up → setup and memory tools (`start_warmup_timer`,
+  `set_focus_drill`, `remember_player_profile`, `load_player_memory`). Transfers
+  use `transfer_to_agent("…")` when phase or player need dictates (e.g. no space
+  → `iq_coach`; after setup → `drill_coach`).
+
+  Phase-by-phase notes: [`TRACK2-PHASE-JOURNAL.md`](./TRACK2-PHASE-JOURNAL.md).
 - **`before_tool_callback`** — `phase_guard` in
   [`services/buddy-live-adk/app/callbacks.py`](../services/buddy-live-adk/app/callbacks.py)
   structurally blocks `start_rep_capture` without framing and

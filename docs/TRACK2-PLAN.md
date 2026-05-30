@@ -20,7 +20,7 @@ observability, evaluation, optimizer.
 | Requirement | Status | Evidence |
 | --- | --- | --- |
 | **Intelligence:** Gemini API | Pass | `gemini-flash-latest` via `google-genai` |
-| **Orchestration:** ADK (or supported OSS framework) | Pass | `google-adk==2.0.0`, root `buddy_live_coach` + `iq_coach` sub-agent |
+| **Orchestration:** ADK (or supported OSS framework) | Pass | `google-adk==2.0.0`, root `buddy_live_coach` + `vision_coach`, `drill_coach`, `iq_coach` sub-agents |
 | **Infrastructure:** Cloud Run or GKE | Pass | `infra/cloudbuild.yaml`, deployed to `puck-buddy` project |
 
 ---
@@ -31,7 +31,7 @@ observability, evaluation, optimizer.
 
 | Originally-flagged gap | Status today |
 | --- | --- |
-| "Single agent only" | **Closed (basic)** — root agent + `iq_coach` sub-agent via ADK 2.0 `sub_agents=[]`, agent transfer for Hockey IQ mode |
+| "Single agent only" | **Closed** — root + `vision_coach`, `drill_coach`, `iq_coach` via ADK 2.0 `sub_agents=[]` and `transfer_to_agent` |
 | "No ADK callbacks" | **Closed** — `phase_guard` BeforeToolCallback on both agents (Firestore-backed phase gates) |
 | New tool `mark_iq_answer` | Added |
 
@@ -57,7 +57,7 @@ observability, evaluation, optimizer.
 | 2 | **OpenTelemetry tracing → Cloud Trace** | 1 day | **High** — needed for the "show your reasoning" demo | **Done** |
 | 3 | **Vertex AI Search grounding for drill knowledge** | 2 days | **High** — explicit ask in resource guide | **Done** |
 | 4 | **Persistent sessions + Memory Bank** | 0.5 day | Medium — production-readiness signal | **Done** |
-| 5 | **Multi-agent decomposition (vision / drill / IQ / memory)** | 2 days | Medium — judges reward orchestration | Pending |
+| 5 | **Multi-agent decomposition (vision / drill / IQ / memory)** | 2 days | Medium — judges reward orchestration | **Done (core)** — `vision_coach` + `drill_coach` + `iq_coach`; memory agent skipped |
 | 6 | **Agent Optimizer loop** | 1 day | Medium — closes the optimization story; depends on Phase 1 | **Done** |
 
 ---
@@ -505,19 +505,20 @@ then `make eval` / `make eval-failures` for before/after scores.
 
 ---
 
-## Phase 5 — follow-up (not in this PR)
+## Phase 5 — Multi-agent decomposition (shipped 2026-05-30)
 
-### Phase 5 — Multi-agent decomposition
+**Journal (scores, learnings, baselines):**
+[`TRACK2-PHASE-JOURNAL.md`](TRACK2-PHASE-JOURNAL.md#phase-5--multi-agent-decomposition).
 
-Today: root coach + IQ sub-agent. Proposed expansion:
+Today:
 
-| Agent | Responsibility |
-| --- | --- |
-| Coach Orchestrator | Phase flow, voice personality |
-| Vision Agent | `peek_camera`, `peek_warmup` |
-| Drill Agent | `start_rep_capture`, `stop_rep_capture`, `analyze_rep`, `get_rep_result` |
-| Hockey IQ Agent | existing `iq_coach` |
-| Memory Agent | Cross-session history, returning-player nudges |
+| Agent | Responsibility | Status |
+| --- | --- | --- |
+| `buddy_live_coach` (root) | Opening, warm-up, setup, memory tools | Shipped — 4 tools |
+| `vision_coach` | `peek_camera`, `peek_warmup` | Shipped (`dc1df1d`) |
+| `drill_coach` | Rep capture, analysis wait, scorecard, recap, drill knowledge | Shipped (`68c7c11`) |
+| `iq_coach` | Hockey IQ scenarios | Pre-existing |
+| Memory Agent | Cross-session history on root tools | **Skipped** — awkward mid-opening transfer |
 
 ### Phase 6 — Agent Optimizer
 

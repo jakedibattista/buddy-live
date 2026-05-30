@@ -5,6 +5,9 @@ honest limits. Technical detail lives in [`TRACK2-PLAN.md`](TRACK2-PLAN.md).
 
 **Checklist of follow-ups (do later):** [`TRACK2-TODOS.md`](TRACK2-TODOS.md).
 
+**Living phase journal** (what we shipped, measured, and learned as we go):
+[`TRACK2-PHASE-JOURNAL.md`](TRACK2-PHASE-JOURNAL.md).
+
 ---
 
 ## One-line summary
@@ -15,8 +18,8 @@ honest limits. Technical detail lives in [`TRACK2-PLAN.md`](TRACK2-PLAN.md).
 | **2** | See every step of a live turn in Cloud Trace. |
 | **3** | Look up real drill/metric docs instead of hard-coded lists and prompt memory. |
 | **4** | Greet returning kids with a nod to last session. |
-| **6** | Automatically improve the prompt using those same fake-player tests. |
-| **5** *(next)* | Split one big coach into several specialists that hand off to each other. |
+| **6** | Automatically improve the prompt using those same fake-player tests (harness fixed; seed kept on first full run). |
+| **5** | Split one big coach into specialists (`vision_coach`, `drill_coach`, `iq_coach`) that hand off to each other. |
 
 ---
 
@@ -153,9 +156,23 @@ Harness: `make optimize` (GEPA). Uses Phase 1 evals; optimize config uses
 `hallucinations_v1` only because `safety_v1` can return null on edge cases and
 crash the sampler. See [`evals/OPTIMIZE.md`](../services/buddy-live-adk/evals/OPTIMIZE.md).
 
+**2026-05-30:** Full run completes in ~13 min after hang fixes. Validation
+score 1.0 but **seed prompt was best** — we did not merge optimizer output
+(would undo sub-agent prompt splits). Details in
+[`TRACK2-PHASE-JOURNAL.md`](TRACK2-PHASE-JOURNAL.md).
+
 ---
 
-## Phase 5 — Not started
+## Phase 5 — Multi-agent (core shipped)
 
-Split responsibilities across orchestrator, vision, drill, IQ, and memory agents.
-See [`TRACK2-PLAN.md`](TRACK2-PLAN.md#phase-5--follow-up-not-in-this-pr).
+The coach is now a **team of specialists** instead of one giant prompt:
+
+| Agent | Job |
+| --- | --- |
+| Root coach | Greeting, warm-up, setup, remember/load player |
+| Vision coach | Camera framing + warm-up peek when needed |
+| Drill coach | Scored rep, analysis wait, scorecard, recap |
+| IQ coach | Hockey IQ when there's no space to shoot |
+
+We skipped a separate memory agent (remember/load stay on root — transferring
+mid-opening felt awkward). Eval scores before/after are in the phase journal.

@@ -5,6 +5,10 @@ use unless noted. Plain-language context:
 [`TRACK2-LAYMAN.md`](TRACK2-LAYMAN.md). Technical plan:
 [`TRACK2-PLAN.md`](TRACK2-PLAN.md).
 
+**Phase-by-phase learnings and eval baselines:**
+[`TRACK2-PHASE-JOURNAL.md`](TRACK2-PHASE-JOURNAL.md) — update this as each
+phase lands.
+
 ---
 
 ## Docs (quick)
@@ -55,17 +59,24 @@ use unless noted. Plain-language context:
 
 ## Phase 6 — Agent Optimizer (GEPA)
 
-- [ ] **Harness on `main`:** commit `5e91cb6`+ (PYTHONPATH, `google-adk[eval]`, optimize uses `hallucinations_v1` only)
-- [ ] **Run:** `make install-dev` then `make optimize` (~10–15 min, uses `.env` `GOOGLE_API_KEY`)
-- [ ] **If it fails:** check log for null `safety_v1` — optimize config should omit safety; full `make eval` still runs both criteria
-- [ ] **On success:** copy best prompt from CLI / `evals/optimize_runs/` → merge into `app/prompts.py` (`COACH_SETH_LIVE_PROMPT`) per [`evals/OPTIMIZE.md`](../services/buddy-live-adk/evals/OPTIMIZE.md)
-- [ ] **After merge:** `make eval` + `make eval-failures` — capture before/after scores for hackathon narrative
+- [x] **Harness fixed** — `52f8652`+ (timeout, thinking_budget 0, null-score patch, session-level scoring)
+- [x] **Full run** — ~13 min, validation 1.0, seed retained (`best_idx=0`); see journal
+- [ ] **Optional re-run** after Phase 5 root prompt stabilizes (may still keep seed)
+- [ ] **Merge prompt only if** GEPA beats seed on post-split `make eval-failures` — do not merge blindly (prior merge would revert sub-agent prompts)
+- [ ] **Vertex ADC** if you want `safety_v1` during optimize (API key alone → NOT_EVALUATED)
+
+Details: [`evals/OPTIMIZE.md`](../services/buddy-live-adk/evals/OPTIMIZE.md), [`TRACK2-PHASE-JOURNAL.md`](TRACK2-PHASE-JOURNAL.md#phase-6--gepa-harness-fix--full-run).
 
 ---
 
-## Phase 5 — Multi-agent (not started)
+## Phase 5 — Multi-agent
 
-- [ ] Implement orchestrator + specialist agents (vision / drill / IQ / memory) per [`TRACK2-PLAN.md`](TRACK2-PLAN.md#phase-5--multi-agent-decomposition)
+- [x] **`vision_coach`** — `peek_camera`, `peek_warmup` (`dc1df1d`)
+- [x] **`drill_coach`** — scored rep, analysis wait, scorecard, recap (`68c7c11`)
+- [x] **`iq_coach`** — pre-existing
+- [x] **Eval baselines** — pre/post snapshots in journal + `evals/baselines/`
+- [ ] **Skipped (by design):** memory sub-agent (mid-opening transfer awkward)
+- [ ] **Deferred:** thin orchestrator-only root, Workflow graph — see [`ARCHITECTURE.md`](ARCHITECTURE.md)
 
 ---
 
@@ -83,6 +94,7 @@ use unless noted. Plain-language context:
 - Phase 2 telemetry code (`BUDDY_ENABLE_CLOUD_TRACE` wiring)
 - Phase 3 corpus + `lookup_drill_knowledge` + fallbacks
 - Phase 4 `remember_player_profile` / `load_player_memory` + eval mocks
-- Phase 6 harness (`make optimize`, configs, `OPTIMIZE.md`)
+- Phase 5 core sub-agents (`vision_coach`, `drill_coach`, `iq_coach`) — `68c7c11`
+- Phase 6 harness + full GEPA run (seed kept) — `52f8652`
+- Eval baselines documented in [`TRACK2-PHASE-JOURNAL.md`](TRACK2-PHASE-JOURNAL.md)
 - Vercel `cn` import fix; `IqVisualCard` null guard
-- Pushed: Phase 4+6 code (`fdf2c8b`), optimize harness fix (`5e91cb6`)
