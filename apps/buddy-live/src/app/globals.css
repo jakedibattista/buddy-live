@@ -1,8 +1,12 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0a0a0a;
+  --background: #000000;
   --foreground: #fafafa;
+  --brand-blue: #0066cc;
+  --brand-blue-hover: #0071e3;
+  --panel-border: rgba(255, 255, 255, 0.08);
+  --panel-bg: rgba(24, 24, 27, 0.4);
 }
 
 @theme inline {
@@ -113,6 +117,94 @@ body {
   100% {
     width: var(--bar-width);
   }
+}
+
+.landing-page,
+.coach-shell {
+  background: #000;
+}
+
+.landing-page::before,
+.coach-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      ellipse 70% 45% at 50% 8%,
+      rgba(0, 102, 204, 0.14) 0%,
+      transparent 62%
+    ),
+    radial-gradient(
+      ellipse 90% 35% at 50% 100%,
+      rgba(0, 48, 96, 0.22) 0%,
+      transparent 55%
+    );
+}
+
+.panel-surface {
+  border-radius: 1rem;
+  border: 1px solid var(--panel-border);
+  background: var(--panel-bg);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: var(--brand-blue);
+  color: #ffffff;
+  font-weight: 400;
+  transition:
+    background-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--brand-blue-hover);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.btn-primary:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.btn-glass {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+  transition: background-color 0.15s ease;
+}
+
+.btn-glass:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.text-brand {
+  color: var(--brand-blue-hover);
+}
+
+.badge-brand {
+  border: 1px solid rgba(0, 102, 204, 0.2);
+  background: rgba(0, 102, 204, 0.1);
+  color: var(--brand-blue-hover);
+}
+
+.pill-brand {
+  background: rgba(0, 102, 204, 0.15);
+  color: rgb(191, 219, 254);
 }
 
 .landing-page {

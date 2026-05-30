@@ -290,7 +290,7 @@ the demo run.
   tool via short additions to their `TOOLS YOU CAN CALL` sections. The
   rest of the prompt is unchanged so existing behaviour stays intact.
 - `services/buddy-live-adk/app/agent.py` + `evals/agent_module/agent.py`
-  — `lookup_drill_knowledge` registered on `buddy_live_coach` (11 tools)
+  — `lookup_drill_knowledge` on `drill_coach` / `iq_coach` (15 tools total across sub-agents)
   and `iq_coach` (3 tools); mirrored in the eval agent module.
 - `services/buddy-live-adk/evals/environment_simulation.py` — both
   `happy_path_config()` and `failure_config()` mock the new tool. The

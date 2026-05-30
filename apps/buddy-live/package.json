@@ -6,8 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
-    "gen-types": "make -C ../.. gen-types"
+    "lint": "eslint"
   },
   "dependencies": {
     "@elevenlabs/react": "^1.6.3",

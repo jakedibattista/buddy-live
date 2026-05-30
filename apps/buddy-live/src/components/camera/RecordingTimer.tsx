@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CountdownOverlay } from "@/components/CountdownOverlay";
+import { CountdownOverlay } from "@/components/camera/CountdownOverlay";
 import { MAX_REP_RECORDING_MS } from "@/lib/recording";
 
 interface RecordingTimerProps {

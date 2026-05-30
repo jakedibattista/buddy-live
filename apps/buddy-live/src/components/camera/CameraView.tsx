@@ -6,8 +6,6 @@ import { cn } from "@/lib/utils";
 interface CameraViewProps {
   stream: MediaStream | null;
   className?: string;
-  /** @deprecated RecordingTimer shows REC state on the overlay */
-  recording?: boolean;
 }
 
 export const CameraView = forwardRef<HTMLVideoElement, CameraViewProps>(

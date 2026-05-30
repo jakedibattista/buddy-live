@@ -2,7 +2,7 @@
 
 import { cn, formatScore, humanMetric } from "@/lib/utils";
 import type { RepDoc } from "@/lib/types";
-import { Target, Award, Sparkles, AlertCircle } from "lucide-react";
+import { Target, Award } from "lucide-react";
 
 interface Props {
   rep: RepDoc;

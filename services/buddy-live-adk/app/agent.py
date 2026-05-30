@@ -24,6 +24,9 @@ so they cannot, for example, call start_rep_capture before framing passes.
 Sessions are managed per ElevenLabs conversation via SessionService -- we
 map the `arbitrary_identifier` from the ElevenLabs Custom LLM extra body
 to an ADK session_id, so memory persists across turns.
+
+When adding or renaming tools/sub-agents here, keep evals/agent_module/agent.py
+in lockstep (see services/buddy-live-adk/evals/README.md).
 """
 from __future__ import annotations
 

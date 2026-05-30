@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect } from "react";
 import { useConversationControls } from "@elevenlabs/react";
-import { CountdownOverlay } from "@/components/CountdownOverlay";
+import { CountdownOverlay } from "@/components/camera/CountdownOverlay";
 import { useWarmupTimer } from "@/hooks/useWarmupTimer";
 import { buildWarmupTimerDoneMessage } from "@/lib/hiddenAgentMessages";
 import { systemTranscript } from "@/lib/transcript";

@@ -86,7 +86,7 @@ Extend drill-state UX so the player always knows whose turn it is:
 - **Recording:** emphasize `DrillChip` (pulse, “Perform your rep now”)
 - **Analyzing:** transcript system line + scorecard pulse (already partially there)
 
-Optional: voice quick-prompt chips (“I’m ready”, “Repeat that”, “Next drill”) — hints, not text input.
+Optional: voice quick-prompt chips (“I’m ready”, “Wrap up”, “Repeat that”) — hints, not text input.
 
 #### 5. Rep recording countdown + stop cue — **DECIDED**
 
@@ -254,7 +254,7 @@ If ElevenLabs exposes interrupt on WebRTC path: **Stop coach** (mid-speech) dist
 - [x] Long message splitting (`splitLongMessage` in `lib/transcript.ts`)
 - [x] ~~First-connect AI + camera disclosure~~ — skipped by decision
 - [x] `currentPhase` in sidebar
-- [x] Voice quick-prompt chips (`I'm ready`, `Wrap up`, `Repeat that`, `Next drill`)
+- [x] Voice quick-prompt chips (`I'm ready`, `Wrap up`, `Repeat that`)
 - [x] Coach output mute button (`CoachAudioMuteButton`)
 - [ ] Interrupt button — **deferred** (verify ElevenLabs WebRTC interrupt API)
 
@@ -280,7 +280,7 @@ Bottom-left of camera overlay (inside `ConversationProvider` so ElevenLabs hooks
 
 ### 3. Voice quick-prompt chips — **DECIDED: Include**
 
-Phase 3. Drill-focused hints: “I’m ready”, “Repeat that”, “Next drill”.
+Phase 3. Drill-focused hints: “I’m ready”, “Wrap up”, “Repeat that”.
 
 ### 4. Peek / setup framing — **DECIDED**
 
@@ -411,7 +411,7 @@ Rep scores, session metadata, clips, and analysis `results` remain in **Firestor
 - [Lovable — How to Build a Chatbot UI](https://lovable.dev/guides/how-to-build-a-chatbot-ui) — sequential disclosure, turn-taking, typing indicators, error recovery, avatar trust
 - [ElevenLabs React SDK](https://elevenlabs.io/docs/eleven-agents/libraries/react) — `isSpeaking`, `getOutputByteFrequencyData()`, hooks
 - [ElevenLabs client events](https://elevenlabs.io/docs/eleven-agents/customization/events/client-events) — WebRTC vs WebSocket audio event behavior
-- Prior handoff: `2026-05-24-handoff.md` (peek visibility, drill flow)
+- Prior handoff: [`handoffs/2026-05-24-handoff.md`](handoffs/2026-05-24-handoff.md) (peek visibility, drill flow)
 
 ---
 

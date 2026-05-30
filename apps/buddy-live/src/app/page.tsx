@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Award, ChevronRight, Flame, Target } from "lucide-react";
-import { LandingSessionPreview } from "@/components/LandingSessionPreview";
+import { LandingSessionPreview } from "@/components/landing/LandingSessionPreview";
 
 const BEATS = [
   { icon: Flame, label: "Warm up" },

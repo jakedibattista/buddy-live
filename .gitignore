@@ -27,8 +27,9 @@ service-account*.json
 .vscode/
 *.log
 
-# ADK optimizer artifacts
+# ADK optimizer + eval artifacts
 services/buddy-live-adk/evals/optimize_runs/
+services/buddy-live-adk/evals/**/.adk/
 
 # Vercel
 .vercel

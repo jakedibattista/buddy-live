@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { normalizeDrillId } from "@/lib/drills";
 import { adminConfigured, adminDb } from "@/lib/firebaseAdmin";
 import { repDocPath } from "@/lib/paths";
 
@@ -9,23 +10,6 @@ export const maxDuration = 30;
 interface AnalyzeBody {
   sessionId?: string;
   repId?: string;
-}
-
-// Canonical drill ids accepted by the modelforpuckbuddy /api/analyze-video
-// endpoint. The agent says "slapshot" in voice; we always map to
-// "slapshot_form" here.
-const DRILL_ID_MAP: Record<string, string> = {
-  wristshot: "wristshot",
-  wrist_shot: "wristshot",
-  slapshot: "slapshot_form",
-  slap: "slapshot_form",
-  slapshot_form: "slapshot_form",
-  backhand: "backhand",
-};
-
-function normalizeDrill(drillId: string): string {
-  const key = (drillId || "").toLowerCase().trim();
-  return DRILL_ID_MAP[key] ?? "wristshot";
 }
 
 /**
@@ -93,7 +77,7 @@ export async function POST(req: NextRequest) {
   if (bearer) headers.Authorization = `Bearer ${bearer}`;
   if (apiKey) headers["X-API-Key"] = apiKey;
 
-  const drillId = normalizeDrill(String(rep.drill_id ?? "wristshot"));
+  const drillId = normalizeDrillId(String(rep.drill_id ?? "wristshot"));
 
   let jobId: string | undefined;
   try {

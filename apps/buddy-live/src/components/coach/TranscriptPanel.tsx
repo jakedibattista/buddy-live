@@ -2,7 +2,7 @@
 
 import { ArrowDown } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { CoachActivityIndicator } from "@/components/CoachActivityIndicator";
+import { CoachActivityIndicator } from "@/components/coach/CoachActivityIndicator";
 import { formatTranscriptElapsed, formatTranscriptTime } from "@/lib/transcript";
 import { cn } from "@/lib/utils";
 import type { TranscriptEntry } from "@/lib/types";

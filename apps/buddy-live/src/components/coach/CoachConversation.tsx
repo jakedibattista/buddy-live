@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ConversationProvider, useConversation } from "@elevenlabs/react";
 import { Mic, MicOff, PhoneOff } from "lucide-react";
-import { CoachAudioMuteButton } from "@/components/CoachAudioMuteButton";
+import { CoachAudioMuteButton } from "@/components/coach/CoachAudioMuteButton";
 import { coachTranscriptEntries, systemTranscript, voiceTranscriptEntry } from "@/lib/transcript";
 import { cn } from "@/lib/utils";
 import {

@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  useConversationControls,
-  useConversationMode,
-  useConversationStatus,
-} from "@elevenlabs/react";
+import { useConversationControls, useConversationStatus } from "@elevenlabs/react";
 import { cn } from "@/lib/utils";
 
 interface Context {
@@ -40,11 +36,6 @@ const PROMPTS: Prompt[] = [
     label: "Repeat that",
     message: "Can you repeat that?",
     show: (ctx) => ctx.connected && !ctx.recording,
-  },
-  {
-    label: "Next drill",
-    message: "Let's move to the next drill.",
-    show: (ctx) => ctx.connected && ctx.repCount > 0 && !ctx.recording,
   },
 ];
 

@@ -30,10 +30,11 @@ def start_warmup_timer(
     """Show a countdown timer on the player's screen for one warm-up move.
 
     Call this when starting a timed warm-up (e.g. 30 seconds of high knees).
-    When the timer ends, the client nudges you to call peek_warmup(exercise).
+    When the timer ends, the client nudges you for verbal feedback — do not
+    call peek_warmup; ask how the move felt and explain the next one.
 
     Args:
-        exercise: Plain description for peek_warmup after the timer, e.g.
+        exercise: Plain description of the move just timed, e.g.
             "high knees marching in place with knees lifted".
         duration_seconds: Countdown length (10-60 seconds).
         label: Short on-screen label, e.g. "High knees" or "Arm circles".

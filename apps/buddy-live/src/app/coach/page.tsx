@@ -1,19 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CameraPeekNudge } from "@/components/CameraPeekNudge";
-import { CameraView } from "@/components/CameraView";
-import { CoachConversation, CoachVoiceShell } from "@/components/CoachConversation";
-import { CoachPuckAvatar } from "@/components/CoachPuckAvatar";
-import { FramingIndicator } from "@/components/FramingIndicator";
-import { IqVisualCard } from "@/components/IqVisualCard";
-import { MicVUMeter } from "@/components/MicVUMeter";
-import { NextTurnCue } from "@/components/NextTurnCue";
-import { RepScorecard } from "@/components/RepScorecard";
-import { RecordingTimer } from "@/components/RecordingTimer";
-import { WarmupTimerBridge } from "@/components/WarmupTimerBridge";
-import { TranscriptPanel } from "@/components/TranscriptPanel";
-import { VoiceQuickPrompts } from "@/components/VoiceQuickPrompts";
+import { CameraPeekNudge } from "@/components/camera/CameraPeekNudge";
+import { CameraView } from "@/components/camera/CameraView";
+import { FramingIndicator } from "@/components/camera/FramingIndicator";
+import { MicVUMeter } from "@/components/camera/MicVUMeter";
+import { RecordingTimer } from "@/components/camera/RecordingTimer";
+import { CoachConversation, CoachVoiceShell } from "@/components/coach/CoachConversation";
+import { CoachPuckAvatar } from "@/components/coach/CoachPuckAvatar";
+import { NextTurnCue } from "@/components/coach/NextTurnCue";
+import { RepScorecard } from "@/components/coach/RepScorecard";
+import { TranscriptPanel } from "@/components/coach/TranscriptPanel";
+import { VoiceQuickPrompts } from "@/components/coach/VoiceQuickPrompts";
+import { WarmupTimerBridge } from "@/components/coach/WarmupTimerBridge";
+import { IqVisualCard } from "@/components/iq/IqVisualCard";
 import { useLiveSession } from "@/hooks/useLiveSession";
 import { usePeekFrameUploader } from "@/hooks/usePeekFrameUploader";
 import { useRepCapture } from "@/hooks/useRepCapture";
@@ -180,34 +180,6 @@ export default function CoachPage() {
     cameraHint ??
     "Step back — Coach Buddy needs to see you from head to toes, facing the camera.";
 
-  const displayedDrillId = capture.activeDrillId ?? focusDrill;
-  const inDrillReadiness =
-    currentPhase === "drill_readiness" && setupFramingPassed && reps.length === 0;
-
-  const displayedHeadline = capture.recording
-    ? "Now capturing"
-    : inDrillReadiness
-      ? "Rep armed"
-      : currentPhase === "warmup"
-        ? "Warm-up"
-        : (currentPhase === "stance_check" || currentPhase === "drill_readiness" || currentPhase === "scored_reps") && focusDrill
-          ? `${focusDrill.charAt(0).toUpperCase() + focusDrill.slice(1)} practice`
-          : currentPhase === "recap" || currentPhase === "ended"
-            ? "Cooldown & review"
-            : currentPhase === "iq_practice"
-              ? "Hockey IQ"
-              : null;
-
-  const displayedHint = capture.activeDrillId
-    ? capture.hint
-    : focusDrill && setupFramingPassed && reps.length === 0
-      ? `Say ready to record your scored rep`
-      : focusDrill && setupFramingPassed && !capture.recording && reps.length > 0
-        ? `Hang tight — your scorecard is on the way`
-        : focusDrill
-          ? `Focus drill: ${focusDrill.charAt(0).toUpperCase() + focusDrill.slice(1)}.`
-          : null;
-
   const handleWarmupTimerActiveChange = useCallback((active: boolean, label: string | null) => {
     setWarmupTimerActive(active);
     setWarmupTimerLabel(label);
@@ -368,7 +340,6 @@ export default function CoachPage() {
                   <CameraView
                     ref={videoRef}
                     stream={stream}
-                    recording={capture.recording}
                     className={cn(
                       "transition-all duration-500 ease-in-out",
                       showReport

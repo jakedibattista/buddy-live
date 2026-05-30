@@ -1,7 +1,7 @@
 /**
  * Canonical drill id sent to the modelforpuckbuddy `/api/analyze-video`
  * endpoint. The voice agent talks in user-facing FocusDrill names (see below)
- * and the conversion happens once in `lib/drills.ts` (frontend) and
+ * User-facing focus names map via `lib/drills.ts` (frontend) and
  * `rep_capture._normalize_drill` (backend).
  */
 export type DrillId = "wristshot" | "slapshot_form" | "backhand";

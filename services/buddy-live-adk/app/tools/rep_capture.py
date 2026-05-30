@@ -104,7 +104,7 @@ def start_rep_capture(
     Args:
         drill_id: One of "wristshot", "slapshot", or "backhand". Anything else
             is treated as "wristshot" so analysis never fails on a typo.
-        hint: A short user-facing hint shown on the UI ("3 wristshots, go on your time").
+        hint: A short user-facing hint shown on the UI ("Shoot when you're ready").
 
     Returns:
         Dict with `rep_id` (use this with analyze_rep) and `status`.
