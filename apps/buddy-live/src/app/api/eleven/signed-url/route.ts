@@ -3,6 +3,48 @@ import { NextRequest, NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const RETRY_DELAYS_MS = [0, 600, 1500];
+
+async function fetchElevenJson(
+  url: string,
+  apiKey: string,
+): Promise<{ ok: true; data: Record<string, unknown> } | { ok: false; status: number; detail: string }> {
+  let lastStatus = 502;
+  let lastDetail = "ElevenLabs request failed";
+
+  for (let attempt = 0; attempt < RETRY_DELAYS_MS.length; attempt++) {
+    if (RETRY_DELAYS_MS[attempt] > 0) {
+      await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS_MS[attempt]));
+    }
+
+    const resp = await fetch(url, { headers: { "xi-api-key": apiKey } });
+    if (resp.ok) {
+      return { ok: true, data: (await resp.json()) as Record<string, unknown> };
+    }
+
+    lastStatus = resp.status;
+    const bodyText = await resp.text();
+    try {
+      const parsed = JSON.parse(bodyText) as { detail?: { message?: string } | string };
+      if (typeof parsed.detail === "string") {
+        lastDetail = parsed.detail;
+      } else if (parsed.detail && typeof parsed.detail === "object" && parsed.detail.message) {
+        lastDetail = parsed.detail.message;
+      } else {
+        lastDetail = bodyText.slice(0, 200) || lastDetail;
+      }
+    } catch {
+      lastDetail = bodyText.slice(0, 200) || lastDetail;
+    }
+
+    if (resp.status < 500) {
+      break;
+    }
+  }
+
+  return { ok: false, status: lastStatus, detail: lastDetail };
+}
+
 /**
  * Returns signed conversation credentials (WebRTC token + signed WebSocket URL)
  * for a private ElevenLabs agent. Public agents can connect with just the agent ID;
@@ -31,37 +73,50 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const signedUrlPromise = fetch(
+    const signedUrlResult = await fetchElevenJson(
       `https://api.elevenlabs.io/v1/convai/conversation/get-signed-url?agent_id=${encodeURIComponent(agentId)}`,
-      { headers: { "xi-api-key": apiKey } }
-    ).then((r) => (r.ok ? r.json() : null));
-
-    const tokenPromise = fetch(
+      apiKey,
+    );
+    const tokenResult = await fetchElevenJson(
       `https://api.elevenlabs.io/v1/convai/conversation/token?agent_id=${encodeURIComponent(agentId)}`,
-      { headers: { "xi-api-key": apiKey } }
-    ).then((r) => (r.ok ? r.json() : null));
-
-    const [signedUrlData, tokenData] = await Promise.all([signedUrlPromise, tokenPromise]);
+      apiKey,
+    );
 
     const result: { signedUrl?: string; conversationToken?: string } = {};
-    if (signedUrlData?.signed_url) {
-      result.signedUrl = signedUrlData.signed_url;
+    if (signedUrlResult.ok && typeof signedUrlResult.data.signed_url === "string") {
+      result.signedUrl = signedUrlResult.data.signed_url;
     }
-    if (tokenData?.token) {
-      result.conversationToken = tokenData.token;
+    if (tokenResult.ok && typeof tokenResult.data.token === "string") {
+      result.conversationToken = tokenResult.data.token;
     }
 
     if (!result.signedUrl && !result.conversationToken) {
+      const status =
+        tokenResult.ok === false && tokenResult.status >= 500
+          ? 503
+          : tokenResult.ok === false
+            ? tokenResult.status
+            : 502;
+      const detail =
+        tokenResult.ok === false
+          ? tokenResult.detail
+          : signedUrlResult.ok === false
+            ? signedUrlResult.detail
+            : "Failed to generate conversation credentials from ElevenLabs";
+
       return NextResponse.json(
-        { error: "Failed to generate conversation credentials from ElevenLabs" },
-        { status: 502 },
+        {
+          error: `ElevenLabs voice service unavailable (${status}). ${detail}`,
+          retryable: status >= 500,
+        },
+        { status },
       );
     }
 
     return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal server error" },
+      { error: error instanceof Error ? error.message : "Internal server error", retryable: true },
       { status: 500 },
     );
   }

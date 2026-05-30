@@ -29,6 +29,16 @@ const WRAP_UP_MESSAGE =
 const MAX_RECONNECT_ATTEMPTS = 5;
 const RECONNECT_DELAYS_MS = [1000, 2000, 3000, 5000, 8000];
 
+function formatVoiceConnectionError(raw: string): string {
+  if (/elevenlabs.*500|unexpected error occurred/i.test(raw)) {
+    return "Coach Buddy's voice service hit a brief outage on ElevenLabs — wait a moment, then tap Start practice or Retry connection.";
+  }
+  if (/failed to fetch conversation token/i.test(raw)) {
+    return "Couldn't get a voice session from ElevenLabs — wait a moment, then tap Start practice or Retry connection.";
+  }
+  return raw;
+}
+
 /** Wraps coach voice UI + mascot so both share one ElevenLabs session. */
 export function CoachVoiceShell({ children }: { children: React.ReactNode }) {
   return <ConversationProvider>{children}</ConversationProvider>;
@@ -141,7 +151,7 @@ function CoachConversationInner({
       scheduleReconnect();
     },
     onError: (e: unknown) => {
-      const msg = e instanceof Error ? e.message : String(e);
+      const msg = formatVoiceConnectionError(e instanceof Error ? e.message : String(e));
       setError(msg);
       onStatusChange?.(`error: ${msg}`);
     },
@@ -186,13 +196,23 @@ function CoachConversationInner({
         let conversationToken: string | undefined;
         try {
           const resp = await fetch(`/api/eleven/signed-url?agentId=${encodeURIComponent(agentId)}`);
+          const body = (await resp.json().catch(() => ({}))) as {
+            signedUrl?: string;
+            conversationToken?: string;
+            error?: string;
+            retryable?: boolean;
+          };
           if (resp.ok) {
-            const body = (await resp.json()) as { signedUrl?: string; conversationToken?: string };
             signedUrl = body.signedUrl;
             conversationToken = body.conversationToken;
+          } else if (body.error) {
+            throw new Error(body.error);
           }
-        } catch {
-          // public agent path
+        } catch (credentialErr) {
+          if (credentialErr instanceof Error && credentialErr.message) {
+            throw credentialErr;
+          }
+          // Network blip — fall through to public-agent connect path.
         }
 
         if (conversationToken) {
@@ -218,7 +238,7 @@ function CoachConversationInner({
         setReconnecting(false);
         return true;
       } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
+        const msg = formatVoiceConnectionError(e instanceof Error ? e.message : String(e));
         setError(msg);
         onStatusChange?.(`error: ${msg}`);
         setReconnecting(false);

@@ -1,5 +1,6 @@
 import Image from "next/image";
 import type { CSSProperties } from "react";
+import { LandingIqPreview } from "@/components/landing/LandingIqPreview";
 import { humanMetric } from "@/lib/utils";
 
 const SCORE_METRICS = [
@@ -23,20 +24,6 @@ const STRONGEST = SCORE_METRICS.reduce((best, metric) =>
 const WEAKEST = SCORE_METRICS.reduce((worst, metric) =>
   metric.value < worst.value ? metric : worst,
 );
-
-function MiniRinkDiagram() {
-  return (
-    <svg viewBox="0 0 100 56" className="h-full w-full" aria-hidden>
-      <rect x="1" y="1" width="98" height="54" rx="6" fill="#fbfcfd" stroke="#94a3b8" strokeWidth="0.8" />
-      <line x1="8" y1="10" x2="92" y2="10" stroke="#ef4444" strokeWidth="0.7" />
-      <line x1="1" y1="42" x2="99" y2="42" stroke="#2563eb" strokeWidth="1.1" />
-      <circle cx="50" cy="10" r="4" fill="#eff6ff" stroke="#2563eb" strokeWidth="0.8" />
-      <circle cx="72" cy="28" r="3.5" fill="#fef2f2" stroke="#dc2626" strokeWidth="0.9" />
-      <circle cx="38" cy="24" r="3" fill="#eff6ff" stroke="#2563eb" strokeWidth="0.9" />
-      <line x1="38" y1="24" x2="50" y2="14" stroke="#1e293b" strokeWidth="1" strokeDasharray="2 2" />
-    </svg>
-  );
-}
 
 export function LandingSessionPreview() {
   return (
@@ -141,26 +128,8 @@ export function LandingSessionPreview() {
         <div className="text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
           Hockey IQ practice
         </div>
-        <div className="mt-2 overflow-hidden rounded-xl border-4 border-zinc-400/80 bg-[#fbfcfd] shadow-lg">
-          <div className="h-28 sm:h-32">
-            <MiniRinkDiagram />
-          </div>
-        </div>
-        <p className="mt-3 text-sm font-medium leading-snug text-white/90 sm:text-base">
-          Breakaway. The goalie is way out. Do you shoot fast, or skate around them?
-        </p>
-        <div className="mt-3 flex flex-col gap-1.5 text-sm">
-          {["Shoot fast", "Skate around"].map((option, i) => (
-            <div
-              key={option}
-              className="flex items-center gap-3 rounded-lg border border-zinc-800 bg-zinc-900/40 px-3 py-2 text-zinc-200"
-            >
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-xs font-bold text-zinc-300">
-                {String.fromCharCode(65 + i)}
-              </span>
-              <span className="font-medium">{option}</span>
-            </div>
-          ))}
+        <div className="mt-2">
+          <LandingIqPreview />
         </div>
       </div>
     </div>

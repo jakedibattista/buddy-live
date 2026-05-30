@@ -38,6 +38,11 @@ def test_clean_handles_empty():
     assert _clean_coach_text("") == ""
 
 
+def test_clean_strips_support_phrase_leak():
+    raw = "Option B: Wait. Can we help you?"
+    assert _clean_coach_text(raw) == "Option B: Wait."
+
+
 # ---------------------------------------------------------------------------
 # _trim_user_text — cap the open-mic transcript
 # ---------------------------------------------------------------------------

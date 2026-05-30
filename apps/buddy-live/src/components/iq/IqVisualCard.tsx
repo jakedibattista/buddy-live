@@ -182,9 +182,6 @@ function DiagramVisual({ diagram, size = "sm" }: { diagram: string; size?: "sm" 
           {/* Outer Boards (Subtle grey boundary) */}
           <rect x="2" y="2" width="96" height="96" rx="10" stroke="#94a3b8" strokeWidth="1" strokeOpacity="0.45" />
 
-          {/* Goal Line (y=12) - Red */}
-          <line x1="10" y1="12" x2="90" y2="12" stroke="#ef4444" strokeWidth="0.75" strokeOpacity="0.8" />
-
           {/* Goal Crease - Light Blue fill, Blue border */}
           <path d="M 42 12 Q 50 18 58 12" stroke="#2563eb" strokeWidth="0.85" strokeOpacity="0.8" fill="#eff6ff" fillOpacity="0.5" />
 
@@ -204,6 +201,10 @@ function DiagramVisual({ diagram, size = "sm" }: { diagram: string; size?: "sm" 
               drawn (it sat at the very bottom edge and read as a stray line). */}
           <line x1="2" y1="75" x2="98" y2="75" stroke="#2563eb" strokeWidth="1.5" strokeOpacity="0.85" />
         </g>
+
+        {/* Goal line segments flank the crease (crisp — no marker wobble) */}
+        <line x1="10" y1="12" x2="40" y2="12" stroke="#ef4444" strokeWidth="0.9" strokeOpacity="0.85" />
+        <line x1="60" y1="12" x2="90" y2="12" stroke="#ef4444" strokeWidth="0.9" strokeOpacity="0.85" />
 
         {/* --- TACTICAL MOVEMENT ARROWS & PASS LINES --- */}
         {/* Pass Line (fine dotted blue marker line from player to teammate) */}
@@ -352,6 +353,10 @@ function DiagramVisual({ diagram, size = "sm" }: { diagram: string; size?: "sm" 
 // Upgraded, relative-aware positional parser (Vertical 1:1 format)
 function parseDiagramPositions(diagram: string): Positions {
   const lower = diagram.toLowerCase();
+  // Receiving a pass is not a pass-to-teammate play — avoid a stray T marker.
+  const receivingPass =
+    /\b(get|got|catch|receive|receives|receiving)\s+(?:a\s+)?pass\b/.test(lower) ||
+    /\bpass\s+right\s+in\s+front\b/.test(lower);
   const positions: Positions = {
     player: { x: 50, y: 55 }, // Default to high slot / breakaway ready
     goalie: { x: 50, y: 13 }, // Default to crease center
@@ -385,6 +390,12 @@ function parseDiagramPositions(diagram: string): Positions {
   } else if (lower.includes("corner")) {
     // Deep in the zone beside the net (default to the left corner).
     positions.player = { x: 18, y: 20 };
+  } else if (
+    lower.includes("right in front of the net") ||
+    lower.includes("pass right in front") ||
+    receivingPass
+  ) {
+    positions.player = { x: 50, y: 24 };
   } else if (
     !teammateScreens &&
     (lower.includes("crease") || lower.includes("in front of the net") || lower.includes("doorstep"))
@@ -435,9 +446,23 @@ function parseDiagramPositions(diagram: string): Positions {
     } else if (lower.includes("on your right")) {
       positions.defender = { x: px + 11, y: py + 2 };
     } else if (lower.includes("drops to block") || lower.includes("shot block") || lower.includes("sliding")) {
-      positions.defender = { x: px, y: py - 12 };
-      // Show slide path from side to center
-      positions.defenderStart = { x: px + 16, y: py - 15 };
+      if (py <= 35) {
+        // Net-front: slide in from a wing, not from behind the net.
+        const fromLeft =
+          lower.includes("from the left") ||
+          lower.includes("left circle") ||
+          lower.includes("left wing");
+        if (fromLeft) {
+          positions.defender = { x: px + 6, y: py - 4 };
+          positions.defenderStart = { x: px - 22, y: py };
+        } else {
+          positions.defender = { x: px - 6, y: py - 4 };
+          positions.defenderStart = { x: px + 22, y: py };
+        }
+      } else {
+        positions.defender = { x: px, y: py - 12 };
+        positions.defenderStart = { x: px + 16, y: py - 15 };
+      }
     } else if (lower.includes("backing up")) {
       positions.defender = { x: px, y: py - 14 };
       positions.defenderStart = { x: px, y: py - 6 }; // Backing away from player
@@ -467,7 +492,14 @@ function parseDiagramPositions(diagram: string): Positions {
     // Net-front screen: teammate sits just in front of the goalie, between
     // the shooter and the net. No pass line — this is a traffic/screen play.
     positions.teammate = { x: positions.goalie!.x, y: positions.goalie!.y + 7 };
-  } else if (lower.includes("2-on-1") || lower.includes("2 on 1") || lower.includes("teammate") || lower.includes("trailer") || lower.includes("pass")) {
+  } else if (
+    !receivingPass &&
+    (lower.includes("2-on-1") ||
+      lower.includes("2 on 1") ||
+      lower.includes("teammate") ||
+      lower.includes("trailer") ||
+      (lower.includes("pass") && !lower.includes("you get")))
+  ) {
     if (lower.includes("trailer") || lower.includes("trailing")) {
       positions.teammate = { x: px, y: py + 16 };
     } else if (
@@ -493,7 +525,7 @@ function parseDiagramPositions(diagram: string): Positions {
     }
 
     // Draw pass guidance indicator if pass scenario is mentioned
-    if (lower.includes("pass") || lower.includes("saucer")) {
+    if (!receivingPass && (lower.includes("pass") || lower.includes("saucer"))) {
       positions.drawPassLine = true;
     }
   }

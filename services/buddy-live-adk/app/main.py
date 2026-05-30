@@ -204,6 +204,11 @@ def _clean_coach_text(text: str) -> str:
         cleaned,
         flags=re.IGNORECASE,
     )
+    cleaned = re.sub(
+        r'(?i)\b(?:can we help you|how can i help you|do you have any questions)\??\s*',
+        '',
+        cleaned,
+    )
     cleaned = re.sub(r'[ \t]{2,}', ' ', cleaned)
     return cleaned.strip()
 
