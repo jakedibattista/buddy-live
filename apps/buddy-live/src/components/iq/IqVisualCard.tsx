@@ -182,9 +182,6 @@ function DiagramVisual({ diagram, size = "sm" }: { diagram: string; size?: "sm" 
           {/* Outer Boards (Subtle grey boundary) */}
           <rect x="2" y="2" width="96" height="96" rx="10" stroke="#94a3b8" strokeWidth="1" strokeOpacity="0.45" />
 
-          {/* Goal Crease - Light Blue fill, Blue border */}
-          <path d="M 42 12 Q 50 18 58 12" stroke="#2563eb" strokeWidth="0.85" strokeOpacity="0.8" fill="#eff6ff" fillOpacity="0.5" />
-
           {/* Goal Net - Grey mesh outline */}
           <rect x="44" y="6" width="12" height="6" stroke="#64748b" strokeWidth="0.65" strokeOpacity="0.6" strokeDasharray="1 1" />
 
@@ -202,9 +199,10 @@ function DiagramVisual({ diagram, size = "sm" }: { diagram: string; size?: "sm" 
           <line x1="2" y1="75" x2="98" y2="75" stroke="#2563eb" strokeWidth="1.5" strokeOpacity="0.85" />
         </g>
 
-        {/* Goal line segments flank the crease (crisp — no marker wobble) */}
-        <line x1="10" y1="12" x2="40" y2="12" stroke="#ef4444" strokeWidth="0.9" strokeOpacity="0.85" />
-        <line x1="60" y1="12" x2="90" y2="12" stroke="#ef4444" strokeWidth="0.9" strokeOpacity="0.85" />
+        {/* Goal line + crease: crisp, board-to-board (real rink geometry) */}
+        <line x1="2" y1="12" x2="98" y2="12" stroke="#ef4444" strokeWidth="0.9" strokeOpacity="0.85" />
+        <path d="M 42 12 Q 50 18 58 12 Z" fill="#eff6ff" stroke="none" />
+        <path d="M 42 12 Q 50 18 58 12" stroke="#2563eb" strokeWidth="0.85" strokeOpacity="0.8" fill="none" />
 
         {/* --- TACTICAL MOVEMENT ARROWS & PASS LINES --- */}
         {/* Pass Line (fine dotted blue marker line from player to teammate) */}

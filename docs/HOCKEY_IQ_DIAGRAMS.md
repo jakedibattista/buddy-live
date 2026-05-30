@@ -49,8 +49,8 @@ We aligned the viewport to a perfect `100x100` coordinate space. This is highly 
 
 The half-rink markings are mapped in their true physical progression and traditional locker-room whiteboard colors from the end of the rink (top) to the center line (bottom):
 * **Goal Net:** Drawn in slate-gray at top-center (`x=44 to 56`, `y=6 to 12`).
-* **Goal Line (Red):** Solid red line drawn at `y=12` (`stroke="#ef4444"`).
-* **Goal Crease (Blue):** Curved blue boundary peaking at `y=18` (`stroke="#2563eb"`) with a light blue fill (`#eff6ff`).
+* **Goal Line (Red):** Solid red line at `y=12` from board to board (`x=2` → `x=98`), matching the blue line width.
+* **Goal Crease (Blue):** Curved blue boundary peaking at `y=18` drawn **on top** of the goal line with opaque light-blue fill so the line reads continuous at the wings but is covered in the crease (like a real rink).
 * **Faceoff Circles (Red):** Drawn on the left (`x=25`) and right (`x=75`) wings, centered at `y=35` with dashed red lines (`stroke="#ef4444"`) to mimic ice markings.
 * **Faceoff Dots (Red):** Solid red dots drawn at circle centers.
 * **Offensive Blue Line (Blue):** Solid blue marker boundary (`stroke="#2563eb"`) drawn at `y=75` separating the attack zone. This is the deepest marking shown.
