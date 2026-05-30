@@ -8,12 +8,12 @@
     },
     "user_simulator_config": {
       "model": "gemini-flash-latest",
-      "max_allowed_invocations": 16
+      "max_allowed_invocations": 12
     }
   },
   "app_name": "agent_module",
   "train_eval_set": "coaching_scenarios",
-  "train_eval_case_ids": ["9840778e", "b12a9a4d"],
+  "train_eval_case_ids": ["b12a9a4d"],
   "validation_eval_set": "coaching_scenarios",
-  "validation_eval_case_ids": ["f8dd685a", "285f6d24"]
+  "validation_eval_case_ids": ["f8dd685a"]
 }

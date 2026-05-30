@@ -16,8 +16,13 @@ export GOOGLE_API_KEY=...   # or GEMINI_API_KEY
 ## Run optimization
 
 ```bash
-make optimize
+make optimize          # full GEPA run (~20–40 min with safeguards)
+make optimize-smoke    # quick harness check (~5–10 min, max_metric_calls=2)
 ```
+
+The wrapper (`evals/run_optimize.py`) sets `BUDDY_EVAL_FAILURES=1`, disables
+GEPA thinking budget, caps wall-clock time (default 60 min), and streams logs
+to `evals/optimize_runs/run_<timestamp>.log`.
 
 This runs:
 
@@ -55,7 +60,33 @@ missing`), so `optimize_sampler_config.json` omits `safety_v1`. Baseline evals
 | `optimize_config.json` | GEPA budget (`max_metric_calls`, reflection batch) |
 
 Raise `max_metric_calls` in `optimize_config.json` for deeper search (more
-Gemini spend). Default `12` is a pragmatic hackathon budget.
+Gemini spend). Default `8` is a pragmatic hackathon budget (was `12`; lowered
+after the 24h hang post-mortem).
+
+## Why the prior run hung (~24h)
+
+Three compounding issues:
+
+1. **Per-turn hallucinations scoring** — `evaluate_intermediate_nl_responses:
+   true` ran the LLM judge on every user/agent turn (~24× per scenario). Optimize
+   config now sets this to `false` (session-level score only).
+2. **GEPA reflection thinking budget** — ADK defaults to `gemini-2.5-flash`
+   with `thinking_budget=10240` for reflection even when `optimizer_model` is
+   `gemini-flash-latest`. `optimize_config.json` now sets `thinking_budget: 0`.
+3. **No wall-clock cap** — `future.result()` inside GEPA blocks forever if an
+   eval stalls. `run_optimize.py` wraps the CLI with a timeout (default 60 min).
+
+Also: train cases need `BUDDY_EVAL_FAILURES=1` so framing/timeout injections
+actually fire — the wrapper sets this automatically.
+
+## Smoke test before a full run
+
+```bash
+make optimize-smoke
+```
+
+Uses one train case, `max_metric_calls=2`, 20-minute timeout. If smoke passes,
+run `make optimize` for the full loop.
 
 ## Train / validation split
 

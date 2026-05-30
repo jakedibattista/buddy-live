@@ -3,23 +3,25 @@
 Structure (ADK 2.0 sub-agent pattern):
 
   buddy_live_coach (LlmAgent, root)
-    └─ iq_coach (LlmAgent, sub_agent)
+    ├─ vision_coach (LlmAgent, sub_agent) — peek_camera, peek_warmup
+    └─ iq_coach (LlmAgent, sub_agent) — Hockey IQ practice mode
 
 The root agent runs the full shooting flow (opening → warm-up → setup →
 scored reps → recap). When the player doesn't have space to shoot, the
 root calls transfer_to_agent("iq_coach") and the IQ sub-agent takes over
-the rest of the session with its own focused prompt and a single tool
-(show_iq_visual).
+the rest of the session. When automated camera or warm-up form checks are
+needed, the root calls transfer_to_agent("vision_coach"); Vision Coach
+hands back via transfer_to_agent("buddy_live_coach") when done.
 
 Why this split:
 - Isolates the new IQ practice feature from the mature shooting flow so
   prompt changes to one don't risk regressing the other.
+- Isolates vision tool loops (framing retries) from the main coaching prompt.
 - Gives each agent a smaller, focused instruction set the model can
   follow more reliably than one monolithic prompt.
 
-Both agents share the same Firestore-driven phase guard
-(BeforeToolCallback) so they cannot, for example, call start_rep_capture
-before framing passes.
+All agents share the same Firestore-driven phase guard (BeforeToolCallback)
+so they cannot, for example, call start_rep_capture before framing passes.
 
 Sessions are managed per ElevenLabs conversation via SessionService -- we
 map the `arbitrary_identifier` from the ElevenLabs Custom LLM extra body
@@ -37,7 +39,7 @@ from google.adk.sessions import BaseSessionService, InMemorySessionService
 from google.genai import types as genai_types
 
 from app.callbacks import phase_guard
-from app.prompts import COACH_SETH_LIVE_PROMPT, IQ_COACH_PROMPT
+from app.prompts import COACH_SETH_LIVE_PROMPT, IQ_COACH_PROMPT, VISION_COACH_PROMPT
 from app.tools import (
     analyze_rep,
     end_session_recap,
@@ -88,6 +90,22 @@ _runner: Runner | None = None
 _session_service: BaseSessionService | None = None
 
 
+def _build_vision_coach() -> Agent:
+    """Vision sub-agent: automated peek_camera / peek_warmup checks."""
+    return Agent(
+        name="vision_coach",
+        description=(
+            "Webcam vision specialist. Handles setup framing (peek_camera) "
+            "and optional warm-up form checks (peek_warmup), then transfers "
+            "back to the main coach."
+        ),
+        model=_build_model(),
+        instruction=VISION_COACH_PROMPT,
+        tools=[peek_camera, peek_warmup],
+        before_tool_callback=phase_guard,
+    )
+
+
 def _build_iq_coach() -> Agent:
     """IQ Coach sub-agent: handles Hockey IQ Practice mode end-to-end."""
     return Agent(
@@ -105,15 +123,13 @@ def _build_iq_coach() -> Agent:
 
 
 def _build_agent() -> Agent:
-    """Root coach agent: opening, shooting flow, recap. Delegates IQ mode."""
+    """Root coach agent: opening, shooting flow, recap. Delegates IQ + vision."""
     return Agent(
         name="buddy_live_coach",
         description="Real-time hockey shooting coach (voice + webcam).",
         model=_build_model(),
         instruction=COACH_SETH_LIVE_PROMPT,
         tools=[
-            peek_camera,
-            peek_warmup,
             start_warmup_timer,
             set_focus_drill,
             start_rep_capture,
@@ -126,7 +142,7 @@ def _build_agent() -> Agent:
             remember_player_profile,
             load_player_memory,
         ],
-        sub_agents=[_build_iq_coach()],
+        sub_agents=[_build_vision_coach(), _build_iq_coach()],
         before_tool_callback=phase_guard,
     )
 

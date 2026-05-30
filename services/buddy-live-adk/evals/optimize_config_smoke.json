@@ -5,7 +5,7 @@
       "thinking_budget": 0
     }
   },
-  "max_metric_calls": 8,
-  "reflection_minibatch_size": 2,
+  "max_metric_calls": 2,
+  "reflection_minibatch_size": 1,
   "run_dir": "evals/optimize_runs"
 }

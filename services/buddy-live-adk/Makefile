@@ -1,4 +1,4 @@
-.PHONY: install run test deploy clean eval-setup eval eval-failures optimize
+.PHONY: install run test deploy clean eval-setup eval eval-failures optimize optimize-smoke
 
 PORT ?= 8080
 SERVICE ?= buddy-live-adk
@@ -56,11 +56,10 @@ eval-failures: eval-setup
 		--print_detailed_results
 
 optimize: eval-setup install-dev
-	.venv/bin/adk optimize \
-		$(EVAL_DIR)/agent_module \
-		--sampler_config_file_path $(EVAL_DIR)/optimize_sampler_config.json \
-		--optimizer_config_file_path $(EVAL_DIR)/optimize_config.json \
-		--print_detailed_results
+	.venv/bin/python evals/run_optimize.py
+
+optimize-smoke: eval-setup install-dev
+	.venv/bin/python evals/run_optimize.py --smoke --timeout-minutes 20
 
 clean:
 	rm -rf .venv __pycache__ */__pycache__
