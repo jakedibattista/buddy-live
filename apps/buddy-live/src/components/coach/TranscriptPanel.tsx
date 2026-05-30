@@ -69,7 +69,7 @@ export function TranscriptPanel({ entries, sessionStartMs, className }: Props) {
   return (
     <div
       className={cn(
-        "relative rounded-2xl border border-zinc-800/60 bg-zinc-900/40 text-white shadow-sm backdrop-blur-md flex flex-col min-h-0 h-80 lg:h-auto",
+        "panel-surface relative flex min-h-0 h-80 flex-col text-white lg:h-auto",
         className,
       )}
     >
@@ -82,7 +82,7 @@ export function TranscriptPanel({ entries, sessionStartMs, className }: Props) {
 
       {entries.length === 0 && (
         <div className="text-zinc-500">
-          Waiting for the session to start. Hit <span className="text-zinc-200">Start</span> below.
+          Waiting for the session to start. Tap <span className="text-zinc-200">Start practice</span> below.
         </div>
       )}
 
@@ -96,8 +96,8 @@ export function TranscriptPanel({ entries, sessionStartMs, className }: Props) {
                   e.kind === "error" && "bg-red-500/15 text-red-200",
                   e.kind === "peek" && "bg-amber-500/15 text-amber-100",
                   e.kind === "recording" && "bg-red-500/15 text-red-100",
-                  e.kind === "upload" && "bg-sky-500/15 text-sky-100",
-                  e.kind === "analysis" && "bg-sky-500/15 text-sky-100",
+                  e.kind === "upload" && "pill-brand",
+                  e.kind === "analysis" && "pill-brand",
                   e.kind === "connection" && "bg-white/10 text-zinc-300",
                   (!e.kind || e.kind === "info") && "bg-white/8 text-zinc-400",
                 )}
@@ -130,7 +130,7 @@ export function TranscriptPanel({ entries, sessionStartMs, className }: Props) {
             <span
               className={cn(
                 "max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-snug",
-                e.role === "user" ? "bg-[#0066cc] text-white" : "bg-zinc-800/80 text-white",
+                e.role === "user" ? "bg-[var(--brand-blue)] text-white" : "bg-zinc-800/80 text-white",
               )}
             >
               {e.text}
@@ -144,10 +144,10 @@ export function TranscriptPanel({ entries, sessionStartMs, className }: Props) {
           type="button"
           onClick={jumpToLatest}
           className={cn(
-            "absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-zinc-800 px-3 py-1.5 text-xs font-semibold text-zinc-300 backdrop-blur-md transition-all hover:border-zinc-700 hover:bg-zinc-800/80 hover:scale-[1.01] shadow-sm",
+            "absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold backdrop-blur-md transition-all hover:scale-[1.01] shadow-sm",
             hasNew
-              ? "bg-[#0066cc] text-white hover:bg-[#0071e3]"
-              : "bg-black/70 hover:bg-white/10",
+              ? "btn-primary text-white"
+              : "panel-surface text-zinc-300 hover:border-zinc-700 hover:bg-zinc-800/80",
           )}
         >
           <ArrowDown size={12} />

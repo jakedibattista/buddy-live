@@ -23,10 +23,10 @@ export function CoachActivityIndicator({ className }: { className?: string }) {
 
   if (isSpeaking) {
     label = "Coach Buddy is speaking…";
-    dotClass = "bg-emerald-400 animate-pulse";
+    dotClass = "bg-white animate-pulse";
   } else if (isListening) {
     label = "Coach Buddy is listening…";
-    dotClass = "bg-sky-400";
+    dotClass = "bg-[var(--brand-blue-hover)]";
   }
 
   return (

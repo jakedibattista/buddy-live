@@ -75,7 +75,7 @@ export function VoiceQuickPrompts({
           key={prompt.label}
           type="button"
           onClick={() => sendUserMessage(prompt.message)}
-          className="rounded-full border border-zinc-800 bg-zinc-900/40 px-3 py-1.5 text-xs font-semibold text-zinc-300 backdrop-blur-md transition-all hover:border-zinc-700 hover:bg-zinc-800/80 hover:text-white hover:scale-[1.01] shadow-sm"
+          className="rounded-full border border-white/[0.08] bg-zinc-900/40 px-3 py-1.5 text-xs font-semibold text-zinc-300 backdrop-blur-md transition-all hover:border-zinc-700 hover:bg-zinc-800/80 hover:text-white hover:scale-[1.01] shadow-sm"
         >
           {prompt.label}
         </button>

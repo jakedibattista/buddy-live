@@ -34,10 +34,7 @@ export function CoachAudioMuteButton({ className }: { className?: string }) {
     <button
       type="button"
       onClick={() => void toggle()}
-      className={cn(
-        "flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-white/5 text-white transition-colors hover:bg-white/10",
-        className,
-      )}
+      className={cn("btn-glass h-12 w-12", className)}
       aria-label={muted ? "Restore coach audio" : "Mute coach audio"}
       title={muted ? "Restore coach audio" : "Mute coach audio"}
     >

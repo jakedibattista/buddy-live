@@ -72,9 +72,9 @@ function CoachConversationInner({
   const scheduleReconnect = useCallback(() => {
     if (userEndedRef.current || !hadConnectedRef.current || !sessionId || !agentId) return;
     if (reconnectAttemptRef.current >= MAX_RECONNECT_ATTEMPTS) {
-      setError("Connection lost — tap Start session to continue.");
+      setError("Connection lost — tap Start practice to continue.");
       onStatusChange?.("disconnected");
-      onTranscript(systemTranscript("Voice connection lost — tap Start session to continue.", "connection"));
+      onTranscript(systemTranscript("Voice connection lost — tap Start practice to continue.", "connection"));
       return;
     }
 
@@ -294,15 +294,15 @@ function CoachConversationInner({
           onClick={() => void handleStart()}
           disabled={!canStart}
           className={cn(
-            "rounded-full bg-white px-6 py-3 text-sm font-semibold text-black shadow-md transition-transform hover:scale-[1.01] hover:bg-zinc-200 active:scale-[0.99]",
-            !canStart && "cursor-not-allowed opacity-50 hover:scale-100 hover:bg-white",
+            "btn-primary px-6 py-3 text-[17px] shadow-md motion-reduce:active:scale-100",
+            !canStart && "hover:scale-100",
           )}
         >
           {reconnecting
             ? "Reconnecting…"
             : convo.status === "connecting"
               ? "Connecting…"
-              : "Start session"}
+              : "Start practice"}
         </button>
         {convo.status === "connected" && (
           <>
@@ -310,7 +310,7 @@ function CoachConversationInner({
               type="button"
               onClick={() => convo.setMuted(!convo.isMuted)}
               disabled={ending}
-              className="flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-white/5 text-white transition-colors hover:bg-white/10 disabled:opacity-50"
+              className="btn-glass h-12 w-12 disabled:opacity-50"
               aria-label={convo.isMuted ? "Unmute mic" : "Mute mic"}
             >
               {convo.isMuted ? <MicOff size={18} /> : <Mic size={18} />}
@@ -333,7 +333,7 @@ function CoachConversationInner({
         {!ending && reconnecting && <span className="text-amber-300">Reconnecting to Coach Buddy…</span>}
         {!ending && !reconnecting && !sessionReady && <span>Starting session…</span>}
         {!ending && !reconnecting && sessionReady && convo.status === "connected" && (
-          <span className="text-[#2997ff]">Live · {convo.mode}</span>
+          <span className="text-brand">Live · {convo.mode}</span>
         )}
         {!ending && !reconnecting && sessionReady && convo.status === "disconnected" && !error && (
           <span>Ready</span>
@@ -345,7 +345,7 @@ function CoachConversationInner({
               <button
                 type="button"
                 onClick={() => void handleStart()}
-                className="rounded-full border border-white/15 px-3 py-1 text-zinc-200 hover:bg-white/10"
+                className="btn-glass px-3 py-1 text-zinc-200"
               >
                 Retry connection
               </button>

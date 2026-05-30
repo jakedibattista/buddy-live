@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CameraPeekNudge } from "@/components/camera/CameraPeekNudge";
 import { CameraView } from "@/components/camera/CameraView";
@@ -282,14 +283,14 @@ export default function CoachPage() {
   }, [reps, appendSystem]);
 
   return (
-    <main className="relative flex min-h-screen flex-col bg-black text-white">
+    <main className="coach-shell relative flex min-h-[100dvh] flex-col overflow-hidden bg-black text-white pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))]">
       <CoachVoiceShell>
         <div className="relative mx-auto grid w-full max-w-7xl flex-1 gap-6 p-4 lg:grid-cols-[1fr_360px] lg:p-6">
           {/* Camera column (or large IQ overlay during Hockey IQ practice) */}
           <section className="relative flex h-[60vh] w-full flex-col gap-4 lg:h-[calc(100vh-3rem)]">
             <div className="relative flex-1">
               {inIqPractice ? (
-                <div className="absolute inset-0 flex items-center justify-center overflow-y-auto rounded-2xl bg-black p-4 sm:p-6">
+                <div className="absolute inset-0 flex items-center justify-center overflow-y-auto rounded-2xl border border-white/[0.08] bg-black p-4 sm:p-6">
                   {latestIqVisual ? (
                     <IqVisualCard
                       command={latestIqVisual}
@@ -301,7 +302,15 @@ export default function CoachPage() {
                     />
                   ) : (
                     <div className="max-w-md text-center text-zinc-300">
-                      <div className="mb-3 text-3xl">🧠</div>
+                      <div className="mx-auto mb-4 flex justify-center">
+                        <Image
+                          src="/mascot/coach-puck.png"
+                          alt=""
+                          width={128}
+                          height={128}
+                          className="h-20 w-20 object-contain opacity-90 drop-shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
+                        />
+                      </div>
                       <div className="text-lg font-semibold text-white">
                         Hockey IQ Practice
                       </div>
@@ -313,7 +322,7 @@ export default function CoachPage() {
                   )}
                 </div>
               ) : (
-                <div className="relative h-full w-full rounded-2xl overflow-hidden bg-black">
+                <div className="relative h-full w-full overflow-hidden rounded-2xl border border-white/[0.08] bg-black">
                   {/* Performance dashboard: shown in the center the moment the
                       scored rep's results land, through recap/ended. */}
                   {showReport && (
@@ -357,7 +366,7 @@ export default function CoachPage() {
                     <button
                       type="button"
                       onClick={() => void requestMedia()}
-                      className="rounded-full bg-white px-5 py-2 text-sm font-semibold text-black hover:bg-zinc-200 transition-colors shadow-sm"
+                      className="btn-primary px-5 py-2 text-sm motion-reduce:active:scale-100"
                     >
                       Try again
                     </button>
@@ -434,7 +443,7 @@ export default function CoachPage() {
 
           {/* Side panel */}
           <aside className="flex flex-col gap-4 lg:h-[calc(100vh-3rem)] lg:min-h-0">
-            <div className="rounded-2xl border border-zinc-800/60 bg-zinc-900/40 p-5 shadow-sm backdrop-blur-md">
+            <div className="panel-surface p-5">
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-xs uppercase tracking-widest text-zinc-400">Session</div>
@@ -450,7 +459,7 @@ export default function CoachPage() {
                 <span
                   className={
                     coachStatus === "connected"
-                      ? "rounded-full border border-sky-500/20 bg-sky-500/10 px-2.5 py-0.5 text-xs font-semibold text-[#2997ff]"
+                      ? "badge-brand rounded-full px-2.5 py-0.5 text-xs font-semibold"
                       : coachStatus === "reconnecting"
                         ? "rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-0.5 text-xs font-semibold text-amber-400 animate-pulse"
                         : coachStatus === "wrapping up"
@@ -499,7 +508,7 @@ export default function CoachPage() {
                   <span
                     className={
                       capture.lastUpload.status === "uploaded"
-                        ? "text-emerald-300"
+                        ? "text-brand"
                         : capture.lastUpload.status === "error"
                           ? "text-red-300"
                           : "text-yellow-300"

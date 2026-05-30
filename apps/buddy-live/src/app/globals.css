@@ -207,28 +207,6 @@ body {
   color: rgb(191, 219, 254);
 }
 
-.landing-page {
-  background: #000;
-}
-
-.landing-page::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(
-      ellipse 70% 45% at 50% 8%,
-      rgba(0, 102, 204, 0.14) 0%,
-      transparent 62%
-    ),
-    radial-gradient(
-      ellipse 90% 35% at 50% 100%,
-      rgba(0, 48, 96, 0.22) 0%,
-      transparent 55%
-    );
-}
-
 .landing-puck-glow::before {
   content: "";
   position: absolute;

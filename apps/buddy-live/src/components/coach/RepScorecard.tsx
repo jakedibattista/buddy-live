@@ -61,11 +61,11 @@ export function RepScorecard({ rep }: Props) {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 
   return (
-    <div className="rounded-2xl border border-zinc-850 bg-zinc-950/90 p-5 text-white shadow-lg backdrop-blur-md transition-all duration-300 hover:border-zinc-700/50">
+    <div className="rounded-2xl border border-white/[0.08] bg-zinc-950/90 p-5 text-white shadow-lg backdrop-blur-md transition-all duration-300 hover:border-zinc-700/50">
       {/* Top Header */}
       <div className="flex items-start justify-between pb-3 border-b border-zinc-800/50">
         <div>
-          <span className="text-[10px] font-bold uppercase tracking-widest text-[#2997ff]">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-brand">
             {formattedDrill}
           </span>
           <div className="font-mono text-[10px] text-zinc-500 mt-0.5">

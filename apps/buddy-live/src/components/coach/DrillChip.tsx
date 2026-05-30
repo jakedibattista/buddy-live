@@ -24,7 +24,7 @@ export function DrillChip({ drillId, hint, recording, headline }: DrillChipProps
   return (
     <div
       className={cn(
-        "rounded-2xl border border-zinc-800/60 bg-zinc-900/40 px-4 py-3 text-white shadow-sm backdrop-blur-md",
+        "panel-surface px-4 py-3 text-white",
         recording && "ring-2 ring-red-500/80",
         !recording && headline === "Rep armed" && "ring-2 ring-white/20",
       )}

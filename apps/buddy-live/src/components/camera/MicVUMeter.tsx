@@ -55,7 +55,7 @@ export function MicVUMeter({ stream, className }: MicVUMeterProps) {
             key={i}
             className={cn(
               "h-full w-1.5 rounded-full transition-colors",
-              on ? (i >= 9 ? "bg-red-500" : i >= 6 ? "bg-yellow-400" : "bg-emerald-400") : "bg-white/15",
+              on ? (i >= 9 ? "bg-red-500" : i >= 6 ? "bg-yellow-400" : "bg-[var(--brand-blue-hover)]") : "bg-white/15",
             )}
             style={{ height: `${30 + i * 4}%` }}
           />
