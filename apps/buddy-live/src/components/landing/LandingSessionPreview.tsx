@@ -1,12 +1,28 @@
 import Image from "next/image";
 import type { CSSProperties } from "react";
+import { humanMetric } from "@/lib/utils";
 
 const SCORE_METRICS = [
-  { label: "Wrist snap", value: 8.2 },
-  { label: "Follow through", value: 7.6 },
-  { label: "Weight transfer", value: 5.8 },
-  { label: "Front knee bend", value: 7.1 },
-];
+  { key: "armMechanics", value: 8.5 },
+  { key: "followThrough", value: 8.5 },
+  { key: "frontKneeBendAtImpact", value: 8 },
+  { key: "powerSequence", value: 8 },
+  { key: "stanceAndBase", value: 10 },
+  { key: "stickMechanics", value: 8.5 },
+  { key: "weightTransfer", value: 9 },
+  { key: "windUp", value: 9.5 },
+] as const;
+
+const AVG_SCORE =
+  SCORE_METRICS.reduce((sum, metric) => sum + metric.value, 0) / SCORE_METRICS.length;
+
+const STRONGEST = SCORE_METRICS.reduce((best, metric) =>
+  metric.value > best.value ? metric : best,
+);
+
+const WEAKEST = SCORE_METRICS.reduce((worst, metric) =>
+  metric.value < worst.value ? metric : worst,
+);
 
 function MiniRinkDiagram() {
   return (
@@ -52,10 +68,6 @@ export function LandingSessionPreview() {
             <span className="font-mono text-xs tabular-nums text-white/80">0:42</span>
           </div>
 
-          <div className="absolute bottom-4 left-4 rounded-full bg-black/50 px-3 py-1 text-xs text-zinc-300 backdrop-blur-sm">
-            Slapshot
-          </div>
-
           <div className="absolute bottom-3 left-3 opacity-90 sm:bottom-4 sm:left-4">
             <div className="animate-puck-hover motion-reduce:animate-none">
               <Image
@@ -68,7 +80,7 @@ export function LandingSessionPreview() {
             </div>
           </div>
 
-          <div className="absolute inset-y-0 right-0 flex w-[42%] flex-col border-l border-white/[0.06] bg-black/55 p-3 backdrop-blur-md sm:w-[38%] sm:p-3.5">
+          <div className="absolute inset-y-0 right-0 flex w-[44%] flex-col border-l border-white/[0.06] bg-black/55 p-2.5 backdrop-blur-md sm:w-[40%] sm:p-3">
             <div className="flex items-start justify-between gap-2">
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-widest text-brand">
@@ -81,26 +93,26 @@ export function LandingSessionPreview() {
               </span>
             </div>
 
-            <div className="mt-2 rounded-lg border border-white/[0.06] bg-zinc-900/50 px-2 py-1 font-mono text-[10px] font-bold text-brand sm:text-xs">
-              Avg 7.2
+            <div className="mt-1.5 rounded-lg border border-white/[0.06] bg-zinc-900/50 px-2 py-1 font-mono text-[10px] font-bold text-brand sm:text-xs">
+              Avg {AVG_SCORE.toFixed(1)}
             </div>
 
-            <div className="mt-2 flex-1 space-y-2 overflow-hidden">
+            <div className="mt-1.5 min-h-0 flex-1 space-y-1 overflow-y-auto pr-0.5">
               {SCORE_METRICS.map((metric, index) => (
-                <div key={metric.label}>
-                  <div className="flex items-center justify-between text-[10px] text-zinc-400 sm:text-[11px]">
-                    <span className="truncate pr-2">{metric.label}</span>
+                <div key={metric.key}>
+                  <div className="flex items-center justify-between gap-1 text-[9px] text-zinc-400 sm:text-[10px]">
+                    <span className="truncate capitalize">{humanMetric(metric.key)}</span>
                     <span className="shrink-0 font-mono tabular-nums text-zinc-200">
                       {metric.value.toFixed(1)}
                     </span>
                   </div>
-                  <div className="mt-1 h-1 overflow-hidden rounded-full bg-zinc-800/80">
+                  <div className="mt-0.5 h-0.5 overflow-hidden rounded-full bg-zinc-800/80 sm:h-1">
                     <div
                       className="landing-preview-bar h-full rounded-full bg-[var(--brand-blue)]"
                       style={
                         {
                           "--bar-width": `${metric.value * 10}%`,
-                          animationDelay: `${index * 0.35}s`,
+                          animationDelay: `${index * 0.2}s`,
                         } as CSSProperties
                       }
                     />
@@ -109,14 +121,16 @@ export function LandingSessionPreview() {
               ))}
             </div>
 
-            <div className="mt-2 space-y-1.5 border-t border-white/[0.06] pt-2 text-[10px] leading-snug text-zinc-400 sm:text-[11px]">
+            <div className="mt-1.5 space-y-1 border-t border-white/[0.06] pt-1.5 text-[9px] leading-snug text-zinc-400 sm:text-[10px]">
               <p>
-                <span className="text-zinc-300">Strongest:</span> Wrist snap{" "}
-                <span className="font-mono text-brand">8.2</span>
+                <span className="text-zinc-300">Strongest:</span>{" "}
+                <span className="capitalize text-zinc-200">{humanMetric(STRONGEST.key)}</span>{" "}
+                <span className="font-mono text-brand">{STRONGEST.value.toFixed(1)}</span>
               </p>
               <p>
-                <span className="text-zinc-300">Focus:</span> Weight transfer{" "}
-                <span className="font-mono text-brand">5.8</span>
+                <span className="text-zinc-300">Focus:</span>{" "}
+                <span className="capitalize text-zinc-200">{humanMetric(WEAKEST.key)}</span>{" "}
+                <span className="font-mono text-brand">{WEAKEST.value.toFixed(1)}</span>
               </p>
             </div>
           </div>
