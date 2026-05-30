@@ -23,7 +23,12 @@ import os
 from google.adk.agents import Agent
 from google.adk.tools.environment_simulation import EnvironmentSimulationFactory
 
-from app.prompts import COACH_SETH_LIVE_PROMPT, IQ_COACH_PROMPT, VISION_COACH_PROMPT
+from app.prompts import (
+    COACH_SETH_LIVE_PROMPT,
+    DRILL_COACH_PROMPT,
+    IQ_COACH_PROMPT,
+    VISION_COACH_PROMPT,
+)
 from app.tools import (
     analyze_rep,
     end_session_recap,
@@ -76,6 +81,28 @@ _vision_coach = Agent(
 )
 
 
+_drill_coach = Agent(
+    name="drill_coach",
+    description=(
+        "Shooting drill specialist. Handles drill readiness, the one "
+        "scored rep, analysis wait + inline IQ chat, scorecard review, "
+        "and session recap."
+    ),
+    model=_model,
+    instruction=DRILL_COACH_PROMPT,
+    tools=[
+        start_rep_capture,
+        stop_rep_capture,
+        analyze_rep,
+        get_rep_result,
+        recommend_drill,
+        end_session_recap,
+        lookup_drill_knowledge,
+    ],
+    before_tool_callback=_env_sim_callback,
+)
+
+
 _iq_coach = Agent(
     name="iq_coach",
     description=(
@@ -98,17 +125,10 @@ root_agent = Agent(
     tools=[
         start_warmup_timer,
         set_focus_drill,
-        start_rep_capture,
-        stop_rep_capture,
-        analyze_rep,
-        get_rep_result,
-        recommend_drill,
-        end_session_recap,
-        lookup_drill_knowledge,
         remember_player_profile,
         load_player_memory,
     ],
-    sub_agents=[_vision_coach, _iq_coach],
+    sub_agents=[_vision_coach, _drill_coach, _iq_coach],
     before_tool_callback=_env_sim_callback,
 )
 

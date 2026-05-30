@@ -4,14 +4,12 @@ Structure (ADK 2.0 sub-agent pattern):
 
   buddy_live_coach (LlmAgent, root)
     ├─ vision_coach (LlmAgent, sub_agent) — peek_camera, peek_warmup
+    ├─ drill_coach (LlmAgent, sub_agent) — rep capture, analysis, recap
     └─ iq_coach (LlmAgent, sub_agent) — Hockey IQ practice mode
 
-The root agent runs the full shooting flow (opening → warm-up → setup →
-scored reps → recap). When the player doesn't have space to shoot, the
-root calls transfer_to_agent("iq_coach") and the IQ sub-agent takes over
-the rest of the session. When automated camera or warm-up form checks are
-needed, the root calls transfer_to_agent("vision_coach"); Vision Coach
-hands back via transfer_to_agent("buddy_live_coach") when done.
+The root agent runs opening, warm-up, and setup. After setup it transfers
+to drill_coach for drill readiness through session recap. IQ and vision
+delegation work the same as before (transfer_to_agent).
 
 Why this split:
 - Isolates the new IQ practice feature from the mature shooting flow so
@@ -39,7 +37,12 @@ from google.adk.sessions import BaseSessionService, InMemorySessionService
 from google.genai import types as genai_types
 
 from app.callbacks import phase_guard
-from app.prompts import COACH_SETH_LIVE_PROMPT, IQ_COACH_PROMPT, VISION_COACH_PROMPT
+from app.prompts import (
+    COACH_SETH_LIVE_PROMPT,
+    DRILL_COACH_PROMPT,
+    IQ_COACH_PROMPT,
+    VISION_COACH_PROMPT,
+)
 from app.tools import (
     analyze_rep,
     end_session_recap,
@@ -106,6 +109,30 @@ def _build_vision_coach() -> Agent:
     )
 
 
+def _build_drill_coach() -> Agent:
+    """Drill sub-agent: scored rep capture, analysis, review, and recap."""
+    return Agent(
+        name="drill_coach",
+        description=(
+            "Shooting drill specialist. Handles drill readiness, the one "
+            "scored rep, analysis wait + inline IQ chat, scorecard review, "
+            "and session recap."
+        ),
+        model=_build_model(),
+        instruction=DRILL_COACH_PROMPT,
+        tools=[
+            start_rep_capture,
+            stop_rep_capture,
+            analyze_rep,
+            get_rep_result,
+            recommend_drill,
+            end_session_recap,
+            lookup_drill_knowledge,
+        ],
+        before_tool_callback=phase_guard,
+    )
+
+
 def _build_iq_coach() -> Agent:
     """IQ Coach sub-agent: handles Hockey IQ Practice mode end-to-end."""
     return Agent(
@@ -123,7 +150,7 @@ def _build_iq_coach() -> Agent:
 
 
 def _build_agent() -> Agent:
-    """Root coach agent: opening, shooting flow, recap. Delegates IQ + vision."""
+    """Root coach: opening, warm-up, setup. Delegates drill, IQ, and vision."""
     return Agent(
         name="buddy_live_coach",
         description="Real-time hockey shooting coach (voice + webcam).",
@@ -132,17 +159,14 @@ def _build_agent() -> Agent:
         tools=[
             start_warmup_timer,
             set_focus_drill,
-            start_rep_capture,
-            stop_rep_capture,
-            analyze_rep,
-            get_rep_result,
-            recommend_drill,
-            end_session_recap,
-            lookup_drill_knowledge,
             remember_player_profile,
             load_player_memory,
         ],
-        sub_agents=[_build_vision_coach(), _build_iq_coach()],
+        sub_agents=[
+            _build_vision_coach(),
+            _build_drill_coach(),
+            _build_iq_coach(),
+        ],
         before_tool_callback=phase_guard,
     )
 
