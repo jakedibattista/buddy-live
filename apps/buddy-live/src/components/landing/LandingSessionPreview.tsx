@@ -53,7 +53,7 @@ export function LandingSessionPreview() {
           </div>
 
           <div className="absolute bottom-4 left-4 rounded-full bg-black/50 px-3 py-1 text-xs text-zinc-300 backdrop-blur-sm">
-            Wristshot
+            Slapshot
           </div>
 
           <div className="absolute bottom-3 left-3 opacity-90 sm:bottom-4 sm:left-4">
@@ -72,7 +72,7 @@ export function LandingSessionPreview() {
             <div className="flex items-start justify-between gap-2">
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-widest text-brand">
-                  Wristshot
+                  Slapshot
                 </span>
                 <div className="mt-0.5 text-[9px] text-zinc-500 sm:text-[10px]">Scored rep</div>
               </div>
