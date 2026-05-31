@@ -6,7 +6,7 @@ import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { Mic, MicOff, PhoneOff } from "lucide-react";
 import { CoachAudioMuteButton } from "@/components/coach/CoachAudioMuteButton";
 import { getDb } from "@/lib/firebase";
-import { voiceEventsCollectionPath } from "@/lib/paths";
+import { coachLogCollectionPath } from "@/lib/paths";
 import { coachTranscriptEntries, systemTranscript, voiceTranscriptEntry } from "@/lib/transcript";
 import { cn } from "@/lib/utils";
 import {
@@ -25,6 +25,12 @@ interface CoachConversationProps {
   resumeContext: VoiceResumeContext;
   /** `results_ready_at` from the session doc — drives the results-ready push. */
   resultsReadyAt?: string | null;
+  /**
+   * True during expected-silent windows (warm-up timer, analysis wait). We
+   * pulse sendUserActivity so the agent doesn't force a turn on silence and the
+   * link stays warm — the player noticed it dropping when quiet ~10s.
+   */
+  keepAlive?: boolean;
   onTranscript: (entry: TranscriptEntry) => void;
   onStatusChange?: (status: string) => void;
 }
@@ -64,6 +70,7 @@ function CoachConversationInner({
   sessionReady = true,
   resumeContext,
   resultsReadyAt,
+  keepAlive = false,
   onTranscript,
   onStatusChange,
 }: CoachConversationProps) {
@@ -94,7 +101,8 @@ function CoachConversationInner({
       const db = getDb();
       if (!db) return;
       const d = (details ?? {}) as Record<string, unknown>;
-      void addDoc(collection(db, voiceEventsCollectionPath(sessionId)), {
+      void addDoc(collection(db, coachLogCollectionPath(sessionId)), {
+        event: "voice_drop",
         kind,
         reason: typeof d.reason === "string" ? d.reason : null,
         code: typeof d.code === "number" ? d.code : null,
@@ -340,6 +348,21 @@ function CoachConversationInner({
       resultsReadyPendingRef.current = resultsReadyAt;
     }
   }, [resultsReadyAt, convo, sendResultsReadyPush]);
+
+  // Keepalive during expected-silent windows: pulse user activity so the agent
+  // holds its turn and the WebRTC link doesn't idle out while the player is
+  // quietly doing a warm-up move or waiting on analysis.
+  useEffect(() => {
+    if (!keepAlive || convo.status !== "connected") return;
+    const handle = window.setInterval(() => {
+      try {
+        convoRef.current?.sendUserActivity();
+      } catch {
+        // ignore — link may be mid-drop
+      }
+    }, 5000);
+    return () => window.clearInterval(handle);
+  }, [keepAlive, convo.status]);
 
   const canStart =
     sessionReady &&

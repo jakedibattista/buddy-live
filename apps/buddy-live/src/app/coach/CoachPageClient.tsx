@@ -487,6 +487,7 @@ export function CoachPageClient() {
                     sessionReady={!live.loading}
                     resumeContext={voiceResumeContext}
                     resultsReadyAt={live.session?.results_ready_at}
+                    keepAlive={warmupTimerActive || analyzingCount > 0}
                     onTranscript={handleTranscript}
                     onStatusChange={setCoachStatus}
                   />

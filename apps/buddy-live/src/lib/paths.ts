@@ -12,9 +12,14 @@ export function commandsCollectionPath(sessionId: string): string {
   return `${sessionDocPath(sessionId)}/commands`;
 }
 
-/** Client-written voice link drop diagnostics, so reconnect churn is queryable. */
-export function voiceEventsCollectionPath(sessionId: string): string {
-  return `${sessionDocPath(sessionId)}/voice_events`;
+/**
+ * Session event log (reserved backend collection, also writable by the client
+ * per firestore.rules). We log voice-link drops here so reconnect churn is
+ * queryable server-side — a dedicated voice_events collection is denied by the
+ * rules, which is why earlier drop telemetry silently wrote nothing.
+ */
+export function coachLogCollectionPath(sessionId: string): string {
+  return `${sessionDocPath(sessionId)}/coach_log`;
 }
 
 export function peekStoragePath(sessionId: string): string {
