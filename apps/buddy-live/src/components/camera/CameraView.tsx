@@ -6,10 +6,12 @@ import { cn } from "@/lib/utils";
 interface CameraViewProps {
   stream: MediaStream | null;
   className?: string;
+  /** Mirror preview for front-facing camera (default true). */
+  mirrored?: boolean;
 }
 
 export const CameraView = forwardRef<HTMLVideoElement, CameraViewProps>(
-  function CameraView({ stream, className }, ref) {
+  function CameraView({ stream, className, mirrored = true }, ref) {
     useEffect(() => {
       const v = (ref as React.MutableRefObject<HTMLVideoElement | null> | null)?.current;
       if (v && v.srcObject !== stream) {
@@ -24,7 +26,10 @@ export const CameraView = forwardRef<HTMLVideoElement, CameraViewProps>(
           autoPlay
           muted
           playsInline
-          className="h-full w-full object-cover [transform:scaleX(-1)]"
+          className={cn(
+            "h-full w-full object-cover",
+            mirrored && "[transform:scaleX(-1)]",
+          )}
         />
       </div>
     );

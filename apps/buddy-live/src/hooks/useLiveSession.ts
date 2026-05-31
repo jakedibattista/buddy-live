@@ -11,7 +11,11 @@ import {
 } from "firebase/firestore";
 import { ensureAnonymousUser, getDb } from "@/lib/firebase";
 import { commandsCollectionPath, repDocPath, sessionDocPath } from "@/lib/paths";
-import { parseCoachCommand, type CoachCommand, type LiveSessionDoc, type RepDoc } from "@/lib/types";
+import { parseCoachCommand, type CoachCommand, type LiveSessionDoc, type RepDoc, type SessionMode } from "@/lib/types";
+
+interface UseLiveSessionOptions {
+  sessionMode?: SessionMode;
+}
 
 interface UseLiveSessionResult {
   sessionId: string | null;
@@ -32,7 +36,8 @@ interface UseLiveSessionResult {
  *
  * Returns the consolidated state for the /coach page.
  */
-export function useLiveSession(): UseLiveSessionResult {
+export function useLiveSession(options: UseLiveSessionOptions = {}): UseLiveSessionResult {
+  const sessionMode = options.sessionMode ?? "full";
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [session, setSession] = useState<LiveSessionDoc | null>(null);
@@ -57,6 +62,7 @@ export function useLiveSession(): UseLiveSessionResult {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             userId: user?.uid ?? "anonymous",
+            sessionMode,
           }),
         });
         const body = (await resp.json()) as { sessionId: string };
@@ -128,7 +134,7 @@ export function useLiveSession(): UseLiveSessionResult {
       unsubReps?.();
       unsubCommands?.();
     };
-  }, []);
+  }, [sessionMode]);
 
   return { sessionId, userId, session, reps, commands, loading, error };
 }

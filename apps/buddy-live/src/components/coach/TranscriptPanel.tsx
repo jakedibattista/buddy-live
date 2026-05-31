@@ -15,6 +15,8 @@ interface Props {
   entries: TranscriptEntry[];
   sessionStartMs?: number;
   className?: string;
+  /** Use full available height (mobile chat tab) instead of fixed h-80. */
+  fillHeight?: boolean;
 }
 
 function roleLabel(entry: TranscriptEntry): string | null {
@@ -32,7 +34,7 @@ function timeLabel(entry: TranscriptEntry, sessionStartMs?: number): string {
   return clock;
 }
 
-export function TranscriptPanel({ entries, sessionStartMs, className }: Props) {
+export function TranscriptPanel({ entries, sessionStartMs, className, fillHeight }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   // Track whether the user has scrolled up to read older messages. While
   // they're reading, we stop auto-scrolling so new entries don't yank the
@@ -69,7 +71,8 @@ export function TranscriptPanel({ entries, sessionStartMs, className }: Props) {
   return (
     <div
       className={cn(
-        "panel-surface relative flex min-h-0 h-80 flex-col text-white lg:h-auto",
+        "panel-surface relative flex min-h-0 flex-col text-white",
+        fillHeight ? "h-full" : "h-80 lg:h-auto",
         className,
       )}
     >

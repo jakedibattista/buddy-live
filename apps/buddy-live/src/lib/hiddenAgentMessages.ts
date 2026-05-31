@@ -14,6 +14,7 @@ export const HIDDEN_AGENT_MESSAGE_PREFIXES = [
   "(Voice reconnected",
   "(Warm-up timer finished",
   "(Camera check",
+  "(Session mode:",
 ] as const;
 
 export function isHiddenAgentMessage(message: string | undefined | null): boolean {
@@ -63,3 +64,13 @@ export function buildWarmupTimerDoneMessage(exercise: string): string {
 
 export const CAMERA_RECHECK_MESSAGE =
   "(Camera check — please call peek_camera now to see if the player fixed their framing.)";
+
+/** Sent once when the player enters via /coach?mode=iq (mic only, no camera setup). */
+export function buildIqOnlyBootstrapMessage(): string {
+  return (
+    "(Session mode: Hockey IQ only. The player chose IQ practice from the app — no stick, space, or camera needed. " +
+    "After greeting and learning name + age (call remember_player_profile), skip the space check and drill selection. " +
+    "Briefly confirm they want Hockey IQ, then call transfer_to_agent(agent_name=\"iq_coach\") immediately. " +
+    "Do NOT call set_focus_drill, start_warmup_timer, peek_camera, or start_rep_capture.)"
+  );
+}
