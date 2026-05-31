@@ -81,6 +81,27 @@ Seed helper: `python3 infra/scripts/seed_demo_memory.py <user_id>`
 
 ---
 
+## Human-test iteration loop (2026-05-31)
+
+Four monitor→improve sessions; details in
+[`TRACK2-PHASE-JOURNAL.md`](TRACK2-PHASE-JOURNAL.md).
+
+- [x] **Results-ready push** + reconnect resilience (`890578b`)
+- [x] **Voice stability** — WebRTC primary, more reconnect attempts,
+  `sendUserActivity()` keepalive, drop telemetry to `coach_log` (`759c7dc`)
+- [x] **ElevenLabs agent settings** — max duration 1800s, take-turn-after-silence ~15s
+- [x] **Portrait capture** — record `720×1280` so clips actually score (`237280b`)
+- [x] **Skip-to-shooting** quick prompt + coach rule (`237280b`)
+- [x] **Thinking bleed** — drop Gemini thought parts + `_thought` backstop (`34affb8`)
+- [x] **Wait-time drills** — self-terminating, age-scaled (`34affb8`)
+- [ ] **`modelforpuckbuddy` shot detection** (OWNER: Jake, other repo) — detector
+  misses real shots late in the clip (scores only walking false-positives) and
+  the metric-label validator mismatch zeroes the scorecard. See journal
+  "The real analysis failure" for the 4-step plan + the optional
+  `shot_hint_seconds` bridge from this repo.
+
+---
+
 ## Hackathon / demo narrative (after human smoke passes)
 
 - [x] **Before:** eval-failures baselines captured for framing + analysis-timeout

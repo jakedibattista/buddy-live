@@ -241,9 +241,73 @@ to state it never sees — surfacing results-ready as an explicit system message
 telling the model to "keep polling." The reconnect path already carried an
 `awaitingReview` clause, so a connected session was the gap.
 
-**Still open:** voice-link churn (ElevenLabs reconnects mid-session) needs
-browser-console drop reasons before we can act — logged in `CoachConversation`
-`onDisconnect` warnings.
+**Still open (at the time):** voice-link churn (ElevenLabs reconnects
+mid-session) — addressed across sessions 2–4 below.
+
+---
+
+## Phase 5 — monitor→improve loop, sessions 2–4 (2026-05-31)
+
+Three more real human sessions, same loop: observe via Cloud Run logs +
+Firestore + the actual uploaded clip, then fix in code and redeploy.
+
+### Session `live-tc0ot4sklzju` — voice drops + blank scorecard (`890578b`)
+
+| Symptom | Root cause | Fix |
+| --- | --- | --- |
+| ~8 voice reconnects in 8 min | ElevenLabs WebRTC churn | Keep WebRTC primary, raise reconnect attempts 5→8, longer backoff |
+| Scored rep showed a blank card; coach faked a review | Analyzer returned a "completed" rep with all-null metrics | `get_rep_result` now returns `status=unscoreable`; scorecard shows a reshoot hint; `drill_coach` told to be honest, no invented numbers |
+| Results-ready push lost during a drop | Push was gated on a live connection | Mark pending + flush on reconnect |
+
+### Session `live-lp7g1qbep1s1` — silence drops (`759c7dc` + ElevenLabs settings)
+
+| Symptom | Root cause | Fix |
+| --- | --- | --- |
+| "If I'm quiet ~10s you say 'quick glitch'" | Link idled out during silent warm-up / analysis windows | `sendUserActivity()` keepalive (pulse every 5s) while the warm-up timer runs or a rep is analyzing |
+| Drop telemetry never recorded | `voice_events` subcollection denied by `firestore.rules` | Write drops to `coach_log` (already allowed), tagged `event: "voice_drop"` |
+| — | ElevenLabs agent timeouts (owned by us, not code) | Raised "Max conversation duration" 600→1800s, "Take turn after silence" 7→~15s |
+
+### Session `live-yvu3h1au2npn` — portrait win, three new issues (`237280b`, `34affb8`)
+
+We pulled the actual clips from Storage and probed them. **Root cause of the
+earlier "unscoreable" reps was orientation:** the clip that scored was
+**portrait 720×1280** with the player large in frame; the failing ones were
+**landscape 1280×720**, player small. The analyzer only scores portrait,
+fill-the-frame clips.
+
+| Symptom | Root cause | Fix |
+| --- | --- | --- |
+| Clips came back unscoreable | Camera requested **landscape** (`1280×720`) | Request **portrait** (`720×1280`, 9:16). Verified: next clip recorded `748×1328`. |
+| Wanted to skip the warm-up | No skip path | "Skip to shooting" quick prompt + root-coach prompt rule (still needs a drill + framing) |
+| Coach **spoke its scratchpad** to a 5yo (`_thought … (21 words) Let's call get_rep_result…`) | `_clean_coach_text` only stripped `(thought)` parens | Skip Gemini `thought` parts at the source + backstop that strips `_thought` blocks (keeps quoted reply) + prompt rule "never narrate reasoning". Regression-tested. |
+| Open-ended balance holds with no end ("keep holding… other foot…") stranded a young kid; IQ too advanced | `drill_coach` wait-time behavior + no age floor | One short self-terminating recovery cue, no piling on, skip hockey jargon for ages ≤7 |
+| Unscoreable message blamed framing when the player *was* fully in frame | Copy assumed framing was the only failure mode | Reworded card + coach hint to "couldn't lock onto a clear shot — take one big full shot" |
+
+### The real analysis failure (handed to `modelforpuckbuddy`)
+
+The portrait clip was clean and the player *did* take a backhand at ~15.8s —
+Gemini's own `coach_summary` says so. But:
+
+- MediaPipe proposed only 4 candidates, all **walking/setup** (`0.07s`,
+  `4.3s`, `6.4s`, `21.4s`); Gemini correctly killed all 4 as false detections.
+- The **real shot at 15.8s was never a candidate**, so `structured_shots`
+  came back empty → null metrics.
+- `review_validator` also stripped the coaching metrics as "hallucinated"
+  because the labels (`'Clean Blade Contact'` …) don't match the canonical
+  backhand keys.
+
+**This is a `modelforpuckbuddy` (model-worker) bug, not Buddy Live.** Handoff:
+(1) scan the full clip and detect the *shot release*, not locomotion;
+(2) score the LLM-named shot timestamp when MediaPipe misses it;
+(3) pin coaching output to canonical metric keys; (4) ignore dead time at both
+ends but keep the middle. Owner: Jake. Optional bridge from this repo — pass a
+`shot_hint_seconds` (from `stop_rep_capture` or the player saying "shot!") into
+`/api/analyze-video`.
+
+**What we learned:** pull the real artifact, don't guess. Probing the clip
+(`ffprobe` + a mid-frame) turned "analysis is broken" into three distinct,
+separately-owned root causes (client orientation, our coach behavior, their
+shot detector).
 
 ---
 
