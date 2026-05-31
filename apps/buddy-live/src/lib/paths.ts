@@ -12,6 +12,11 @@ export function commandsCollectionPath(sessionId: string): string {
   return `${sessionDocPath(sessionId)}/commands`;
 }
 
+/** Client-written voice link drop diagnostics, so reconnect churn is queryable. */
+export function voiceEventsCollectionPath(sessionId: string): string {
+  return `${sessionDocPath(sessionId)}/voice_events`;
+}
+
 export function peekStoragePath(sessionId: string): string {
   return `${SESSIONS_COLLECTION}/${sessionId}/peek_latest.jpg`;
 }

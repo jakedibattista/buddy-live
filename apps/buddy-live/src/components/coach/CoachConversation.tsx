@@ -2,8 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ConversationProvider, useConversation } from "@elevenlabs/react";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { Mic, MicOff, PhoneOff } from "lucide-react";
 import { CoachAudioMuteButton } from "@/components/coach/CoachAudioMuteButton";
+import { getDb } from "@/lib/firebase";
+import { voiceEventsCollectionPath } from "@/lib/paths";
 import { coachTranscriptEntries, systemTranscript, voiceTranscriptEntry } from "@/lib/transcript";
 import { cn } from "@/lib/utils";
 import {
@@ -29,8 +32,12 @@ interface CoachConversationProps {
 const WRAP_UP_MESSAGE =
   "I'm all done for today. Please give me a quick recap and one homework cue, then say goodbye.";
 
-const MAX_RECONNECT_ATTEMPTS = 5;
-const RECONNECT_DELAYS_MS = [1000, 2000, 3000, 5000, 8000];
+// WebRTC is intentionally the primary transport (see connectSession): per
+// ElevenLabs guidance it is more stable than WebSocket for live voice and is
+// the documented fix for rapid disconnect/reconnect cycling. Do NOT switch the
+// primary path to WebSocket without strong evidence.
+const MAX_RECONNECT_ATTEMPTS = 8;
+const RECONNECT_DELAYS_MS = [1000, 2000, 3000, 5000, 8000, 8000, 8000, 8000];
 
 function formatVoiceConnectionError(raw: string): string {
   if (/elevenlabs.*500|unexpected error occurred/i.test(raw)) {
@@ -72,6 +79,32 @@ function CoachConversationInner({
   const connectSessionRef = useRef<(resume: boolean) => Promise<boolean>>(async () => false);
   const shouldSendReconnectRef = useRef(false);
   const resultsReadyHandledRef = useRef<string | null>(null);
+  const resultsReadyPendingRef = useRef<string | null>(null);
+  const convoRef = useRef<ReturnType<typeof useConversation> | null>(null);
+
+  const sendResultsReadyPush = useCallback(() => {
+    convoRef.current?.sendUserMessage(
+      buildResultsReadyMessage(resumeContextRef.current.lastRepId),
+    );
+  }, []);
+
+  const logVoiceEvent = useCallback(
+    (kind: string, details: unknown) => {
+      if (!sessionId) return;
+      const db = getDb();
+      if (!db) return;
+      const d = (details ?? {}) as Record<string, unknown>;
+      void addDoc(collection(db, voiceEventsCollectionPath(sessionId)), {
+        kind,
+        reason: typeof d.reason === "string" ? d.reason : null,
+        code: typeof d.code === "number" ? d.code : null,
+        message: typeof d.message === "string" ? d.message : null,
+        attempt: reconnectAttemptRef.current,
+        at: serverTimestamp(),
+      }).catch(() => {});
+    },
+    [sessionId],
+  );
 
   useEffect(() => {
     resumeContextRef.current = resumeContext;
@@ -132,19 +165,31 @@ function CoachConversationInner({
           systemTranscript("Voice reconnected — Coach Buddy is picking up where you left off.", "connection"),
         );
       }
+
+      // Flush a results-ready push that couldn't be sent while the link was
+      // down (root cause of session live-tc0ot4sklzju never reviewing the
+      // scorecard: results landed during a drop and the push was lost).
+      const pending = resultsReadyPendingRef.current;
+      if (pending && resultsReadyHandledRef.current !== pending && !userEndedRef.current) {
+        resultsReadyHandledRef.current = pending;
+        resultsReadyPendingRef.current = null;
+        window.setTimeout(() => sendResultsReadyPush(), 900);
+      }
     },
     onDisconnect: (details) => {
       setEnding(false);
       setReconnecting(false);
       onStatusChange?.("disconnected");
 
-      // Log the drop reason so unexpected reconnect churn (we saw 13 in one
-      // 16-min session) is diagnosable from the browser console.
+      // Log the drop reason so unexpected reconnect churn (we saw ~8 in one
+      // 8-min session) is diagnosable from the browser console AND queryable
+      // server-side via the session's voice_events collection.
       if (!userEndedRef.current && details?.reason !== "user") {
         console.warn(
           `[voice] unexpected disconnect (attempt ${reconnectAttemptRef.current}/${MAX_RECONNECT_ATTEMPTS})`,
           details,
         );
+        logVoiceEvent("unexpected_disconnect", details);
       }
 
       if (userEndedRef.current || details?.reason === "user") return;
@@ -173,6 +218,10 @@ function CoachConversationInner({
         onTranscript(entry);
       }
     },
+  });
+
+  useEffect(() => {
+    convoRef.current = convo;
   });
 
   const connectSession = useCallback(
@@ -279,13 +328,18 @@ function CoachConversationInner({
 
   // Push the agent a one-time results-ready note the moment analysis lands, so
   // the coach proactively reviews the scorecard instead of stalling/small-talk.
+  // If the link is down right then, mark it pending and flush on reconnect.
   useEffect(() => {
-    if (!resultsReadyAt) return;
+    if (!resultsReadyAt || userEndedRef.current) return;
     if (resultsReadyHandledRef.current === resultsReadyAt) return;
-    if (userEndedRef.current || convo.status !== "connected") return;
-    resultsReadyHandledRef.current = resultsReadyAt;
-    convo.sendUserMessage(buildResultsReadyMessage(resumeContextRef.current.lastRepId));
-  }, [resultsReadyAt, convo]);
+    if (convo.status === "connected") {
+      resultsReadyHandledRef.current = resultsReadyAt;
+      resultsReadyPendingRef.current = null;
+      sendResultsReadyPush();
+    } else {
+      resultsReadyPendingRef.current = resultsReadyAt;
+    }
+  }, [resultsReadyAt, convo, sendResultsReadyPush]);
 
   const canStart =
     sessionReady &&

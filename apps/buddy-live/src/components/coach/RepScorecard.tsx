@@ -2,7 +2,9 @@
 
 import { cn, formatScore, humanMetric } from "@/lib/utils";
 import type { RepDoc } from "@/lib/types";
-import { Target, Award } from "lucide-react";
+import { Target, Award, CameraOff } from "lucide-react";
+
+const TERMINAL_STATUSES = new Set(["completed", "failed", "analyze_error"]);
 
 interface Props {
   rep: RepDoc;
@@ -154,11 +156,22 @@ export function RepScorecard({ rep }: Props) {
             );
           })}
         </div>
+      ) : rep.status === "analyzing" || rep.status === "uploaded" ? (
+        <div className="mt-4 py-6 text-center text-xs text-zinc-400 flex flex-col items-center justify-center gap-2">
+          <div className="h-4 w-4 border-2 border-t-transparent border-yellow-400 rounded-full animate-spin" />
+          <span>Analyzing your mechanics — this takes about 30–90 seconds.</span>
+        </div>
       ) : (
-        rep.status === "analyzing" && (
-          <div className="mt-4 py-6 text-center text-xs text-zinc-400 flex flex-col items-center justify-center gap-2">
-            <div className="h-4 w-4 border-2 border-t-transparent border-yellow-400 rounded-full animate-spin" />
-            <span>Analyzing your mechanics — this takes about 30–90 seconds.</span>
+        TERMINAL_STATUSES.has(rep.status ?? "") && (
+          <div className="mt-4 flex flex-col items-center justify-center gap-2 rounded-xl border border-amber-500/15 bg-amber-500/[0.04] py-6 px-4 text-center">
+            <CameraOff className="h-5 w-5 text-amber-300/80" />
+            <span className="text-sm font-semibold text-amber-100">
+              Couldn&apos;t read this clip
+            </span>
+            <span className="max-w-xs text-xs text-zinc-400">
+              The camera didn&apos;t catch a clear, full-body shot this time. Step back so
+              you&apos;re head-to-toe in frame and facing the camera, then try another rep.
+            </span>
           </div>
         )
       )}

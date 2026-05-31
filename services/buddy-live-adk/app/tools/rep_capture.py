@@ -461,10 +461,25 @@ def _summarize_results(rep_id: str, results: dict[str, Any]) -> dict[str, Any]:
     numeric_metrics = {
         k: float(v) for k, v in metrics.items() if isinstance(v, (int, float))
     }
-    weakest_metric = None
-    weakest_score = None
-    if numeric_metrics:
-        weakest_metric, weakest_score = min(numeric_metrics.items(), key=lambda kv: kv[1])
+
+    # Degenerate result: the analyzer returned a scorecard with no usable
+    # metrics (e.g. the clip was poorly framed / no clear shot, as in session
+    # live-tc0ot4sklzju where every metric came back null). Do NOT pretend to
+    # have a score -- tell the coach to be honest and wrap up warmly.
+    if not numeric_metrics:
+        return {
+            "status": "unscoreable",
+            "rep_id": rep_id,
+            "hint": (
+                "The camera couldn't get a clean read of that shot (likely "
+                "framing). Be honest with the player in one sentence, skip "
+                "fake numbers, give one general encouragement + homework cue, "
+                "then move to the recap."
+            ),
+            "coach_summary": results.get("coach_summary"),
+        }
+
+    weakest_metric, weakest_score = min(numeric_metrics.items(), key=lambda kv: kv[1])
 
     return {
         "status": "ready",
