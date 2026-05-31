@@ -60,10 +60,8 @@ export async function GET(req: NextRequest) {
     req.nextUrl.searchParams.get("agentId") || process.env.NEXT_PUBLIC_ELEVENLABS_AGENT_ID;
 
   if (!apiKey) {
-    return NextResponse.json(
-      { error: "ELEVENLABS_API_KEY not configured (only required for private agents)" },
-      { status: 500 },
-    );
+    // Public agents connect with agentId only via the client fallback path.
+    return NextResponse.json({ publicAgentFallback: true });
   }
   if (!agentId) {
     return NextResponse.json(

@@ -223,7 +223,11 @@ function CoachConversationInner({
             signedUrl = body.signedUrl;
             conversationToken = body.conversationToken;
           } else if (body.error) {
-            throw new Error(body.error);
+            const missingKey = /ELEVENLABS_API_KEY not configured/i.test(body.error);
+            if (!missingKey) {
+              throw new Error(body.error);
+            }
+            // Private-agent credentials unavailable — fall through to public agentId connect.
           }
         } catch (credentialErr) {
           if (credentialErr instanceof Error && credentialErr.message) {
