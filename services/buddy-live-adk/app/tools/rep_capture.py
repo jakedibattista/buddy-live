@@ -471,11 +471,13 @@ def _summarize_results(rep_id: str, results: dict[str, Any]) -> dict[str, Any]:
             "status": "unscoreable",
             "rep_id": rep_id,
             "hint": (
-                "The camera couldn't get a clean read of that shot (usually a "
-                "sideways/landscape clip or the player too small in frame). Be "
-                "honest in one sentence, tell them next time to hold the phone "
-                "upright and fill the frame head-to-toe, skip fake numbers, give "
-                "one general encouragement + homework cue, then move to the recap."
+                "Analysis didn't lock onto a clear shot in that clip (the "
+                "player likely set up or moved without taking one big, full, "
+                "committed shot). Be honest in one sentence, do NOT invent "
+                "scores, and do NOT blame their camera or framing. Tell them "
+                "next time to take one full shot and say 'shot!' right after so "
+                "we catch it, give one encouragement + homework cue, then move "
+                "to the recap."
             ),
             "coach_summary": results.get("coach_summary"),
         }

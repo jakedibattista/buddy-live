@@ -165,13 +165,13 @@ export function RepScorecard({ rep }: Props) {
         TERMINAL_STATUSES.has(rep.status ?? "") && (
           <div className="mt-4 flex flex-col items-center justify-center gap-2 rounded-xl border border-amber-500/15 bg-amber-500/[0.04] py-6 px-4 text-center">
             <CameraOff className="h-5 w-5 text-amber-300/80" />
-            <span className="text-sm font-semibold text-amber-100">
-              Couldn&apos;t read this clip
-            </span>
-            <span className="max-w-xs text-xs text-zinc-400">
-              Hold your phone upright (tall, not sideways) and get close enough that
-              you fill the frame head-to-toe. Then try another rep.
-            </span>
+              <span className="text-sm font-semibold text-amber-100">
+                Couldn&apos;t score this clip
+              </span>
+              <span className="max-w-xs text-xs text-zinc-400">
+                We couldn&apos;t lock onto a clear shot. Next time take one big, full
+                shot and tell your coach &ldquo;shot!&rdquo; right after you let it go.
+              </span>
           </div>
         )
       )}

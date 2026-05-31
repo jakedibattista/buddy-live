@@ -185,18 +185,47 @@ def _trim_user_text(text: str) -> str:
     return tail.strip() or text[-_MAX_USER_TEXT_CHARS:].strip()
 
 
+_THOUGHT_MARKER = re.compile(
+    r'(?im)(?:^|\n)\s*(?:_+\s*thought\b|<\s*thought\s*>|thought\s*:|thinking\s*:)'
+)
+
+
+def _strip_thought_block(text: str) -> str:
+    """Backstop for chain-of-thought that leaks as plain text (not a Gemini
+    thought part), e.g. a turn that begins:
+
+        _thought
+        Aww, he's 5 and doesn't know ... keep it super simple.
+        "No worries, Jake! ... while we wait." (21 words)
+        Let's call `get_rep_result` again to check.
+
+    When such a planning preamble is detected we keep ONLY the first quoted
+    reply (the model wraps its intended spoken line in quotes); if there's no
+    quoted reply we drop everything up to the marker so the reasoning never
+    reaches TTS."""
+    if not text or not _THOUGHT_MARKER.search(text):
+        return text
+    quoted = re.search(r'"([^"]{8,})"', text)
+    if quoted:
+        return quoted.group(1).strip()
+    # No quoted reply: drop the marker line and any reasoning before it.
+    return _THOUGHT_MARKER.sub('\n', text).strip()
+
+
 def _clean_coach_text(text: str) -> str:
     """Strip artifacts that leak into spoken output before they reach TTS:
-    speaker-label prefixes ("Stafford:", "Coach Buddy:") and chain-of-thought /
-    stage-direction parentheticals ("(thought) I must never ..."). The model
-    occasionally narrates its own rules aloud despite the prompt forbidding it,
-    so this backend guard is the reliable fix."""
+    speaker-label prefixes ("Stafford:", "Coach Buddy:"), chain-of-thought
+    parentheticals ("(thought) I must never ..."), and leaked planning blocks
+    ("_thought ... (21 words)"). The model occasionally narrates its own
+    reasoning aloud despite the prompt forbidding it, so this backend guard is
+    the reliable fix."""
     if not text:
         return text
+    cleaned = _strip_thought_block(text)
     cleaned = re.sub(
         r'(?im)\b(?:stafford|coach\s*buddy|coach|buddy|player|user|assistant)\s*:\s*',
         '',
-        text,
+        cleaned,
     )
     cleaned = re.sub(
         r'\((?:thought|thinking|internal|aside|note)\b[^)]*\)',
@@ -204,6 +233,8 @@ def _clean_coach_text(text: str) -> str:
         cleaned,
         flags=re.IGNORECASE,
     )
+    # Drop stray self-annotations like "(21 words)" the planner leaves behind.
+    cleaned = re.sub(r'\(\s*\d+\s+words?\s*\)', '', cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(
         r'(?i)\b(?:can we help you|how can i help you|do you have any questions)\??\s*',
         '',
@@ -357,9 +388,14 @@ async def chat_completions(payload: ChatCompletionRequest, request: Request) -> 
                                 iq_active = True
                             if not event.content or not event.content.parts:
                                 continue
+                            # Skip Gemini "thought" parts -- when the model
+                            # thinks, those parts carry its reasoning and must
+                            # never reach TTS (we saw a "_thought ..." block get
+                            # spoken to a 5yo). Only join real reply text.
                             text = "".join(
                                 getattr(part, "text", None) or ""
                                 for part in event.content.parts
+                                if not getattr(part, "thought", False)
                             )
                             if not text:
                                 continue

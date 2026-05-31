@@ -29,8 +29,35 @@ def test_clean_strips_leaked_chain_of_thought_parenthetical():
     assert "So I'll just wait." in cleaned
 
 
+def test_clean_strips_leaked_thought_block_keeps_quoted_reply():
+    # Real leak from session live-yvu3h1au2npn: the model spoke its planning
+    # scratchpad to a 5yo. Keep only the quoted intended reply.
+    raw = (
+        "_thought\n"
+        "Aww, he's 5 and doesn't know hockey teams. Let's keep it super simple.\n"
+        '"No worries, Jake! It just means I am still looking at your video. '
+        'Let\'s do some giant toe touches while we wait." (21 words)\n'
+        "Let's call `get_rep_result` again to check."
+    )
+    cleaned = _clean_coach_text(raw)
+    assert cleaned == (
+        "No worries, Jake! It just means I am still looking at your video. "
+        "Let's do some giant toe touches while we wait."
+    )
+    assert "thought" not in cleaned.lower()
+    assert "get_rep_result" not in cleaned
+    assert "21 words" not in cleaned
+
+
 def test_clean_leaves_normal_reply_untouched():
     reply = "You're far from the net. Big windup, or quick snap?"
+    assert _clean_coach_text(reply) == reply
+
+
+def test_clean_leaves_reply_with_quote_untouched():
+    # A normal reply that happens to contain a quote must NOT be mangled —
+    # the thought-strip only triggers on an explicit _thought/thinking marker.
+    reply = 'Nice one! Just say "shot" right after you let it go.'
     assert _clean_coach_text(reply) == reply
 
 
