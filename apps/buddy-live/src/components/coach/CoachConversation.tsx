@@ -19,8 +19,6 @@ interface CoachConversationProps {
   agentId: string | undefined;
   sessionReady?: boolean;
   resumeContext: VoiceResumeContext;
-  /** Hidden system message sent once on the first voice connect (not reconnect). */
-  sessionBootstrapMessage?: string | null;
   onTranscript: (entry: TranscriptEntry) => void;
   onStatusChange?: (status: string) => void;
 }
@@ -55,7 +53,6 @@ function CoachConversationInner({
   agentId,
   sessionReady = true,
   resumeContext,
-  sessionBootstrapMessage = null,
   onTranscript,
   onStatusChange,
 }: CoachConversationProps) {
@@ -65,21 +62,15 @@ function CoachConversationInner({
 
   const userEndedRef = useRef(false);
   const hadConnectedRef = useRef(false);
-  const bootstrapSentRef = useRef(false);
   const reconnectAttemptRef = useRef(0);
   const reconnectTimerRef = useRef<number | null>(null);
   const resumeContextRef = useRef(resumeContext);
-  const bootstrapMessageRef = useRef(sessionBootstrapMessage);
   const connectSessionRef = useRef<(resume: boolean) => Promise<boolean>>(async () => false);
   const shouldSendReconnectRef = useRef(false);
 
   useEffect(() => {
     resumeContextRef.current = resumeContext;
   }, [resumeContext]);
-
-  useEffect(() => {
-    bootstrapMessageRef.current = sessionBootstrapMessage;
-  }, [sessionBootstrapMessage]);
 
   const clearReconnectTimer = useCallback(() => {
     if (reconnectTimerRef.current != null) {
@@ -135,14 +126,6 @@ function CoachConversationInner({
         onTranscript(
           systemTranscript("Voice reconnected — Coach Buddy is picking up where you left off.", "connection"),
         );
-      } else {
-        const bootstrap = bootstrapMessageRef.current;
-        if (bootstrap && !bootstrapSentRef.current) {
-          bootstrapSentRef.current = true;
-          window.setTimeout(() => {
-            convo.sendUserMessage(bootstrap);
-          }, 800);
-        }
       }
     },
     onDisconnect: (details) => {

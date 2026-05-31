@@ -19,14 +19,10 @@ export type SessionPhase =
   | "recap"
   | "ended";
 
-/** full = shot practice with camera; iq = Hockey IQ entry (mic only, skip setup). */
-export type SessionMode = "full" | "iq";
-
 export interface LiveSessionDoc {
   session_id: string;
   user_id: string;
   startedAt: string;
-  sessionMode?: SessionMode;
   currentPhase?: SessionPhase;
   focus_drill?: FocusDrill;
   focus_drill_set_at?: string;

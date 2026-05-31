@@ -33,7 +33,7 @@ export default function Home() {
           <LandingSessionPreview />
         </div>
 
-        <div className="mt-8 flex w-full max-w-sm flex-col gap-3 sm:mt-10 lg:max-w-md">
+        <div className="mt-8 w-full max-w-sm sm:mt-10 lg:max-w-md">
           <Link
             href="/coach"
             className="group inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-[#0066cc] px-6 py-3.5 text-[17px] font-normal text-white transition-all hover:bg-[#0071e3] active:scale-[0.97] motion-reduce:active:scale-100"
@@ -44,16 +44,6 @@ export default function Home() {
               className="transition-transform group-hover:translate-x-0.5"
             />
           </Link>
-          <Link
-            href="/coach?mode=iq"
-            className="inline-flex w-full items-center justify-center rounded-full border border-white/[0.12] bg-zinc-900/50 px-6 py-3.5 text-[17px] font-normal text-zinc-200 transition-all hover:border-white/20 hover:bg-zinc-800/60 active:scale-[0.97] motion-reduce:active:scale-100"
-          >
-            Hockey IQ only
-          </Link>
-          <p className="text-pretty text-sm leading-relaxed text-zinc-500">
-            Full practice needs camera, mic, a stick, and space to shoot. Hockey IQ
-            is mic-only — great on mobile when you&apos;re off the ice.
-          </p>
         </div>
       </div>
     </main>

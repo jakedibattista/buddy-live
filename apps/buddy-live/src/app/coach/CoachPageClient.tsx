@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CameraFlipButton } from "@/components/camera/CameraFlipButton";
 import { CameraPeekNudge } from "@/components/camera/CameraPeekNudge";
@@ -24,11 +23,9 @@ import { usePeekFrameUploader } from "@/hooks/usePeekFrameUploader";
 import { useRepCapture } from "@/hooks/useRepCapture";
 import { useRepResultsPolling } from "@/hooks/useRepResultsPolling";
 import {
-  buildIqOnlyBootstrapMessage,
   type VoiceResumeContext,
 } from "@/lib/hiddenAgentMessages";
 import { humanSessionPhase } from "@/lib/phases";
-import { parseSessionMode } from "@/lib/sessionMode";
 import { systemTranscript } from "@/lib/transcript";
 import { cn } from "@/lib/utils";
 import type { IqAnswerCommand, IqVisualCommand, TranscriptEntry } from "@/lib/types";
@@ -38,9 +35,6 @@ const AGENT_ID = process.env.NEXT_PUBLIC_ELEVENLABS_AGENT_ID;
 type FacingMode = "user" | "environment";
 
 export function CoachPageClient() {
-  const searchParams = useSearchParams();
-  const sessionMode = parseSessionMode(searchParams.get("mode"));
-  const iqOnlyMode = sessionMode === "iq";
   const mobileLayout = useMobileCoachLayout();
   const [mobileTab, setMobileTab] = useState<CoachMobileTab>("live");
 
@@ -54,7 +48,7 @@ export function CoachPageClient() {
   const [warmupTimerActive, setWarmupTimerActive] = useState(false);
   const [warmupTimerLabel, setWarmupTimerLabel] = useState<string | null>(null);
 
-  const live = useLiveSession({ sessionMode });
+  const live = useLiveSession();
   const capture = useRepCapture({
     sessionId: live.sessionId,
     stream,
@@ -64,12 +58,7 @@ export function CoachPageClient() {
   usePeekFrameUploader({
     sessionId: live.sessionId,
     videoRef,
-    enabled: Boolean(
-      !iqOnlyMode &&
-        live.sessionId &&
-        stream &&
-        live.session?.currentPhase !== "iq_practice",
-    ),
+    enabled: Boolean(live.sessionId && stream && live.session?.currentPhase !== "iq_practice"),
     warmupActive: warmupTimerActive,
   });
 
@@ -85,25 +74,21 @@ export function CoachPageClient() {
       const facing = options?.facing ?? facingMode;
       try {
         stream?.getTracks().forEach((t) => t.stop());
-        const ms = iqOnlyMode
-          ? await navigator.mediaDevices.getUserMedia({
-              audio: { echoCancellation: true, noiseSuppression: true },
-            })
-          : await navigator.mediaDevices.getUserMedia({
-              video: {
-                width: { ideal: 1280 },
-                height: { ideal: 720 },
-                facingMode: facing,
-              },
-              audio: { echoCancellation: true, noiseSuppression: true },
-            });
-        if (!iqOnlyMode) setFacingMode(facing);
+        const ms = await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            facingMode: facing,
+          },
+          audio: { echoCancellation: true, noiseSuppression: true },
+        });
+        setFacingMode(facing);
         setStream(ms);
       } catch (e) {
         setPermissionError(e instanceof Error ? e.message : String(e));
       }
     },
-    [stream, facingMode, iqOnlyMode],
+    [stream, facingMode],
   );
 
   const flipCamera = useCallback(() => {
@@ -117,7 +102,7 @@ export function CoachPageClient() {
       stream?.getTracks().forEach((t) => t.stop());
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [iqOnlyMode]);
+  }, []);
 
   const handleTranscript = useCallback((entry: TranscriptEntry) => {
     setTranscript((cur) => [...cur, entry].slice(-40));
@@ -158,7 +143,6 @@ export function CoachPageClient() {
   }, [live.commands, latestIqVisual]);
 
   const inIqPractice = live.session?.currentPhase === "iq_practice";
-  const showIqLayout = inIqPractice || iqOnlyMode;
 
   const focusDrill = live.session?.focus_drill ?? null;
   const setupFramingPassed = live.session?.setup_framing_passed === true;
@@ -193,14 +177,8 @@ export function CoachPageClient() {
     [focusDrill, currentPhase, reps.length, setupFramingPassed, lastRepId, awaitingReview],
   );
 
-  const sessionBootstrapMessage = useMemo(
-    () => (iqOnlyMode ? buildIqOnlyBootstrapMessage() : null),
-    [iqOnlyMode],
-  );
-
   const cameraHint = live.session?.camera_hint;
   const showSetupBanner =
-    !iqOnlyMode &&
     connected &&
     !capture.recording &&
     focusDrill != null &&
@@ -353,9 +331,7 @@ export function CoachPageClient() {
       </div>
       <div className="text-lg font-semibold text-white">Hockey IQ Practice</div>
       <div className="mt-2 text-sm text-zinc-400">
-        {iqOnlyMode
-          ? "Mic only — tap Start practice and Coach Buddy will walk you through game scenarios."
-          : "Coach Buddy is lining up your first scenario — listen for the question and watch this space."}
+        Coach Buddy is lining up your first scenario — listen for the question and watch this space.
       </div>
     </div>
   );
@@ -385,7 +361,7 @@ export function CoachPageClient() {
               )}
             >
               <div className="relative min-h-0 flex-1">
-                {showIqLayout ? (
+                {inIqPractice ? (
                   <div className="absolute inset-0 flex items-center justify-center overflow-y-auto rounded-2xl border border-white/[0.08] bg-black p-4 sm:p-6">
                     {latestIqVisual ? (
                       <IqVisualCard
@@ -434,7 +410,7 @@ export function CoachPageClient() {
                   </div>
                 )}
 
-                {!showIqLayout && permissionError && (
+                {!inIqPractice && permissionError && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/70 p-6 text-center">
                     <div className="max-w-sm">
                       <div className="mb-1 text-lg font-semibold">Camera + mic required</div>
@@ -450,21 +426,7 @@ export function CoachPageClient() {
                   </div>
                 )}
 
-                {showIqLayout && permissionError && (
-                  <div className="absolute inset-x-4 top-4 z-30 rounded-xl border border-red-500/30 bg-red-950/80 p-4 text-center backdrop-blur-md">
-                    <div className="mb-1 text-sm font-semibold text-red-100">Microphone required</div>
-                    <div className="mb-3 text-xs text-red-200/80">{permissionError}</div>
-                    <button
-                      type="button"
-                      onClick={() => void requestMedia()}
-                      className="btn-primary px-4 py-1.5 text-sm motion-reduce:active:scale-100"
-                    >
-                      Try again
-                    </button>
-                  </div>
-                )}
-
-                {!showIqLayout && showSetupBanner && (
+                {!inIqPractice && showSetupBanner && (
                   <div className="pointer-events-none absolute left-4 top-4 z-10 max-w-[55%] sm:max-w-sm">
                     <div className="rounded-xl border border-amber-400/40 bg-amber-500/25 px-4 py-2 text-xs leading-snug text-amber-50 shadow-md backdrop-blur-md sm:text-sm">
                       {setupBannerText}
@@ -472,7 +434,7 @@ export function CoachPageClient() {
                   </div>
                 )}
 
-                {!showIqLayout && (
+                {!inIqPractice && (
                   <div className="pointer-events-none absolute right-4 top-4 z-30 flex max-w-[45%] flex-col items-end gap-1.5 [&>*]:pointer-events-auto">
                     <FramingIndicator
                       framingPassedOnce={framingPassedOnceRef.current}
@@ -485,7 +447,7 @@ export function CoachPageClient() {
                   </div>
                 )}
 
-                {!showIqLayout && (
+                {!inIqPractice && (
                   <CameraPeekNudge
                     currentPhase={currentPhase}
                     setupFramingPassed={setupFramingPassed}
@@ -494,15 +456,16 @@ export function CoachPageClient() {
                   />
                 )}
 
-                <CoachPuckAvatar
-                  recording={capture.recording}
-                  celebrate={celebratePuck}
-                  className={cn(
-                    "absolute z-20",
-                    showIqLayout ? "bottom-28 left-4" : "bottom-24 left-4",
-                    mobileLayout && mobileTab !== "live" && "hidden",
-                  )}
-                />
+                {!inIqPractice && (
+                  <CoachPuckAvatar
+                    recording={capture.recording}
+                    celebrate={celebratePuck}
+                    className={cn(
+                      "absolute bottom-24 left-4 z-20",
+                      mobileLayout && mobileTab !== "live" && "hidden",
+                    )}
+                  />
+                )}
 
                 <div
                   className={cn(
@@ -510,7 +473,7 @@ export function CoachPageClient() {
                     mobileLayout && mobileTab !== "live" && "hidden",
                   )}
                 >
-                  {!showIqLayout && (
+                  {!inIqPractice && (
                     <VoiceQuickPrompts
                       recording={capture.recording}
                       setupFramingPassed={setupFramingPassed}
@@ -523,17 +486,16 @@ export function CoachPageClient() {
                     agentId={AGENT_ID}
                     sessionReady={!live.loading}
                     resumeContext={voiceResumeContext}
-                    sessionBootstrapMessage={sessionBootstrapMessage}
                     onTranscript={handleTranscript}
                     onStatusChange={setCoachStatus}
                   />
                 </div>
 
-                {!showIqLayout && (
+                {!inIqPractice && (
                   <RecordingTimer recording={capture.recording} onStop={capture.stopRecording} />
                 )}
 
-                {!showIqLayout && (
+                {!inIqPractice && (
                   <WarmupTimerBridge
                     sessionId={live.sessionId}
                     commands={live.commands}

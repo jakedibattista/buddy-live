@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { Timestamp } from "firebase-admin/firestore";
 import { adminConfigured, adminDb } from "@/lib/firebaseAdmin";
 import { SESSIONS_COLLECTION } from "@/lib/paths";
-import type { SessionMode } from "@/lib/types";
 import { shortId } from "@/lib/utils";
 
 const SESSION_TTL_HOURS = 24;
@@ -13,7 +12,6 @@ export const dynamic = "force-dynamic";
 interface CreateSessionBody {
   userId?: string;
   sessionId?: string;
-  sessionMode?: SessionMode;
 }
 
 /**
@@ -34,7 +32,6 @@ export async function POST(req: NextRequest) {
   }
   const sessionId = body.sessionId || shortId("live");
   const userId = body.userId || "anonymous";
-  const sessionMode: SessionMode = body.sessionMode === "iq" ? "iq" : "full";
 
   if (!adminConfigured()) {
     return NextResponse.json({
@@ -57,7 +54,6 @@ export async function POST(req: NextRequest) {
       session_id: sessionId,
       user_id: userId,
       startedAt: now.toISOString(),
-      sessionMode,
       // Opening conversation (name/age/space/drill pick) shows "Intro". Flips to
       // "warmup" once the player commits to shooting (set_focus_drill /
       // start_warmup_timer) or to "iq_practice" on hand-off to the IQ coach.
@@ -69,5 +65,5 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  return NextResponse.json({ sessionId, userId, sessionMode });
+  return NextResponse.json({ sessionId, userId });
 }
