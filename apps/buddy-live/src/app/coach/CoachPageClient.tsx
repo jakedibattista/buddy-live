@@ -76,8 +76,13 @@ export function CoachPageClient() {
         stream?.getTracks().forEach((t) => t.stop());
         const ms = await navigator.mediaDevices.getUserMedia({
           video: {
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
+            // Portrait (tall) capture. The analyzer (modelforpuckbuddy) only
+            // returns metrics on portrait clips where the player fills the
+            // frame head-to-toe; landscape 1280x720 clips came back with zero
+            // metrics ("unscoreable"). Phones honor this and record portrait.
+            width: { ideal: 720 },
+            height: { ideal: 1280 },
+            aspectRatio: { ideal: 9 / 16 },
             facingMode: facing,
           },
           audio: { echoCancellation: true, noiseSuppression: true },

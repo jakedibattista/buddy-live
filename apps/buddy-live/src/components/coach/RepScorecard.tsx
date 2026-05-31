@@ -169,8 +169,8 @@ export function RepScorecard({ rep }: Props) {
               Couldn&apos;t read this clip
             </span>
             <span className="max-w-xs text-xs text-zinc-400">
-              The camera didn&apos;t catch a clear, full-body shot this time. Step back so
-              you&apos;re head-to-toe in frame and facing the camera, then try another rep.
+              Hold your phone upright (tall, not sideways) and get close enough that
+              you fill the frame head-to-toe. Then try another rep.
             </span>
           </div>
         )

@@ -20,7 +20,16 @@ interface Prompt {
 const WRAP_UP_MESSAGE =
   "I'm all done for today. Please give me a quick recap and one homework cue, then say goodbye.";
 
+const SKIP_WARMUP_MESSAGE =
+  "Let's skip the warm-up and go straight to shooting. I've got my stick, puck, and space ready.";
+
 const PROMPTS: Prompt[] = [
+  {
+    label: "Skip to shooting",
+    message: SKIP_WARMUP_MESSAGE,
+    show: (ctx) =>
+      ctx.connected && !ctx.recording && !ctx.setupFramingPassed && ctx.repCount === 0,
+  },
   {
     label: "I'm ready",
     message: "I'm ready.",
