@@ -486,6 +486,7 @@ export function CoachPageClient() {
                     agentId={AGENT_ID}
                     sessionReady={!live.loading}
                     resumeContext={voiceResumeContext}
+                    resultsReadyAt={live.session?.results_ready_at}
                     onTranscript={handleTranscript}
                     onStatusChange={setCoachStatus}
                   />

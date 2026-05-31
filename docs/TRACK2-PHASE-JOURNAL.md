@@ -202,9 +202,48 @@ spoken name. `ensure_session` hydrates ADK state from Firestore. No valid
 | **Vertex Search** | Data store `buddy-live-drills`, 9 docs via JSONL import; `lookup_drill_knowledge('wristshot')` → 3 results |
 | **Cloud Run env** | `BUDDY_ENABLE_CLOUD_TRACE=1` + `BUDDY_VERTEX_SEARCH_DATA_STORE_ID` (rev `00053-2rw`+) |
 | **Marcus seed** | Firestore `demo-prior-marcus-jake` (uid `UXNBj…`), `demo-prior-marcus-alt` (uid `PZGW…`) |
-| **Eval set** | 6th case Marcus returning (`5f36f631`); env sim returns prior memory for Marcus name |
+| **Eval baselines** | `make eval` 6/6 PASSED; `make eval-failures` 6/6 PASSED (2026-05-30) |
 | **Scripts** | `infra/scripts/setup_vertex_search.py`, `infra/scripts/seed_demo_memory.py` |
 - [ ] Deferred: durable `SessionService`, Workflow graph
+
+---
+
+## Phase 5 — first ADK 2.0 monitor → improve loop (2026-05-31)
+
+First time we closed the loop: a real human session, observed end-to-end via
+ADK 2.0 + Cloud Run + Firestore, then fixed in code. Session
+`live-pmhtnko9t195` (user `rWQVTNV2gseow9slWw3fGZuxg4P2`) started clean but
+degraded toward the end.
+
+**What we observed (from Cloud Run logs + Firestore session state):**
+
+| Symptom | Root cause |
+| --- | --- |
+| Coach went quiet, player said "all done / hello?" | After the scored rep landed, the agent had no signal results were ready — it relied on passive `get_rep_result` polling and drifted into small talk |
+| Score was visible on screen but never reviewed over voice | Results-ready only triggered a *visible* transcript line; nothing was pushed to the ElevenLabs agent |
+| Player expected a cool-down after the slap shot | Prompt had no cool-down framing — recap never positioned as the wind-down |
+| Spoken "3, 2, 1" drifted from the on-screen count-in | Prompt told the coach to count out loud, racing the UI's 3 s lead-in overlay |
+| `UserWarning` on every rep gate read | Firestore positional `.where("status","==",...)` is deprecated |
+
+**What shipped:**
+
+| Fix | Files |
+| --- | --- |
+| **Results-ready push** — the instant `results_ready_at` lands, the client sends the agent a hidden `(Scored rep results are ready …)` note so the coach immediately calls `get_rep_result`, announces the score, and moves to recap instead of stalling | `lib/hiddenAgentMessages.ts`, `components/coach/CoachConversation.tsx`, `app/coach/CoachPageClient.tsx` |
+| **Cool-down framing** — recap now explicitly *is* the cool-down; if the player asks for one, coach gives one easy stretch then recaps | `app/prompts.py` (`DRILL_COACH_PROMPT` §3) |
+| **No-go-silent during analysis** — explicit instruction to reassure + give a light stretch if the player asks "are we done?" while scoring | `app/prompts.py` (`DRILL_COACH_PROMPT` §2d/2g) |
+| **Count-in sync** — coach no longer counts "3, 2, 1" out loud; the on-screen overlay owns the lead-in | `app/prompts.py` (main coach §2d) |
+| **Firestore warning** — switched both rep-gate reads to `FieldFilter` keyword form | `app/callbacks.py` |
+
+**What we learned:** structural pushes beat prompt hope. The agent can't react
+to state it never sees — surfacing results-ready as an explicit system message
+(same pattern as voice-reconnect / warm-up-done) is far more reliable than
+telling the model to "keep polling." The reconnect path already carried an
+`awaitingReview` clause, so a connected session was the gap.
+
+**Still open:** voice-link churn (ElevenLabs reconnects mid-session) needs
+browser-console drop reasons before we can act — logged in `CoachConversation`
+`onDisconnect` warnings.
 
 ---
 

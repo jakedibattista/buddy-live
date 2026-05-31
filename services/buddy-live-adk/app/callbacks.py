@@ -22,6 +22,7 @@ from typing import Any, Optional
 
 from google.adk.tools.base_tool import BaseTool
 from google.adk.tools.tool_context import ToolContext
+from google.cloud.firestore_v1.base_query import FieldFilter
 
 from app.firestore_client import session_ref
 
@@ -113,7 +114,7 @@ def phase_guard(
             completed = (
                 session_ref(session_id)
                 .collection("reps")
-                .where("status", "==", "completed")
+                .where(filter=FieldFilter("status", "==", "completed"))
                 .limit(1)
                 .get()
             )
@@ -140,7 +141,7 @@ def phase_guard(
             reps = (
                 session_ref(session_id)
                 .collection("reps")
-                .where("status", "==", "completed")
+                .where(filter=FieldFilter("status", "==", "completed"))
                 .limit(1)
                 .get()
             )

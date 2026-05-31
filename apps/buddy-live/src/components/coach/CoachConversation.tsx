@@ -7,6 +7,7 @@ import { CoachAudioMuteButton } from "@/components/coach/CoachAudioMuteButton";
 import { coachTranscriptEntries, systemTranscript, voiceTranscriptEntry } from "@/lib/transcript";
 import { cn } from "@/lib/utils";
 import {
+  buildResultsReadyMessage,
   buildVoiceReconnectMessage,
   isHiddenAgentMessage,
   VOICE_RESUME_FIRST_MESSAGE,
@@ -19,6 +20,8 @@ interface CoachConversationProps {
   agentId: string | undefined;
   sessionReady?: boolean;
   resumeContext: VoiceResumeContext;
+  /** `results_ready_at` from the session doc — drives the results-ready push. */
+  resultsReadyAt?: string | null;
   onTranscript: (entry: TranscriptEntry) => void;
   onStatusChange?: (status: string) => void;
 }
@@ -53,6 +56,7 @@ function CoachConversationInner({
   agentId,
   sessionReady = true,
   resumeContext,
+  resultsReadyAt,
   onTranscript,
   onStatusChange,
 }: CoachConversationProps) {
@@ -67,6 +71,7 @@ function CoachConversationInner({
   const resumeContextRef = useRef(resumeContext);
   const connectSessionRef = useRef<(resume: boolean) => Promise<boolean>>(async () => false);
   const shouldSendReconnectRef = useRef(false);
+  const resultsReadyHandledRef = useRef<string | null>(null);
 
   useEffect(() => {
     resumeContextRef.current = resumeContext;
@@ -271,6 +276,16 @@ function CoachConversationInner({
       clearReconnectTimer();
     };
   }, [clearReconnectTimer]);
+
+  // Push the agent a one-time results-ready note the moment analysis lands, so
+  // the coach proactively reviews the scorecard instead of stalling/small-talk.
+  useEffect(() => {
+    if (!resultsReadyAt) return;
+    if (resultsReadyHandledRef.current === resultsReadyAt) return;
+    if (userEndedRef.current || convo.status !== "connected") return;
+    resultsReadyHandledRef.current = resultsReadyAt;
+    convo.sendUserMessage(buildResultsReadyMessage(resumeContextRef.current.lastRepId));
+  }, [resultsReadyAt, convo]);
 
   const canStart =
     sessionReady &&

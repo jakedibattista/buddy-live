@@ -14,6 +14,7 @@ export const HIDDEN_AGENT_MESSAGE_PREFIXES = [
   "(Voice reconnected",
   "(Warm-up timer finished",
   "(Camera check",
+  "(Scored rep results are ready",
 ] as const;
 
 export function isHiddenAgentMessage(message: string | undefined | null): boolean {
@@ -51,6 +52,20 @@ export function buildVoiceReconnectMessage(ctx: VoiceResumeContext): string {
     `Setup framing passed: ${ctx.setupFramingPassed ? "yes" : "no"}. ` +
     review +
     `Acknowledge the reconnect in one short sentence, then continue exactly where we left off.)`
+  );
+}
+
+/**
+ * Pushed to the agent the moment a scored rep's analysis lands, so the coach
+ * announces and reviews the scorecard instead of waiting/polling or drifting
+ * into small talk (root cause of session live-pmhtnko9t195 stalling at the end).
+ */
+export function buildResultsReadyMessage(repId?: string | null): string {
+  const rep = repId ? ` (id ${repId})` : "";
+  return (
+    `(Scored rep results are ready${rep}. Call get_rep_result on it now, ` +
+    `tell the player "your results are ready — ready to review?", then walk the ` +
+    `scorecard conversationally and move into the recap. Do NOT record another rep.)`
   );
 }
 
