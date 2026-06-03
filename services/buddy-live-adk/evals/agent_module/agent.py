@@ -117,6 +117,7 @@ _drill_coach = Agent(
         recommend_drill,
         end_session_recap,
         lookup_drill_knowledge,
+        start_warmup_timer,
     ],
     before_tool_callback=_env_sim_callback,
 )

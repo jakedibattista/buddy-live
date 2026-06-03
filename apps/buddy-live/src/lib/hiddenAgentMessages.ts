@@ -64,8 +64,8 @@ export function buildResultsReadyMessage(repId?: string | null): string {
   const rep = repId ? ` (id ${repId})` : "";
   return (
     `(Scored rep results are ready${rep}. Call get_rep_result on it now, ` +
-    `tell the player "your results are ready — ready to review?", then walk the ` +
-    `scorecard conversationally and move into the recap. Do NOT record another rep.)`
+    `say "Awesome, your results are ready! Let's look at the scorecard together.", ` +
+    `then walk the scorecard conversationally and move into the recap. Do NOT record another rep.)`
   );
 }
 
