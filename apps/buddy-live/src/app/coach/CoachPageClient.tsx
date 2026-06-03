@@ -360,7 +360,7 @@ export function CoachPageClient() {
         "coach-shell relative flex min-h-[100dvh] flex-col bg-black text-white",
         "pt-[max(0.75rem,env(safe-area-inset-top))]",
         mobileLayout
-          ? "overflow-hidden pb-[calc(4.25rem+env(safe-area-inset-bottom))]"
+          ? "h-[100dvh] overflow-hidden pb-[calc(3.75rem+env(safe-area-inset-bottom))]"
           : "overflow-y-auto pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:overflow-hidden",
       )}
     >
@@ -380,8 +380,8 @@ export function CoachPageClient() {
             >
               <div
                 className={cn(
-                  "relative min-h-0 w-full",
-                  mobileLayout ? "min-h-0 flex-1" : "flex-1",
+                  "relative w-full min-h-0",
+                  mobileLayout ? "min-h-0 flex-1 basis-0" : "flex-1",
                 )}
               >
                 {inIqPractice ? (
@@ -400,7 +400,12 @@ export function CoachPageClient() {
                     )}
                   </div>
                 ) : (
-                  <div className="relative h-full w-full overflow-hidden rounded-2xl border border-white/[0.08] bg-black">
+                  <div
+                    className={cn(
+                      "overflow-hidden rounded-2xl border border-white/[0.08] bg-black",
+                      mobileLayout ? "absolute inset-0" : "relative h-full w-full",
+                    )}
+                  >
                     {showReport && !mobileLayout && (
                       <div className="absolute inset-0 z-10 flex items-center justify-center overflow-y-auto bg-zinc-950 p-4 sm:p-6 pb-24 md:pb-6">
                         {reps.length > 0 ? (
@@ -433,7 +438,9 @@ export function CoachPageClient() {
                         "transition-all duration-500 ease-in-out",
                         showReport && !mobileLayout
                           ? "absolute bottom-4 right-4 z-20 h-28 w-44 rounded-xl border border-zinc-800 shadow-xl"
-                          : "h-full w-full",
+                          : mobileLayout
+                            ? "absolute inset-0 h-full w-full"
+                            : "h-full w-full",
                       )}
                     />
                   </div>
@@ -485,11 +492,16 @@ export function CoachPageClient() {
                   />
                 )}
 
-                {!inIqPractice && !mobileLayout && (
+                {!inIqPractice && (
                   <CoachPuckAvatar
                     recording={capture.recording}
                     celebrate={celebratePuck}
-                    className="absolute bottom-24 left-4 z-20"
+                    className={cn(
+                      "z-20",
+                      mobileLayout
+                        ? "absolute bottom-3 right-3 origin-bottom-right scale-[0.42]"
+                        : "absolute bottom-24 left-4",
+                    )}
                   />
                 )}
 
