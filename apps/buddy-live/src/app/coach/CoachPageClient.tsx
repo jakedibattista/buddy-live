@@ -368,17 +368,22 @@ export function CoachPageClient() {
         <div
           className={cn(
             "relative mx-auto flex w-full max-w-7xl min-h-0 flex-1 flex-col",
-            mobileLayout ? "p-4" : "grid gap-6 overflow-y-auto p-4 lg:grid-cols-[1fr_360px] lg:overflow-visible lg:p-6",
+            mobileLayout ? "p-2" : "grid gap-6 overflow-y-auto p-4 lg:grid-cols-[1fr_360px] lg:overflow-visible lg:p-6",
           )}
         >
           {showLivePanel && (
             <section
               className={cn(
-                "relative flex w-full min-h-0 flex-col gap-4",
-                mobileLayout ? "flex-1" : "h-[60vh] lg:h-[calc(100vh-3rem)]",
+                "relative flex w-full min-h-0 flex-col",
+                mobileLayout ? "flex-1 gap-0" : "h-[60vh] gap-4 lg:h-[calc(100vh-3rem)]",
               )}
             >
-              <div className="relative min-h-0 flex-1">
+              <div
+                className={cn(
+                  "relative min-h-0 w-full",
+                  mobileLayout ? "min-h-0 flex-1" : "flex-1",
+                )}
+              >
                 {inIqPractice ? (
                   <div className="absolute inset-0 flex items-center justify-center overflow-y-auto rounded-2xl border border-white/[0.08] bg-black p-4 sm:p-6">
                     {latestIqVisual ? (
@@ -480,42 +485,36 @@ export function CoachPageClient() {
                   />
                 )}
 
-                {!inIqPractice && (
+                {!inIqPractice && !mobileLayout && (
                   <CoachPuckAvatar
                     recording={capture.recording}
                     celebrate={celebratePuck}
-                    className={cn(
-                      "absolute bottom-24 left-4 z-20",
-                      mobileLayout && mobileTab !== "live" && "hidden",
-                    )}
+                    className="absolute bottom-24 left-4 z-20"
                   />
                 )}
 
-                <div
-                  className={cn(
-                    "absolute bottom-4 left-1/2 z-10 flex w-full max-w-lg -translate-x-1/2 flex-col items-center gap-2 px-4",
-                    mobileLayout && mobileTab !== "live" && "hidden",
-                  )}
-                >
-                  {!inIqPractice && (
-                    <VoiceQuickPrompts
-                      recording={capture.recording}
-                      setupFramingPassed={setupFramingPassed}
-                      repCount={reps.length}
-                      resultsReady={resultsReady}
+                {!mobileLayout && (
+                  <div className="absolute bottom-4 left-1/2 z-10 flex w-full max-w-lg -translate-x-1/2 flex-col items-center gap-2 px-4">
+                    {!inIqPractice && (
+                      <VoiceQuickPrompts
+                        recording={capture.recording}
+                        setupFramingPassed={setupFramingPassed}
+                        repCount={reps.length}
+                        resultsReady={resultsReady}
+                      />
+                    )}
+                    <CoachConversation
+                      sessionId={live.sessionId}
+                      agentId={AGENT_ID}
+                      sessionReady={!live.loading}
+                      resumeContext={voiceResumeContext}
+                      resultsReadyAt={live.session?.results_ready_at}
+                      keepAlive={warmupTimerActive || analyzingCount > 0}
+                      onTranscript={handleTranscript}
+                      onStatusChange={setCoachStatus}
                     />
-                  )}
-                  <CoachConversation
-                    sessionId={live.sessionId}
-                    agentId={AGENT_ID}
-                    sessionReady={!live.loading}
-                    resumeContext={voiceResumeContext}
-                    resultsReadyAt={live.session?.results_ready_at}
-                    keepAlive={warmupTimerActive || analyzingCount > 0}
-                    onTranscript={handleTranscript}
-                    onStatusChange={setCoachStatus}
-                  />
-                </div>
+                  </div>
+                )}
 
                 {!inIqPractice && (
                   <RecordingTimer recording={capture.recording} onStop={capture.stopRecording} />
@@ -530,15 +529,37 @@ export function CoachPageClient() {
                   />
                 )}
 
-                <div
-                  className={cn(
-                    "absolute bottom-4 right-4",
-                    mobileLayout && mobileTab !== "live" && "hidden",
-                  )}
-                >
-                  <MicVUMeter stream={stream} />
-                </div>
+                {!mobileLayout && (
+                  <div className="absolute bottom-4 right-4">
+                    <MicVUMeter stream={stream} />
+                  </div>
+                )}
               </div>
+
+              {mobileLayout && mobileTab === "live" && (
+                <div className="shrink-0 border-t border-white/[0.08] bg-zinc-950/95 px-2 pb-1 pt-2 backdrop-blur-md">
+                  {!inIqPractice && (
+                    <VoiceQuickPrompts
+                      recording={capture.recording}
+                      setupFramingPassed={setupFramingPassed}
+                      repCount={reps.length}
+                      resultsReady={resultsReady}
+                      className="mb-1.5"
+                    />
+                  )}
+                  <CoachConversation
+                    sessionId={live.sessionId}
+                    agentId={AGENT_ID}
+                    sessionReady={!live.loading}
+                    resumeContext={voiceResumeContext}
+                    resultsReadyAt={live.session?.results_ready_at}
+                    keepAlive={warmupTimerActive || analyzingCount > 0}
+                    compact
+                    onTranscript={handleTranscript}
+                    onStatusChange={setCoachStatus}
+                  />
+                </div>
+              )}
             </section>
           )}
 

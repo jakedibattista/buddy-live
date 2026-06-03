@@ -23,6 +23,8 @@ interface CoachConversationProps {
   agentId: string | undefined;
   sessionReady?: boolean;
   resumeContext: VoiceResumeContext;
+  /** Tighter controls for mobile dock layout. */
+  compact?: boolean;
   /** `results_ready_at` from the session doc — drives the results-ready push. */
   resultsReadyAt?: string | null;
   /**
@@ -71,6 +73,7 @@ function CoachConversationInner({
   resumeContext,
   resultsReadyAt,
   keepAlive = false,
+  compact = false,
   onTranscript,
   onStatusChange,
 }: CoachConversationProps) {
@@ -403,14 +406,15 @@ function CoachConversationInner({
   }
 
   return (
-    <div className="flex flex-col items-center gap-3">
-      <div className="flex items-center gap-3">
+    <div className={cn("flex flex-col items-center", compact ? "gap-1.5" : "gap-3")}>
+      <div className={cn("flex items-center", compact ? "gap-2" : "gap-3")}>
         <button
           type="button"
           onClick={() => void handleStart()}
           disabled={!canStart}
           className={cn(
-            "btn-primary px-6 py-3 text-[17px] shadow-md motion-reduce:active:scale-100",
+            "btn-primary shadow-md motion-reduce:active:scale-100",
+            compact ? "px-4 py-2 text-sm" : "px-6 py-3 text-[17px]",
             !canStart && "hover:scale-100",
           )}
         >
@@ -426,25 +430,35 @@ function CoachConversationInner({
               type="button"
               onClick={() => convo.setMuted(!convo.isMuted)}
               disabled={ending}
-              className="btn-glass h-12 w-12 disabled:opacity-50"
+              className={cn(
+                "btn-glass disabled:opacity-50",
+                compact ? "h-9 w-9" : "h-12 w-12",
+              )}
               aria-label={convo.isMuted ? "Unmute mic" : "Mute mic"}
             >
-              {convo.isMuted ? <MicOff size={18} /> : <Mic size={18} />}
+              {convo.isMuted ? (
+                <MicOff size={compact ? 16 : 18} />
+              ) : (
+                <Mic size={compact ? 16 : 18} />
+              )}
             </button>
-            <CoachAudioMuteButton />
+            <CoachAudioMuteButton compact={compact} />
             <button
               type="button"
               onClick={() => void handleEnd()}
               disabled={ending}
-              className="flex h-12 w-12 items-center justify-center rounded-full bg-red-600 text-white shadow-lg hover:bg-red-700 disabled:opacity-60"
+              className={cn(
+                "flex items-center justify-center rounded-full bg-red-600 text-white shadow-lg hover:bg-red-700 disabled:opacity-60",
+                compact ? "h-9 w-9" : "h-12 w-12",
+              )}
               aria-label="End session"
             >
-              <PhoneOff size={18} />
+              <PhoneOff size={compact ? 16 : 18} />
             </button>
           </>
         )}
       </div>
-      <div className="text-xs text-zinc-400">
+      <div className={cn("text-zinc-400", compact ? "text-[10px]" : "text-xs")}>
         {ending && <span className="text-amber-300">Wrapping up…</span>}
         {!ending && reconnecting && <span className="text-amber-300">Reconnecting to Coach Buddy…</span>}
         {!ending && !reconnecting && !sessionReady && <span>Starting session…</span>}

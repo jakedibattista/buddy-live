@@ -6,7 +6,13 @@ import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
 /** Ducks coach audio output while the agent is speaking (SDK has no hard interrupt). */
-export function CoachAudioMuteButton({ className }: { className?: string }) {
+export function CoachAudioMuteButton({
+  className,
+  compact = false,
+}: {
+  className?: string;
+  compact?: boolean;
+}) {
   const { isSpeaking } = useConversationMode();
   const { setVolume } = useConversationControls();
   const [muted, setMuted] = useState(false);
@@ -34,11 +40,15 @@ export function CoachAudioMuteButton({ className }: { className?: string }) {
     <button
       type="button"
       onClick={() => void toggle()}
-      className={cn("btn-glass h-12 w-12", className)}
+      className={cn("btn-glass", compact ? "h-9 w-9" : "h-12 w-12", className)}
       aria-label={muted ? "Restore coach audio" : "Mute coach audio"}
       title={muted ? "Restore coach audio" : "Mute coach audio"}
     >
-      {muted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+      {muted ? (
+        <VolumeX size={compact ? 16 : 18} />
+      ) : (
+        <Volume2 size={compact ? 16 : 18} />
+      )}
     </button>
   );
 }
