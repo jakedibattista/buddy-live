@@ -132,7 +132,7 @@ _iq_coach = Agent(
     ),
     model=_model,
     instruction=IQ_COACH_PROMPT,
-    tools=[show_iq_visual, mark_iq_answer, lookup_drill_knowledge],
+    tools=[show_iq_visual, mark_iq_answer, lookup_drill_knowledge, end_session_recap],
     before_tool_callback=_env_sim_callback,
 )
 

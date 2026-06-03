@@ -270,13 +270,30 @@ def end_session_recap(tool_context: ToolContext) -> dict[str, Any]:
             if isinstance(v, (int, float)):
                 all_scores.setdefault(k, []).append(float(v))
 
+    # Fetch IQ commands to see if this was a Hockey IQ session
+    iq_correct = 0
+    iq_total = 0
+    try:
+        commands_snap = list(ref.collection("commands").stream())
+        for snap in commands_snap:
+            cmd = snap.to_dict() or {}
+            if cmd.get("type") == "mark_iq_answer":
+                iq_total += 1
+                if cmd.get("was_correct") is True:
+                    iq_correct += 1
+    except Exception:
+        _logger.exception("failed to fetch IQ commands in end_session_recap")
+
     averages = {k: sum(v) / len(v) for k, v in all_scores.items() if v}
     biggest_opportunity = None
     if averages:
         biggest_opportunity = min(averages, key=averages.get)
 
     if not by_drill:
-        summary = "Great work today. Let's review your reps next time."
+        if iq_total > 0:
+            summary = f"Excellent Hockey IQ practice today! You completed {iq_total} tactical scenarios and got {iq_correct} of them correct. Your decision making is getting incredibly sharp."
+        else:
+            summary = "Great work today. Let's review your reps next time."
     else:
         rep_summary = ", ".join(f"{n} {drill}" for drill, n in by_drill.items())
         if biggest_opportunity:
@@ -291,11 +308,15 @@ def end_session_recap(tool_context: ToolContext) -> dict[str, Any]:
     ended_at = datetime.now(timezone.utc).isoformat()
     if ref is not None:
         try:
+            update_data = {
+                "currentPhase": "recap",
+                "ended_at": ended_at,
+            }
+            if iq_total > 0:
+                update_data["iq_score_correct"] = iq_correct
+                update_data["iq_score_total"] = iq_total
             ref.set(
-                {
-                    "currentPhase": "recap",
-                    "ended_at": ended_at,
-                },
+                update_data,
                 merge=True,
             )
         except Exception:
@@ -322,6 +343,8 @@ def end_session_recap(tool_context: ToolContext) -> dict[str, Any]:
         "average_scores": averages,
         "biggest_opportunity": biggest_opportunity,
         "summary": summary,
+        "iq_score_correct": iq_correct,
+        "iq_score_total": iq_total,
     }
 
 

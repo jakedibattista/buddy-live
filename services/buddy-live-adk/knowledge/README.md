@@ -43,10 +43,16 @@ gsutil -m cp -r services/buddy-live-adk/knowledge/*.md \
   gs://puck-buddy-drill-knowledge/
 
 # Refresh the data store
-gcloud alpha discovery-engine data-stores import \
-  --data-store=buddy-live-drills \
-  --location=global \
-  --gcs-source=gs://puck-buddy-drill-knowledge/
+curl -X POST \
+  -H "Authorization: Bearer \$(gcloud auth print-access-token)" \
+  -H "Content-Type: application/json" \
+  "https://discoveryengine.googleapis.com/v1/projects/puck-buddy/locations/global/collections/default_collection/dataStores/buddy-live-drills/branches/0/documents:import" \
+  -d '{
+    "gcsSource": {
+      "inputUris": ["gs://puck-buddy-drill-knowledge/*.md"]
+    },
+    "reconciliationMode": "INCREMENTAL"
+  }'
 ```
 
 No Cloud Run redeploy needed — the agent picks up new content on the next

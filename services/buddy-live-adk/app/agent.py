@@ -149,7 +149,7 @@ def _build_iq_coach() -> Agent:
         ),
         model=_build_model(),
         instruction=IQ_COACH_PROMPT,
-        tools=[show_iq_visual, mark_iq_answer, lookup_drill_knowledge],
+        tools=[show_iq_visual, mark_iq_answer, lookup_drill_knowledge, end_session_recap],
         before_tool_callback=phase_guard,
     )
 
