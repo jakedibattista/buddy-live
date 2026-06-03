@@ -2,7 +2,8 @@
 
 import { NextTurnCue } from "@/components/coach/NextTurnCue";
 import { RepScorecard } from "@/components/coach/RepScorecard";
-import type { FocusDrill, LiveSessionDoc, RepDoc, SessionPhase } from "@/lib/types";
+import { IqScorecard } from "@/components/iq/IqScorecard";
+import type { FocusDrill, LiveSessionDoc, RepDoc, SessionPhase, CoachCommand } from "@/lib/types";
 
 interface CoachSessionPanelProps {
   loading: boolean;
@@ -23,6 +24,7 @@ interface CoachSessionPanelProps {
   resultsReady: boolean;
   connected: boolean;
   reps: RepDoc[];
+  commands?: CoachCommand[];
   showScorecards?: boolean;
   className?: string;
 }
@@ -46,6 +48,7 @@ export function CoachSessionPanel({
   resultsReady,
   connected,
   reps,
+  commands = [],
   showScorecards = false,
   className = "",
 }: CoachSessionPanelProps) {
@@ -125,11 +128,15 @@ export function CoachSessionPanel({
         )}
       </div>
 
-      {showScorecards && reps.length > 0 && (
+      {showScorecards && (
         <div className="space-y-4">
-          {reps.map((rep) => (
-            <RepScorecard key={rep.rep_id} rep={rep} />
-          ))}
+          {reps.length > 0 ? (
+            reps.map((rep) => (
+              <RepScorecard key={rep.rep_id} rep={rep} />
+            ))
+          ) : (
+            <IqScorecard commands={commands} />
+          )}
         </div>
       )}
     </div>

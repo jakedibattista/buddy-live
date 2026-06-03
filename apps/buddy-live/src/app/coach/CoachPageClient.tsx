@@ -17,6 +17,7 @@ import { TranscriptPanel } from "@/components/coach/TranscriptPanel";
 import { VoiceQuickPrompts } from "@/components/coach/VoiceQuickPrompts";
 import { WarmupTimerBridge } from "@/components/coach/WarmupTimerBridge";
 import { IqVisualCard } from "@/components/iq/IqVisualCard";
+import { IqScorecard } from "@/components/iq/IqScorecard";
 import { useLiveSession } from "@/hooks/useLiveSession";
 import { useMobileCoachLayout } from "@/hooks/useMobileCoachLayout";
 import { usePeekFrameUploader } from "@/hooks/usePeekFrameUploader";
@@ -298,6 +299,17 @@ export function CoachPageClient() {
     }
   }, [reps, appendSystem, mobileLayout]);
 
+  const prevPhaseRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (!currentPhase) return;
+    if (currentPhase !== prevPhaseRef.current) {
+      if ((currentPhase === "recap" || currentPhase === "ended") && mobileLayout) {
+        setMobileTab("session");
+      }
+      prevPhaseRef.current = currentPhase;
+    }
+  }, [currentPhase, mobileLayout]);
+
   const showLivePanel = !mobileLayout || mobileTab === "live";
   const showSessionPanel = !mobileLayout || mobileTab === "session";
   const showChatPanel = !mobileLayout || mobileTab === "chat";
@@ -321,6 +333,7 @@ export function CoachPageClient() {
     resultsReady,
     connected,
     reps,
+    commands: live.commands,
   };
 
   const iqPlaceholder = (
@@ -385,17 +398,23 @@ export function CoachPageClient() {
                   <div className="relative h-full w-full overflow-hidden rounded-2xl border border-white/[0.08] bg-black">
                     {showReport && !mobileLayout && (
                       <div className="absolute inset-0 z-10 flex items-center justify-center overflow-y-auto bg-zinc-950 p-4 sm:p-6 pb-24 md:pb-6">
-                        {reps.length === 1 ? (
-                          <div className="my-auto w-full max-w-3xl">
-                            <RepScorecard rep={reps[0]} />
-                          </div>
-                        ) : (
-                          <div className="my-auto w-full max-w-4xl space-y-4">
-                            <div className="grid max-h-[70vh] grid-cols-1 gap-4 overflow-y-auto p-1 custom-scrollbar md:grid-cols-2">
-                              {reps.map((rep) => (
-                                <RepScorecard key={rep.rep_id} rep={rep} />
-                              ))}
+                        {reps.length > 0 ? (
+                          reps.length === 1 ? (
+                            <div className="my-auto w-full max-w-3xl">
+                              <RepScorecard rep={reps[0]} />
                             </div>
+                          ) : (
+                            <div className="my-auto w-full max-w-4xl space-y-4">
+                              <div className="grid max-h-[70vh] grid-cols-1 gap-4 overflow-y-auto p-1 custom-scrollbar md:grid-cols-2">
+                                {reps.map((rep) => (
+                                  <RepScorecard key={rep.rep_id} rep={rep} />
+                                ))}
+                              </div>
+                            </div>
+                          )
+                        ) : (
+                          <div className="my-auto w-full max-w-4xl">
+                            <IqScorecard commands={live.commands} />
                           </div>
                         )}
                       </div>

@@ -348,6 +348,22 @@ function DiagramVisual({ diagram, size = "sm" }: { diagram: string; size?: "sm" 
   );
 }
 
+function findSegmentForEntity(segments: string[], entityKeywords: string[], excludeKeywords: string[]): string {
+  for (const s of segments) {
+    if (entityKeywords.some((k) => s.includes(k))) {
+      if (!excludeKeywords.some((k) => s.includes(k))) {
+        return s;
+      }
+    }
+  }
+  for (const s of segments) {
+    if (entityKeywords.some((k) => s.includes(k))) {
+      return s;
+    }
+  }
+  return "";
+}
+
 // Upgraded, relative-aware positional parser (Vertical 1:1 format)
 function parseDiagramPositions(diagram: string): Positions {
   const lower = diagram.toLowerCase();
@@ -365,56 +381,67 @@ function parseDiagramPositions(diagram: string): Positions {
     drawPassLine: false,
   };
 
+  const segments = lower.split(/[.;,]/).map(s => s.trim()).filter(Boolean);
+  const playerSegment = findSegmentForEntity(segments, ["you", "your", "player"], ["teammate", "defender", "d-man", "opponent", "goalie"]) || lower;
+  const defenderSegment = findSegmentForEntity(segments, ["defender", "d-man", "opponent", " d ", "d ", "blocker"], ["teammate"]) || lower;
+  const teammateSegment = findSegmentForEntity(segments, ["teammate", "trailer", "trailing"], []) || lower;
+
   // A teammate "in front of the net" / "blocking the goalie's view" is a
   // SCREEN: the teammate stands at the net-front, the shooter stays back.
   // Detect it up front so "in front of the net" doesn't get attributed to the
   // player below (which used to plant YOU on the doorstep instead).
   const teammateScreens =
-    lower.includes("teammate") &&
-    (lower.includes("in front of the net") ||
-      lower.includes("in front of the goal") ||
-      lower.includes("screen") ||
-      lower.includes("blocking the goalie") ||
-      lower.includes("goalie's view") ||
-      lower.includes("goalies view"));
+    teammateSegment.includes("teammate") &&
+    (teammateSegment.includes("in front of the net") ||
+      teammateSegment.includes("in front of the goal") ||
+      teammateSegment.includes("screen") ||
+      teammateSegment.includes("blocking the goalie") ||
+      teammateSegment.includes("goalie's view") ||
+      teammateSegment.includes("goalies view"));
+
+  // Helper to test for standalone entity keywords with word boundaries to avoid false positives (e.g. "behind " -> "d ", "backhand " -> "d ")
+  const hasDefenderKeyword = /\b(defender|d-man|opponent|d|blocker)\b/.test(lower);
 
   // 1. Determine Player Position
-  if (lower.includes("behind the net") || lower.includes("behind the goal")) {
+  if (playerSegment.includes("behind the net") || playerSegment.includes("behind the goal")) {
     positions.player = { x: 50, y: 6 };
-  } else if (lower.includes("left corner")) {
+  } else if (playerSegment.includes("left corner")) {
     positions.player = { x: 18, y: 20 };
-  } else if (lower.includes("right corner")) {
+  } else if (playerSegment.includes("right corner")) {
     positions.player = { x: 82, y: 20 };
-  } else if (lower.includes("corner")) {
+  } else if (playerSegment.includes("corner")) {
     // Deep in the zone beside the net (default to the left corner).
     positions.player = { x: 18, y: 20 };
   } else if (
-    lower.includes("right in front of the net") ||
-    lower.includes("pass right in front") ||
+    playerSegment.includes("right in front of the net") ||
+    playerSegment.includes("pass right in front") ||
     receivingPass
   ) {
     positions.player = { x: 50, y: 24 };
   } else if (
     !teammateScreens &&
-    (lower.includes("crease") || lower.includes("in front of the net") || lower.includes("doorstep"))
+    (playerSegment.includes("crease") || playerSegment.includes("in front of the net") || playerSegment.includes("doorstep"))
   ) {
     positions.player = { x: 50, y: 22 };
-  } else if (lower.includes("left circle") || lower.includes("left faceoff") || lower.includes("left wing")) {
+  } else if (playerSegment.includes("left circle") || playerSegment.includes("left faceoff") || playerSegment.includes("left wing")) {
     positions.player = { x: 25, y: 40 };
-  } else if (lower.includes("right circle") || lower.includes("right faceoff") || lower.includes("right wing")) {
+  } else if (playerSegment.includes("right circle") || playerSegment.includes("right faceoff") || playerSegment.includes("right wing")) {
     positions.player = { x: 75, y: 40 };
-  } else if (lower.includes("left point") || lower.includes("left blue line")) {
+  } else if (playerSegment.includes("left point") || playerSegment.includes("left blue line")) {
     positions.player = { x: 25, y: 82 };
-  } else if (lower.includes("right point") || lower.includes("right blue line")) {
+  } else if (playerSegment.includes("right point") || playerSegment.includes("right blue line")) {
     positions.player = { x: 75, y: 82 };
-  } else if (lower.includes("blue line") || lower.includes("point")) {
+  } else if (playerSegment.includes("blue line") || playerSegment.includes("point")) {
     positions.player = { x: 50, y: 82 };
-  } else if (lower.includes("slot") || lower.includes("hash marks")) {
+  } else if (playerSegment.includes("slot") || playerSegment.includes("hash marks")) {
     positions.player = { x: 50, y: 45 };
-  } else if (lower.includes("breakaway")) {
+  } else if (playerSegment.includes("breakaway")) {
     positions.player = { x: 50, y: 65 };
     // Draw breakaway movement line starting further down the ice
     positions.playerStart = { x: 50, y: 85 };
+  } else if (lower.includes("puck in the corner") && !lower.includes("you have")) {
+    // If the scenario mentions a puck is in the corner but not "you have", player is not on the ice / defaults to off-ice
+    positions.player = null;
   }
 
   // 2. Determine Goalie Position
@@ -426,30 +453,30 @@ function parseDiagramPositions(diagram: string): Positions {
     positions.goalie = { x: 44, y: 12 }; // Left side of goal line
   } else if (lower.includes("right post")) {
     positions.goalie = { x: 56, y: 12 }; // Right side of goal line
+  } else if (/\bgoalie is cheating to the right\b/.test(lower) || /\bgoalie is cheating right\b/.test(lower)) {
+    positions.goalie = { x: 58, y: 13 }; // Shift goalie to the right
+  } else if (/\bgoalie is cheating to the left\b/.test(lower) || /\bgoalie is cheating left\b/.test(lower)) {
+    positions.goalie = { x: 42, y: 13 }; // Shift goalie to the left
   } else {
     positions.goalie = { x: 50, y: 13 }; // Standard crease center
   }
 
   // 3. Determine Defender Position (Surgically relative to player coordinates!)
-  // `positions.player` is initialized with a default at the top of this function
-  // and never set to null after that, so the non-null assertion is safe. The
-  // type stays nullable because the JSX rendering path uses `positions.player &&`
-  // guards to keep the SVG defensive against future refactors.
-  const px = positions.player!.x;
-  const py = positions.player!.y;
+  const px = positions.player?.x ?? 50;
+  const py = positions.player?.y ?? 55;
 
-  if (lower.includes("defender") || lower.includes("d ") || lower.includes("d-man") || lower.includes("opponent")) {
-    if (lower.includes("on your hip") || lower.includes("on your left")) {
+  if (hasDefenderKeyword) {
+    if (defenderSegment.includes("on your hip") || defenderSegment.includes("on your left")) {
       positions.defender = { x: px - 11, y: py + 2 };
-    } else if (lower.includes("on your right")) {
+    } else if (defenderSegment.includes("on your right")) {
       positions.defender = { x: px + 11, y: py + 2 };
-    } else if (lower.includes("drops to block") || lower.includes("shot block") || lower.includes("sliding")) {
+    } else if (defenderSegment.includes("drops to block") || defenderSegment.includes("shot block") || defenderSegment.includes("sliding")) {
       if (py <= 35) {
         // Net-front: slide in from a wing, not from behind the net.
         const fromLeft =
-          lower.includes("from the left") ||
-          lower.includes("left circle") ||
-          lower.includes("left wing");
+          defenderSegment.includes("from the left") ||
+          defenderSegment.includes("left circle") ||
+          defenderSegment.includes("left wing");
         if (fromLeft) {
           positions.defender = { x: px + 6, y: py - 4 };
           positions.defenderStart = { x: px - 22, y: py };
@@ -461,10 +488,10 @@ function parseDiagramPositions(diagram: string): Positions {
         positions.defender = { x: px, y: py - 12 };
         positions.defenderStart = { x: px + 16, y: py - 15 };
       }
-    } else if (lower.includes("backing up")) {
+    } else if (defenderSegment.includes("backing up")) {
       positions.defender = { x: px, y: py - 14 };
       positions.defenderStart = { x: px, y: py - 6 }; // Backing away from player
-    } else if (lower.includes("closing") || lower.includes("charging") || lower.includes("rushing")) {
+    } else if (defenderSegment.includes("closing") || defenderSegment.includes("charging") || defenderSegment.includes("rushing")) {
       // If player is at the point, defender closes down from slot. Otherwise closes up.
       if (py > 70) {
         positions.defender = { x: px, y: py - 14 };
@@ -498,24 +525,24 @@ function parseDiagramPositions(diagram: string): Positions {
       lower.includes("trailer") ||
       (lower.includes("pass") && !lower.includes("you get")))
   ) {
-    if (lower.includes("trailer") || lower.includes("trailing")) {
+    if (teammateSegment.includes("trailer") || teammateSegment.includes("trailing")) {
       positions.teammate = { x: px, y: py + 16 };
     } else if (
-      lower.includes("in the slot") ||
-      lower.includes("in front") ||
-      lower.includes("net front") ||
-      lower.includes("net-front") ||
-      lower.includes("doorstep") ||
-      lower.includes("crease")
+      teammateSegment.includes("in the slot") ||
+      teammateSegment.includes("in front") ||
+      teammateSegment.includes("net front") ||
+      teammateSegment.includes("net-front") ||
+      teammateSegment.includes("doorstep") ||
+      teammateSegment.includes("crease")
     ) {
       // Teammate parked in the slot / in front of the net (e.g. "behind the
       // net, teammate open in the slot"). Sits in the high slot, not on a wing.
       positions.teammate = { x: 50, y: 40 };
-    } else if (lower.includes("left circle") || lower.includes("left wing") || lower.includes("left faceoff")) {
+    } else if (teammateSegment.includes("left circle") || teammateSegment.includes("left wing") || teammateSegment.includes("left faceoff")) {
       positions.teammate = { x: 25, y: 40 };
-    } else if (lower.includes("right circle") || lower.includes("right wing") || lower.includes("right faceoff")) {
+    } else if (teammateSegment.includes("right circle") || teammateSegment.includes("right wing") || teammateSegment.includes("right faceoff")) {
       positions.teammate = { x: 75, y: 40 };
-    } else if (lower.includes("point") || lower.includes("blue line")) {
+    } else if (teammateSegment.includes("point") || teammateSegment.includes("blue line")) {
       positions.teammate = { x: 50, y: 80 };
     } else {
       // Place teammate on opposite wing for lateral cross-crease passes
