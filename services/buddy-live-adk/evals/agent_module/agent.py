@@ -43,6 +43,7 @@ from app.tools import (
     peek_warmup,
     recommend_drill,
     set_focus_drill,
+    set_iq_question_goal,
     show_iq_visual,
     start_rep_capture,
     start_warmup_timer,
@@ -127,12 +128,18 @@ _iq_coach = Agent(
     name="iq_coach",
     description=(
         "Hockey IQ Practice coach. Takes over when the player lacks space to "
-        "shoot. Runs 8-10 game-situation scenarios with the show_iq_visual "
-        "tool, encourages discussion, then wraps up."
+        "shoot. Player-chosen question count; optional movement breaks."
     ),
     model=_model,
     instruction=IQ_COACH_PROMPT,
-    tools=[show_iq_visual, mark_iq_answer, lookup_drill_knowledge, end_session_recap],
+    tools=[
+        set_iq_question_goal,
+        show_iq_visual,
+        mark_iq_answer,
+        lookup_drill_knowledge,
+        start_warmup_timer,
+        end_session_recap,
+    ],
     before_tool_callback=_env_sim_callback,
 )
 

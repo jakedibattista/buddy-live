@@ -47,6 +47,9 @@ export interface LiveSessionDoc {
   warmup_peek_updated_at?: string;
   results_ready_at?: string;
   ended_at?: string;
+  iq_question_goal?: number;
+  iq_score_correct?: number;
+  iq_score_total?: number;
 }
 
 export interface RepDoc {

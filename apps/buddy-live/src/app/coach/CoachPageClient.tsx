@@ -149,6 +149,7 @@ export function CoachPageClient() {
   }, [live.commands, latestIqVisual]);
 
   const inIqPractice = live.session?.currentPhase === "iq_practice";
+  const iqQuestionGoal = live.session?.iq_question_goal ?? 8;
 
   const focusDrill = live.session?.focus_drill ?? null;
   const setupFramingPassed = live.session?.setup_framing_passed === true;
@@ -393,11 +394,17 @@ export function CoachPageClient() {
                         size="lg"
                         className="w-full max-w-2xl"
                         questionIndex={iqCommandsCount}
-                        totalQuestions={8}
+                        totalQuestions={iqQuestionGoal}
                       />
                     ) : (
                       iqPlaceholder
                     )}
+                    <WarmupTimerBridge
+                      sessionId={live.sessionId}
+                      commands={live.commands}
+                      onTranscript={handleTranscript}
+                      onActiveChange={handleWarmupTimerActiveChange}
+                    />
                   </div>
                 ) : (
                   <div

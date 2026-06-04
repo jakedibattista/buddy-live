@@ -86,6 +86,10 @@ def _set_focus_drill_success() -> dict[str, Any]:
     return {"status": "set", "drill_id": "wristshot"}
 
 
+def _set_iq_question_goal_success() -> dict[str, Any]:
+    return {"status": "ok", "question_count": 8}
+
+
 def _start_rep_capture_success() -> dict[str, Any]:
     return {
         "rep_id": _EVAL_REP_ID,
@@ -265,6 +269,7 @@ def _happy_tool_configs() -> list[ToolSimulationConfig]:
         _tool("peek_warmup", _peek_warmup_success()),
         _tool("start_warmup_timer", _start_warmup_timer_success()),
         _tool("set_focus_drill", _set_focus_drill_success()),
+        _tool("set_iq_question_goal", _set_iq_question_goal_success()),
         _tool("start_rep_capture", _start_rep_capture_success()),
         _tool("stop_rep_capture", _stop_rep_capture_success()),
         _tool("analyze_rep", _analyze_rep_success()),
@@ -301,6 +306,7 @@ def _failure_tool_configs() -> list[ToolSimulationConfig]:
         _tool("peek_warmup", _peek_warmup_success()),
         _tool("start_warmup_timer", _start_warmup_timer_success()),
         _tool("set_focus_drill", _set_focus_drill_success()),
+        _tool("set_iq_question_goal", _set_iq_question_goal_success()),
         _tool("start_rep_capture", _start_rep_capture_success()),
         _tool("stop_rep_capture", _stop_rep_capture_success()),
         _tool(

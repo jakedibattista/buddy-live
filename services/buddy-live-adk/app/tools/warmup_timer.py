@@ -55,6 +55,10 @@ def start_warmup_timer(
         return {"status": "no_firestore", "duration_seconds": duration, "label": ui_label}
 
     try:
+        snap = sref.get()
+        doc = snap.to_dict() if snap.exists else {}
+        in_iq = doc.get("currentPhase") == "iq_practice"
+
         sref.collection("commands").add(
             {
                 "type": "start_warmup_timer",
@@ -64,16 +68,15 @@ def start_warmup_timer(
                 "created_at": _now_iso(),
             }
         )
-        sref.set(
-            {
-                "currentPhase": "warmup",
-                "last_warmup_timer_label": ui_label,
-                "last_warmup_timer_seconds": duration,
-                "warmup_timer_started_at": _now_iso(),
-                "peek_url_history": [],
-            },
-            merge=True,
-        )
+        update: dict[str, Any] = {
+            "last_warmup_timer_label": ui_label,
+            "last_warmup_timer_seconds": duration,
+            "warmup_timer_started_at": _now_iso(),
+            "peek_url_history": [],
+        }
+        if not in_iq:
+            update["currentPhase"] = "warmup"
+        sref.set(update, merge=True)
     except Exception as exc:
         _logger.exception("start_warmup_timer failed")
         return {
