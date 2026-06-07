@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Seed a returning-player demo row in Firestore session_summaries.
+"""Seed a session_summaries row for evals or future welcome-back work.
+
+Voice welcome-back is not in the production opening prompt today (only
+remember_player_profile runs on connect). This script writes durable summary
+data scoped to a browser user_id.
 
 Usage:
     python3 infra/scripts/seed_demo_memory.py UXNBjXXvmXhVt29u7o1ZVGKZW5n1
@@ -43,7 +47,7 @@ def main() -> None:
         merge=True,
     )
     print(f"Seeded session_summaries/{doc_id} for user_id={args.user_id}")
-    print(f"Demo: same browser → say 'I'm {args.name}' → welcome-back line")
+    print("Row is ready for analytics / future load_player_memory — not used in opening today.")
 
 
 if __name__ == "__main__":

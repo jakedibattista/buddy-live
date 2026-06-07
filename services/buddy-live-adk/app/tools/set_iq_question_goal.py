@@ -2,27 +2,18 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
 from typing import Any
 
 from google.adk.tools.tool_context import ToolContext
 
 from app.firestore_client import session_ref
+from app.tools._common import get_session_id, now_iso
 
 _logger = logging.getLogger(__name__)
 
 _MIN_QUESTIONS = 3
 _MAX_QUESTIONS = 15
 _DEFAULT_QUESTIONS = 8
-
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
-
-
-def _get_session_id(tool_context: ToolContext) -> str | None:
-    state = tool_context.state or {}
-    return state.get("session_id") or state.get("sessionId")
 
 
 def set_iq_question_goal(question_count: int, tool_context: ToolContext) -> dict[str, Any]:
@@ -44,7 +35,7 @@ def set_iq_question_goal(question_count: int, tool_context: ToolContext) -> dict
 
     count = max(_MIN_QUESTIONS, min(_MAX_QUESTIONS, raw))
 
-    session_id = _get_session_id(tool_context)
+    session_id = get_session_id(tool_context)
     if not session_id:
         return {"status": "no_session", "question_count": count}
 
@@ -57,7 +48,7 @@ def set_iq_question_goal(question_count: int, tool_context: ToolContext) -> dict
             {
                 "iq_question_goal": count,
                 "currentPhase": "iq_practice",
-                "iq_updated_at": _now_iso(),
+                "iq_updated_at": now_iso(),
             },
             merge=True,
         )

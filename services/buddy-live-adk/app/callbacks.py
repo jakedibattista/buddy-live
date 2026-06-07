@@ -14,7 +14,6 @@ Structural gates (Firestore-backed, read once per guarded call):
 3. start_rep_capture / analyze_rep — require focus drill + setup_framing_passed;
    start_rep_capture also blocks after one completed rep.
 4. end_session_recap — requires a completed rep (IQ wrap-up exempt).
-5. peek_camera / peek_warmup — blocked after session wrap-up.
 
 Prefer structural enforcement to prompt rules. Source of truth is Firestore.
 """
@@ -28,10 +27,10 @@ from google.adk.tools.tool_context import ToolContext
 from google.cloud.firestore_v1.base_query import FieldFilter
 
 from app.firestore_client import session_ref
+from app.tools._common import get_session_id
 
 _logger = logging.getLogger(__name__)
 
-_VISION_TOOLS = frozenset({"peek_camera", "peek_warmup"})
 _WRAP_PHASES = frozenset({"recap", "ended"})
 _GUARDED_TOOLS = frozenset(
     {
@@ -41,13 +40,7 @@ _GUARDED_TOOLS = frozenset(
         "show_iq_visual",
         "end_session_recap",
     }
-    | _VISION_TOOLS
 )
-
-
-def _get_session_id(tool_context: ToolContext) -> Optional[str]:
-    state = tool_context.state or {}
-    return state.get("session_id") or state.get("sessionId")
 
 
 def _read_session_doc(session_id: str) -> dict[str, Any]:
@@ -69,12 +62,7 @@ def _session_wrapped(doc: dict[str, Any]) -> bool:
 
 
 def _blocked_session_over(tool_name: str) -> dict[str, str]:
-    if tool_name in _VISION_TOOLS:
-        reason = (
-            "The session is wrapping up. Do not call vision tools; just talk "
-            "the player through their results and the recap."
-        )
-    elif tool_name == "show_iq_visual":
+    if tool_name == "show_iq_visual":
         reason = (
             "The session is wrapping up. Do not show new IQ cards; finish the "
             "recap and say goodbye."
@@ -115,7 +103,7 @@ def phase_guard(
     on the next turn.
     """
     tool_name = tool.name
-    session_id = _get_session_id(tool_context)
+    session_id = get_session_id(tool_context)
 
     if not session_id:
         return None
@@ -128,7 +116,7 @@ def phase_guard(
         return None
 
     if _session_wrapped(doc) and tool_name in (
-        _VISION_TOOLS | {"show_iq_visual", "analyze_rep", "set_focus_drill", "start_rep_capture"}
+        {"show_iq_visual", "analyze_rep", "set_focus_drill", "start_rep_capture"}
     ):
         _logger.info(
             "phase_guard blocked %s after session wrap session=%s",
@@ -195,9 +183,6 @@ def phase_guard(
             }
         return None
 
-    if tool_name in _VISION_TOOLS:
-        return None
-
     if tool_name in {"start_rep_capture", "analyze_rep"}:
         if not doc.get("focus_drill"):
             _logger.info(
@@ -222,9 +207,9 @@ def phase_guard(
             return {
                 "status": "blocked_framing_not_passed",
                 "reason": (
-                    "Cannot capture or analyze a rep until camera framing passes. "
-                    "Call peek_camera and walk the player through any framing fix "
-                    "until setup_framing_passed=true."
+                    "Cannot capture or analyze a rep until setup is confirmed. "
+                    "Confirm the player is in frame verbally and call set_focus_drill "
+                    "(it marks setup_framing_passed) before recording the rep."
                 ),
             }
 

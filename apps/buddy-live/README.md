@@ -38,8 +38,6 @@ Grouped by feature area:
 | `CameraView` | Webcam preview |
 | `CountdownOverlay` | Shared **m:ss** countdown UI (amber warm-up + red REC variants; pulses urgent ≤5s) |
 | `RecordingTimer` | 60s REC countdown + Stop & upload |
-| `CameraPeekNudge` | Fallback: re-pings `peek_camera` via `vision_coach` if verbal setup stalls > ~10s |
-| `FramingIndicator` | Soft amber "out of frame" pill when a fallback peek fails after initial setup |
 | `MicVUMeter` | Microphone level visualizer |
 
 ### `iq/`
@@ -69,7 +67,6 @@ Hidden agent-side messages (camera re-check, voice-reconnect, warm-up timer done
 | Hook | Role |
 |---|---|
 | `useLiveSession` | Anonymous auth, session doc, Firestore subscription |
-| `usePeekFrameUploader` | JPEG every ~2.5s → `/api/peek` (drops to 1.5s while a warm-up timer is active, to fill the ring buffer for `peek_warmup`) |
 | `useWarmupTimer` | `start_warmup_timer` commands → on-screen countdown |
 | `useRepCapture` | `start_capture` / `stop_capture` commands → MediaRecorder → signed-URL upload **direct to Firebase Storage** (avoids Vercel's 4.5 MB body limit), then finalises via `/api/clips/upload` |
 | `useRepResultsPolling` | Refreshes rep analysis jobs |

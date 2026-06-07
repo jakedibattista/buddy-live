@@ -1,8 +1,6 @@
 """Pydantic request/response models for the ElevenLabs Custom LLM contract."""
 from __future__ import annotations
 
-from typing import Any
-
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -42,15 +40,3 @@ class ChatCompletionRequest(BaseModel):
 class HealthResponse(BaseModel):
     ok: bool = True
     service: str = "buddy-live-adk"
-
-
-class PeekResponse(BaseModel):
-    observation: str
-    raw: dict[str, Any] | None = None
-
-
-class RepCaptureCommand(BaseModel):
-    session_id: str
-    rep_id: str
-    drill_id: str
-    hint: str | None = None

@@ -1,8 +1,12 @@
 # Track 2: Optimize — Gap Analysis & Implementation Plan
 
-**Plain-language overview (phases 1–4 & 6, IQ evals, memory limits, corpus
-sources):** [`TRACK2-LAYMAN.md`](TRACK2-LAYMAN.md). **Backlog / do later:**
-[`TRACK2-TODOS.md`](TRACK2-TODOS.md).
+> **Status (2026-06-07):** Phases 1–6 are **complete**. Open hackathon items
+> only: [`submission/`](submission/) + [`TRACK2-TODOS.md`](TRACK2-TODOS.md).
+> Sections below are **historical implementation notes** (useful for judges, not a
+> todo list).
+
+**Plain-language overview:** [`TRACK2-LAYMAN.md`](TRACK2-LAYMAN.md). **What's
+left:** [`TRACK2-TODOS.md`](TRACK2-TODOS.md).
 
 Reference: Google for Startups AI Agents Challenge ([resource guide PDF](https://services.google.com/fh/files/misc/ai_agents_challenge_designed_guide.pdf)).
 
@@ -20,7 +24,7 @@ observability, evaluation, optimizer.
 | Requirement | Status | Evidence |
 | --- | --- | --- |
 | **Intelligence:** Gemini API | Pass | `gemini-flash-latest` via `google-genai` |
-| **Orchestration:** ADK (or supported OSS framework) | Pass | `google-adk==2.0.0`, root `buddy_live_coach` + `vision_coach`, `drill_coach`, `iq_coach` sub-agents |
+| **Orchestration:** ADK (or supported OSS framework) | Pass | `google-adk==2.0.0`, root `buddy_live_coach` + `drill_coach`, `iq_coach` sub-agents |
 | **Infrastructure:** Cloud Run or GKE | Pass | `infra/cloudbuild.yaml`, deployed to `puck-buddy` project |
 
 ---
@@ -31,21 +35,21 @@ observability, evaluation, optimizer.
 
 | Originally-flagged gap | Status today |
 | --- | --- |
-| "Single agent only" | **Closed** — root + `vision_coach`, `drill_coach`, `iq_coach` via ADK 2.0 `sub_agents=[]` and `transfer_to_agent` |
-| "No ADK callbacks" | **Closed** — `phase_guard` BeforeToolCallback on both agents (Firestore-backed phase gates) |
+| "Single agent only" | **Closed** — root + `drill_coach`, `iq_coach` via ADK 2.0 `sub_agents=[]` and `transfer_to_agent` |
+| "No ADK callbacks" | **Closed** — `phase_guard` BeforeToolCallback on root + all sub-agents (Firestore-backed phase gates; `tests/test_phase_guard.py`) |
 | New tool `mark_iq_answer` | Added |
 
-### Track 2 gaps still open
+### Track 2 gaps — final status
 
-| Gap | Why it matters for Track 2 | Evidence |
-| --- | --- | --- |
-| **No Agent Simulation / User Simulation** | Core of Track 2. "Use Agent Simulation to generate synthetic user interactions and test the agent against rare, multi-variable events." | No `evalsets/`, no `ConversationScenario`, no `eval_config.json` |
-| **No Environment Simulation** | Tools call real Firestore / modelforpuckbuddy — evals can't run hermetically and can't inject error edge cases | All tools (`peek_camera`, `analyze_rep`, …) talk to live infra |
-| **No observability beyond Sentry errors** | "Use Agent Observability to visually trace complex reasoning and debug stalled logic." Sentry catches exceptions but not reasoning traces | `main.py` initialises Sentry only; no OpenTelemetry / Cloud Trace |
-| **No Agent Optimizer** | "Use Agent Optimizer to programmatically refine system instructions." | Prompt is hand-tuned in `prompts.py` |
-| ~~No grounding / RAG~~ | **Closed in Phase 3.** Curated drill corpus at `services/buddy-live-adk/knowledge/`, served via `lookup_drill_knowledge` (Vertex AI Search). `recommend_drill` now grounds first, falls back to the dict. | |
-| **`InMemorySessionService`** | Sessions die on container restart; managed Memory Bank shows production discipline | `app/agent.py:108` |
-| **Cloud Run (not Agent Runtime)** | Resource guide encourages "Deploy to Agent Runtime" for managed sessions + auto-tracing | `infra/cloudbuild.yaml` is plain Cloud Run; no `adk deploy` |
+| Gap | Status |
+| --- | --- |
+| Agent + User Simulation | **Closed** — `services/buddy-live-adk/evals/`, `make eval` |
+| Environment Simulation | **Closed** — `evals/environment_simulation.py` |
+| Observability (Cloud Trace) | **Closed** — `BUDDY_ENABLE_CLOUD_TRACE=1`, `buddy_live.turn` spans |
+| Agent Optimizer (GEPA) | **Closed** — `make optimize`; seed prompt retained |
+| Grounding / RAG | **Closed** — Vertex AI Search + `lookup_drill_knowledge` |
+| `InMemorySessionService` | **Deferred** — reconnect context + Firestore state; see [`ARCHITECTURE.md`](ARCHITECTURE.md) |
+| Cloud Run vs Agent Runtime | **Accepted** — Cloud Run meets mandatory infra; Agent Runtime optional |
 
 ---
 
@@ -100,7 +104,11 @@ and constructs a parallel `root_agent` with:
 - Identical instruction, model, and `sub_agents=[iq_coach]` structure so the
   evaluation reflects production behaviour as closely as possible.
 
-The production `phase_guard` is correctness-tested separately via unit tests.
+The production `phase_guard` is correctness-tested separately via
+[`tests/test_phase_guard.py`](../services/buddy-live-adk/tests/test_phase_guard.py)
+(hermetic mocks — no Firestore). Guards cover `set_focus_drill`,
+`show_iq_visual`, `start_rep_capture`, `analyze_rep`, `end_session_recap`,
+and vision peeks after wrap-up.
 
 ### Tool mocking strategy
 
@@ -290,8 +298,8 @@ the demo run.
   tool via short additions to their `TOOLS YOU CAN CALL` sections. The
   rest of the prompt is unchanged so existing behaviour stays intact.
 - `services/buddy-live-adk/app/agent.py` + `evals/agent_module/agent.py`
-  — `lookup_drill_knowledge` on `drill_coach` / `iq_coach` (15 tools total across sub-agents)
-  and `iq_coach` (3 tools); mirrored in the eval agent module.
+  — `lookup_drill_knowledge` on `drill_coach` / `iq_coach` (15 tools total across sub-agents);
+  mirrored in the eval agent module.
 - `services/buddy-live-adk/evals/environment_simulation.py` — both
   `happy_path_config()` and `failure_config()` mock the new tool. The
   failure config also injects a 30%-probability "no matching documents"
@@ -304,7 +312,7 @@ the demo run.
 ### Why a function tool (and not built-in `VertexAiSearchTool`)
 
 The built-in flavour wires the data store straight into Gemini's tool
-config; we already ship 12 function tools on this agent and prefer to
+config; we already ship 15 function tools across these agents and prefer to
 keep retrieval observable and mockable. As a function tool,
 `lookup_drill_knowledge` shows up as a regular span alongside `analyze_rep`
 in Cloud Trace (Phase 2), and the Environment Simulation can stub it
@@ -406,60 +414,13 @@ Two surfaces before Phase 3:
 
 ## Phase 4 — Cross-session player memory (shipped)
 
-### Goals
-
-1. Returning players hear a one-sentence callback to their last session
-   (drill, rep count, weakest metric) in the opening.
-2. `session_summaries/` (already written by `end_session_recap`) becomes
-   queryable by player name — no new analytics pipeline.
-3. Hermetic evals keep working; production never hard-fails when Firestore
-   is unavailable.
-
 ### What's shipped
 
-- `app/tools/player_memory.py` — `remember_player_profile(name, age)` persists
-  to the live session doc + ADK state; `load_player_memory(name)` reads the
-  most recent matching row from `session_summaries/` (excludes current session).
-- `app/tools/coaching.py` — `_write_session_summary` now stores
-  `player_name`, `player_age`, `player_name_normalized`, `user_id`.
-- `app/prompts.py` — opening flow calls both tools after age is learned;
-  speaks `summary_hint` when `has_prior_session` is true.
-- Eval harness mocks both tools; first scenario renamed to Tyler so Marcus
-  returning scenario does not false-positive in future eval-set refreshes.
-- `tests/test_player_memory.py` — 6 hermetic unit tests.
-
-### Why Firestore summaries (not Vertex Memory Bank yet)
-
-Vertex AI Memory Bank (`VertexAiMemoryBankService` + `load_memory`) requires
-an Agent Engine id and async `add_session_to_memory` after each session.
-Our `session_summaries/` collection already captures the exact fields judges
-care about (drill, weakest metric, rep count) with zero new infra. Memory
-Bank remains the documented upgrade path for semantic recall over full
-transcripts.
-
-### Demo: seed a returning player
-
-After any real session where the player said their name, a summary row exists.
-For a scripted demo, write one doc in Firebase console → `session_summaries`.
-**Required:** set `user_id` to the Firebase anonymous uid from your browser's
-`live_sessions/{sessionId}` doc (same device you will demo on). Name alone is
-not enough — memory is scoped per browser.
-
-```json
-{
-  "session_id": "demo-prior-marcus",
-  "created_at": "2026-05-27T18:00:00Z",
-  "user_id": "<paste uid from live_sessions.user_id>",
-  "player_name": "Marcus",
-  "player_name_normalized": "marcus",
-  "drill": "wristshot",
-  "rep_count": 2,
-  "weakest_metric": "weight_transfer"
-}
-```
-
-Next live session **on that same browser**: Marcus says his name → coach calls
-`load_player_memory` → welcome-back with last drill and focus area.
+- `remember_player_profile(name, age)` on every session opening.
+- `end_session_recap` writes durable rows to `session_summaries/` (drill, rep
+  count, weakest metric, `user_id`).
+- `load_player_memory` tool + tests exist; **opening prompt does not call it**
+  (voice welcome-back deferred). Summaries are for analytics and future recall.
 
 ### Optional: Vertex AI Memory Bank
 
@@ -519,7 +480,7 @@ Today:
 | Agent | Responsibility | Status |
 | --- | --- | --- |
 | `buddy_live_coach` (root) | Opening, warm-up, setup, memory tools | Shipped — 4 tools |
-| `vision_coach` | `peek_camera`, `peek_warmup` | Shipped (`dc1df1d`) |
+| `vision_coach` | `peek_camera`, `peek_warmup` | Removed — vision retired; setup framing + warm-up form are verbal |
 | `drill_coach` | Rep capture, analysis wait, scorecard, recap, drill knowledge | Shipped (`68c7c11`) |
 | `iq_coach` | Hockey IQ scenarios | Pre-existing |
 | Memory Agent | Cross-session history on root tools | **Skipped** — awkward mid-opening transfer |

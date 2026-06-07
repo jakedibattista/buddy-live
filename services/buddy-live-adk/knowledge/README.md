@@ -6,9 +6,11 @@ reviewable; ingested into a Vertex AI Search data store so the agent can
 retrieve from it semantically at runtime (see Phase 3 in
 [`docs/TRACK2-PLAN.md`](../../../docs/TRACK2-PLAN.md)).
 
-**Provenance:** Authored for Buddy Live (prompt rubrics + legacy
-`_DRILL_RECOMMENDATIONS` in `app/tools/coaching.py`). Not scraped from the
-Puck Buddy app or YouTube. See [`docs/TRACK2-LAYMAN.md`](../../../docs/TRACK2-LAYMAN.md#phase-3--drill-knowledge-library-vertex-ai-search).
+**Provenance:** Curated for Buddy Live — not auto-scraped at ingest. Trust
+model, source tags, and extension rules: see **`sources.md`** in this folder.
+Aligned with live rep metrics (`metrics-*.md`), `coaching._DRILL_RECOMMENDATIONS`,
+and USA Hockey ADM concepts (paraphrased, not copied curriculum).
+See also [`docs/TRACK2-LAYMAN.md`](../../../docs/TRACK2-LAYMAN.md#phase-3--drill-knowledge-library-vertex-ai-search).
 
 ## Structure
 
@@ -23,6 +25,13 @@ doc has to make sense without context from its siblings.
 | `iq-rules-basics.md` | Offsides, icing, goals, penalties — kid-level. |
 | `iq-shot-selection.md` | When to shoot vs pass vs skate. |
 | `iq-positioning.md` | Lanes, support, awareness. |
+| `warmup-general.md` | Off-ice body-loosening moves (30s each); agent picks 3 per session. |
+| `warmup-hockey.md` | Stick/shooting prep moves by drill (30s each); agent picks 2 per session. |
+| `recovery-moves.md` | 30s stretches during scored-rep analysis wait. |
+| `homework-off-ice.md` | Metric-linked at-home homework for recap / `recommend_drill`. |
+| `iq-scenarios-catalog.md` | Structured IQ cards (scenario, options, correct, diagram). |
+| `iq-usa-hockey-*.md` | ADM angling, puck protection, small-area games. |
+| `sources.md` | Trust hierarchy, tags, and how to add content safely. |
 
 ## Doc conventions
 

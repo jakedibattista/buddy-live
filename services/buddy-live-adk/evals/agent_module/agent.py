@@ -29,7 +29,6 @@ from app.prompts import (
     COACH_SETH_LIVE_PROMPT,
     DRILL_COACH_PROMPT,
     IQ_COACH_PROMPT,
-    VISION_COACH_PROMPT,
 )
 from app.tools import (
     analyze_rep,
@@ -37,10 +36,9 @@ from app.tools import (
     get_rep_result,
     load_player_memory,
     lookup_drill_knowledge,
+    lookup_warmup_moves,
     mark_iq_answer,
     remember_player_profile,
-    peek_camera,
-    peek_warmup,
     recommend_drill,
     set_focus_drill,
     set_iq_question_goal,
@@ -85,20 +83,6 @@ def _build_callback():
 
 _env_sim_callback = _build_callback()
 _model = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
-
-
-_vision_coach = Agent(
-    name="vision_coach",
-    description=(
-        "Webcam vision specialist. Handles setup framing (peek_camera) "
-        "and optional warm-up form checks (peek_warmup), then transfers "
-        "back to the main coach."
-    ),
-    model=_model,
-    instruction=VISION_COACH_PROMPT,
-    tools=[peek_camera, peek_warmup],
-    before_tool_callback=_env_sim_callback,
-)
 
 
 _drill_coach = Agent(
@@ -150,12 +134,13 @@ root_agent = Agent(
     model=_model,
     instruction=COACH_SETH_LIVE_PROMPT,
     tools=[
+        lookup_warmup_moves,
         start_warmup_timer,
         set_focus_drill,
         remember_player_profile,
         load_player_memory,
     ],
-    sub_agents=[_vision_coach, _drill_coach, _iq_coach],
+    sub_agents=[_drill_coach, _iq_coach],
     before_tool_callback=_env_sim_callback,
 )
 

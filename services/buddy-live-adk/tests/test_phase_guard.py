@@ -113,8 +113,3 @@ def test_show_iq_visual_blocked_after_session_ended(tool_context, monkeypatch):
     assert result["status"] == "blocked_session_over"
 
 
-def test_peek_camera_blocked_after_recap(tool_context, monkeypatch):
-    _patch_doc(monkeypatch, {"currentPhase": "recap"})
-    result = phase_guard(_tool("peek_camera"), {}, tool_context)
-    assert result is not None
-    assert result["status"] == "blocked_session_over"

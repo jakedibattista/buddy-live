@@ -3,7 +3,7 @@
 Short explanations of what Phases 1–4 and 6 shipped, how to use them, and
 honest limits. Technical detail lives in [`TRACK2-PLAN.md`](TRACK2-PLAN.md).
 
-**Checklist of follow-ups (do later):** [`TRACK2-TODOS.md`](TRACK2-TODOS.md).
+**What's still open:** [`TRACK2-TODOS.md`](TRACK2-TODOS.md) (Devpost video + Trace screenshot only).
 
 **Living phase journal** (what we shipped, measured, and learned as we go):
 [`TRACK2-PHASE-JOURNAL.md`](TRACK2-PHASE-JOURNAL.md).
@@ -19,7 +19,7 @@ honest limits. Technical detail lives in [`TRACK2-PLAN.md`](TRACK2-PLAN.md).
 | **3** | Look up real drill/metric docs instead of hard-coded lists and prompt memory. |
 | **4** | Greet returning kids with a nod to last session. |
 | **6** | Automatically improve the prompt using those same fake-player tests (harness fixed; seed kept on first full run). |
-| **5** | Split one big coach into specialists (`vision_coach`, `drill_coach`, `iq_coach`) that hand off to each other. |
+| **5** | Split one big coach into specialists (`drill_coach`, `iq_coach`) that hand off to each other. |
 
 ---
 
@@ -92,10 +92,11 @@ More commands: [`services/buddy-live-adk/evals/README.md`](../services/buddy-liv
 
 ### What it is
 
-Ten markdown files under `services/buddy-live-adk/knowledge/` (drills, metrics,
-hockey-IQ topics). At runtime, `lookup_drill_knowledge` searches them when
-`BUDDY_VERTEX_SEARCH_DATA_STORE_ID` is set; otherwise the coach falls back to
-the legacy Python dict and generic YouTube **search** URLs.
+Nineteen markdown files under `services/buddy-live-adk/knowledge/` (drills,
+metrics, hockey-IQ topics, warm-ups, recovery moves, homework, scenario
+catalog, `sources.md`). At runtime, `lookup_drill_knowledge` and
+`lookup_warmup_moves` search them when `BUDDY_VERTEX_SEARCH_DATA_STORE_ID` is
+set; otherwise the coach falls back to static catalogs in Python.
 
 ### Where the content came from
 
@@ -118,14 +119,17 @@ To pull in Puck Buddy app copy or specific YouTube curriculum later: add or edit
 
 ---
 
-## Phase 4 — “Welcome back” memory
+## Phase 4 — Player memory
 
-### What it is
+### What it is (today)
 
-After name + age, the coach calls `remember_player_profile` and
-`load_player_memory`. If a prior row exists in Firestore `session_summaries/`
-for that **first name** (case-insensitive), the opening includes a one-line
-callback (last drill, rep count, weakest metric).
+After name + age, the coach calls **`remember_player_profile`** only. Session
+recaps write durable rows to `session_summaries/` (drill, rep count, weakest
+metric) scoped to the browser's Firebase `user_id`.
+
+**Voice welcome-back is deferred:** `load_player_memory` is still a tool and
+eval mocks exist, but the **opening prompt does not call it** — each session
+starts with a normal greet unless we re-enable welcome-back later.
 
 ### Is it tied to this computer? Auth?
 
@@ -133,17 +137,9 @@ callback (last drill, rep count, weakest metric).
 | --- | --- |
 | **Firebase Anonymous Auth** | On `/coach`, the app signs you in anonymously. That `uid` is stored on the session as `user_id` and is **stable on the same browser** as long as you do not clear site data. |
 | **New browser / cleared storage** | New anonymous `uid` → treated as a **new player**, even if they say a name used before on another device. |
-| **What memory keys on** | **Firebase `user_id` (this browser) + spoken first name.** Two kids named "Alex" on different devices never share welcome-back text. |
+| **What memory keys on** | **Firebase `user_id` (this browser) + spoken first name** when welcome-back is enabled |
 
-So there is **no login/password**. Continuity is: **this browser** remembered
-you, and you say a consistent name.
-
-**Implications**
-
-- Clearing site data resets memory (new anonymous user).
-- Demo seed must include **your** `user_id` from `live_sessions`, not name alone.
-
-Demo seed for Marcus: see Phase 4 in [`TRACK2-PLAN.md`](TRACK2-PLAN.md).
+Summaries persist in `session_summaries/` after recap. There is no login/password.
 
 ---
 
@@ -167,7 +163,6 @@ The coach is now a **team of specialists** instead of one giant prompt:
 | Agent | Job |
 | --- | --- |
 | Root coach | Greeting, warm-up, setup, remember/load player |
-| Vision coach | Camera framing + warm-up peek when needed |
 | Drill coach | Scored rep, analysis wait, scorecard, recap |
 | IQ coach | Hockey IQ when there's no space to shoot |
 

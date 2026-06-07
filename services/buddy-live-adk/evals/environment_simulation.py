@@ -10,8 +10,8 @@ Two configs are exported:
 - :func:`happy_path_config` — every tool succeeds. Use this for baseline
   scenarios (happy flow, sub-agent transfer, persona robustness).
 - :func:`failure_config` — adds probabilistic injections that reproduce the
-  edge cases we want Track 2 to demonstrate the agent surviving (framing
-  loops, analysis timeouts). Use this for the "before / after" demo
+  edge cases we want Track 2 to demonstrate the agent surviving (analysis
+  still processing on first poll). Use this for the "before / after" demo
   scenarios.
 
 Pick the active config with the ``BUDDY_EVAL_FAILURES`` env var
@@ -33,42 +33,22 @@ _EVAL_REP_ID = "rep-eval-0001"
 _EVAL_FOLLOWUP_REP_ID = "rep-eval-0002"
 
 
-def _peek_camera_success() -> dict[str, Any]:
-    return {
-        "person_visible": True,
-        "full_body_in_frame": True,
-        "facing_camera": True,
-        "stick_visible": True,
-        "setup_framing_passed": True,
-        "setup": "full body with stick",
-        "observation": "I can see you head to toes — stick in hand, ready to go.",
-        "available": True,
-        "source": "gemini-flash",
-        "raw": "PERSON: yes\nFULL_BODY: yes\nFACING: yes\nSTICK: yes\nSETUP: full body with stick",
-    }
-
-
-def _peek_camera_framing_fail() -> dict[str, Any]:
-    return {
-        "person_visible": True,
-        "full_body_in_frame": False,
-        "facing_camera": True,
-        "stick_visible": False,
-        "setup_framing_passed": False,
-        "setup": "head and torso only",
-        "observation": "Can't see your feet yet — step back so I can see you head to toes.",
-        "available": True,
-        "source": "gemini-flash",
-        "raw": "PERSON: yes\nFULL_BODY: no\nFACING: yes\nSTICK: no\nSETUP: head and torso only",
-    }
-
-
-def _peek_warmup_success() -> dict[str, Any]:
+def _lookup_warmup_moves_success() -> dict[str, Any]:
     return {
         "available": True,
-        "observation": "Good motion — you moved through the full range on every rep.",
-        "frames_analyzed": 4,
-        "source": "gemini-flash",
+        "category": "general",
+        "focus_drill": None,
+        "moves": [
+            {
+                "label": "Arm circles",
+                "exercise": "slow arm circles with arms out wide",
+                "spoken_demo_under_10": "Spread your arms like airplane wings.",
+                "duration_seconds": 30,
+            }
+        ],
+        "source": "static_catalog",
+        "grounded": False,
+        "hint": "Run each move for 30 seconds.",
     }
 
 
@@ -243,7 +223,6 @@ def _lookup_drill_knowledge_miss() -> dict[str, Any]:
 
 
 _ALWAYS = 1.0
-_FRAMING_FAILURE_SEED = 42
 _RESULT_PROCESSING_SEED = 137
 
 
@@ -265,8 +244,7 @@ def _tool(tool_name: str, response: dict[str, Any], *, extras: list[InjectionCon
 
 def _happy_tool_configs() -> list[ToolSimulationConfig]:
     return [
-        _tool("peek_camera", _peek_camera_success()),
-        _tool("peek_warmup", _peek_warmup_success()),
+        _tool("lookup_warmup_moves", _lookup_warmup_moves_success()),
         _tool("start_warmup_timer", _start_warmup_timer_success()),
         _tool("set_focus_drill", _set_focus_drill_success()),
         _tool("set_iq_question_goal", _set_iq_question_goal_success()),
@@ -291,19 +269,13 @@ def _failure_tool_configs() -> list[ToolSimulationConfig]:
     InjectionConfig whose probability/match passes wins, so we put the
     failure injection BEFORE the happy fallback.
     """
-    framing_fail = InjectionConfig(
-        injection_probability=0.6,
-        random_seed=_FRAMING_FAILURE_SEED,
-        injected_response=_peek_camera_framing_fail(),
-    )
     result_processing = InjectionConfig(
         injection_probability=0.7,
         random_seed=_RESULT_PROCESSING_SEED,
         injected_response=_get_rep_result_processing(),
     )
     return [
-        _tool("peek_camera", _peek_camera_success(), extras=[framing_fail]),
-        _tool("peek_warmup", _peek_warmup_success()),
+        _tool("lookup_warmup_moves", _lookup_warmup_moves_success()),
         _tool("start_warmup_timer", _start_warmup_timer_success()),
         _tool("set_focus_drill", _set_focus_drill_success()),
         _tool("set_iq_question_goal", _set_iq_question_goal_success()),
@@ -355,7 +327,7 @@ def happy_path_config() -> EnvironmentSimulationConfig:
 
 
 def failure_config() -> EnvironmentSimulationConfig:
-    """Adds probabilistic failures to peek_camera, analyze_rep, get_rep_result.
+    """Adds probabilistic failures to analyze_rep / get_rep_result.
 
     Seeds are pinned so a given eval run is reproducible.
     """

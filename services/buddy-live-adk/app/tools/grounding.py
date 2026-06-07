@@ -8,7 +8,7 @@ of relying on baked-in prompt content or the static YouTube-search dict in
 
 Why a function tool (and not the built-in :class:`VertexAiSearchTool`):
 the built-in flavour wires the data store directly into Gemini's request
-config; we already ship 12 function tools on this agent and prefer to
+config; we already ship 15 function tools across these agents and prefer to
 keep retrieval observable and mockable from Phase 1's eval harness, which
 intercepts every tool call. As a function tool, ``lookup_drill_knowledge``
 appears as a normal span in Cloud Trace alongside ``analyze_rep`` etc.,

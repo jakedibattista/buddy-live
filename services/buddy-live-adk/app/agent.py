@@ -3,23 +3,21 @@
 Structure (ADK 2.0 sub-agent pattern):
 
   buddy_live_coach (LlmAgent, root)
-    ├─ vision_coach (LlmAgent, sub_agent) — peek_camera, peek_warmup
     ├─ drill_coach (LlmAgent, sub_agent) — rep capture, analysis, recap
     └─ iq_coach (LlmAgent, sub_agent) — Hockey IQ practice mode
 
 The root agent runs opening, warm-up, and setup. After setup it transfers
-to drill_coach for drill readiness through session recap. IQ and vision
-delegation work the same as before (transfer_to_agent).
+to drill_coach for drill readiness through session recap. IQ delegation
+works via transfer_to_agent.
 
 Why this split:
 - Isolates the new IQ practice feature from the mature shooting flow so
   prompt changes to one don't risk regressing the other.
-- Isolates vision tool loops (framing retries) from the main coaching prompt.
 - Gives each agent a smaller, focused instruction set the model can
   follow more reliably than one monolithic prompt.
 
 All agents share the same Firestore-driven phase guard (BeforeToolCallback)
-so they cannot, for example, call start_rep_capture before framing passes.
+so they cannot, for example, call start_rep_capture before a drill is set.
 
 Sessions are managed per ElevenLabs conversation via SessionService -- we
 map the `arbitrary_identifier` from the ElevenLabs Custom LLM extra body
@@ -45,7 +43,6 @@ from app.prompts import (
     COACH_SETH_LIVE_PROMPT,
     DRILL_COACH_PROMPT,
     IQ_COACH_PROMPT,
-    VISION_COACH_PROMPT,
 )
 from app.tools import (
     analyze_rep,
@@ -53,10 +50,9 @@ from app.tools import (
     get_rep_result,
     load_player_memory,
     lookup_drill_knowledge,
+    lookup_warmup_moves,
     mark_iq_answer,
     remember_player_profile,
-    peek_camera,
-    peek_warmup,
     recommend_drill,
     set_focus_drill,
     set_iq_question_goal,
@@ -71,8 +67,11 @@ _logger = logging.getLogger(__name__)
 APP_NAME = "buddy-live"
 
 
+_model: Gemini | None = None
+
+
 def _build_model() -> Gemini:
-    """Gemini model with transient-error retries.
+    """Shared Gemini model (one instance reused by all three agents).
 
     Gemini periodically returns 503 UNAVAILABLE (and occasionally 5xx/429)
     during brief capacity blips. Without retries these surface as a failed
@@ -80,38 +79,28 @@ def _build_model() -> Gemini:
     drop. The google-genai client retries these status codes in-process
     (including mid-stream), with short backoff so a live voice turn still
     resolves quickly.
+
+    The agents share identical model config, so we build one instance and
+    cache it rather than constructing one per agent.
     """
-    model_name = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
-    return Gemini(
-        model=model_name,
-        retry_options=genai_types.HttpRetryOptions(
-            attempts=3,
-            initial_delay=1.0,
-            max_delay=4.0,
-            exp_base=2.0,
-            http_status_codes=[429, 500, 502, 503, 504],
-        ),
-    )
+    global _model
+    if _model is None:
+        model_name = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
+        _model = Gemini(
+            model=model_name,
+            retry_options=genai_types.HttpRetryOptions(
+                attempts=3,
+                initial_delay=1.0,
+                max_delay=4.0,
+                exp_base=2.0,
+                http_status_codes=[429, 500, 502, 503, 504],
+            ),
+        )
+    return _model
 
 _agent: Agent | None = None
 _runner: Runner | None = None
 _session_service: BaseSessionService | None = None
-
-
-def _build_vision_coach() -> Agent:
-    """Vision sub-agent: automated peek_camera / peek_warmup checks."""
-    return Agent(
-        name="vision_coach",
-        description=(
-            "Webcam vision specialist. Handles setup framing (peek_camera) "
-            "and optional warm-up form checks (peek_warmup), then transfers "
-            "back to the main coach."
-        ),
-        model=_build_model(),
-        instruction=VISION_COACH_PROMPT,
-        tools=[peek_camera, peek_warmup],
-        before_tool_callback=phase_guard,
-    )
 
 
 def _build_drill_coach() -> Agent:
@@ -163,20 +152,20 @@ def _build_iq_coach() -> Agent:
 
 
 def _build_agent() -> Agent:
-    """Root coach: opening, warm-up, setup. Delegates drill, IQ, and vision."""
+    """Root coach: opening, warm-up, setup. Delegates drill and IQ flows."""
     return Agent(
         name="buddy_live_coach",
         description="Real-time hockey shooting coach (voice + webcam).",
         model=_build_model(),
         instruction=COACH_SETH_LIVE_PROMPT,
         tools=[
+            lookup_warmup_moves,
             start_warmup_timer,
             set_focus_drill,
             remember_player_profile,
             load_player_memory,
         ],
         sub_agents=[
-            _build_vision_coach(),
             _build_drill_coach(),
             _build_iq_coach(),
         ],

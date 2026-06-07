@@ -16,7 +16,7 @@ This README only covers running the evals.
 
 | File | Purpose |
 | --- | --- |
-| `agent_module/` | Rebuilds the prod agent (+ `vision_coach`, `drill_coach`, `iq_coach`) wired to Environment Simulation instead of `phase_guard`. `adk eval` imports `root_agent` from here. **Keep in lockstep with `app/agent.py`.** |
+| `agent_module/` | Rebuilds the prod agent (+ `drill_coach`, `iq_coach`) wired to Environment Simulation instead of `phase_guard`. `adk eval` imports `root_agent` from here. **Keep in lockstep with `app/agent.py`.** |
 | `environment_simulation.py` | Mock/injection configs for all production tools. Exports `happy_path_config()` and `failure_config()`. |
 | `conversation_scenarios.json` | User-simulation scenarios with personas + conversation plans. |
 | `optimize_sampler_config.json` | Phase 6: train/validation eval case split for `adk optimize`. |
@@ -42,8 +42,8 @@ From `services/buddy-live-adk/`:
 # Happy-path scenarios — every mocked tool succeeds.
 make eval
 
-# Failure-injection variant — adds probabilistic peek_camera framing fails
-# and get_rep_result "processing" responses to stress edge-case handling.
+# Failure-injection variant — adds probabilistic get_rep_result "processing"
+# responses to stress edge-case handling.
 make eval-failures
 
 # Just one scenario by name (suffix the evalset path with `:eval_id`):
@@ -114,10 +114,14 @@ in tool outputs (no made-up scorecards) and stay safe.
 `adk eval` expects a module-level `root_agent`. Production `app/` uses a
 `get_agent()` factory wired to a FastAPI bridge for the ElevenLabs Custom
 LLM contract; the agent also has a Firestore-backed `phase_guard`
-`before_tool_callback`. Pointing `adk eval` at `app/` would require
-monkey-patching both. The eval module instead imports the prompt and tool
-symbols from `app.` and rebuilds the agent with Environment Simulation as
-its `before_tool_callback`. Production wiring is untouched.
+`before_tool_callback` on root + all sub-agents. Pointing `adk eval` at
+`app/` would require monkey-patching both. The eval module instead imports
+the prompt and tool symbols from `app.` and rebuilds the agent with
+Environment Simulation as its `before_tool_callback`. Production wiring is
+untouched.
+
+`phase_guard` behaviour is tested hermetically in
+[`tests/test_phase_guard.py`](../tests/test_phase_guard.py) (not via `adk eval`).
 
 ## Next steps
 

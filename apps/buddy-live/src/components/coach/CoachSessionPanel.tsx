@@ -93,9 +93,6 @@ export function CoachSessionPanel({
           setupFramingPassed={setupFramingPassed}
           focusDrill={focusDrill}
           currentPhase={currentPhase}
-          lastWarmupExercise={session?.last_warmup_exercise}
-          lastWarmupForm={session?.last_warmup_form}
-          warmupMovesChecked={session?.warmup_moves_checked}
           warmupTimerActive={warmupTimerActive}
           warmupTimerLabel={warmupTimerLabel}
           repCount={repCount}
@@ -103,13 +100,6 @@ export function CoachSessionPanel({
           connected={connected}
         />
         {coachError && <div className="mt-2 text-xs text-red-400">{coachError}</div>}
-        {session?.warmup_peek_updated_at && currentPhase === "warmup" && (
-          <div className="mt-2 text-xs text-zinc-500">
-            Warm-up checked {new Date(session.warmup_peek_updated_at).toLocaleTimeString()}
-            {session.warmup_moves_checked != null &&
-              ` · ${session.warmup_moves_checked} move${session.warmup_moves_checked === 1 ? "" : "s"} reviewed`}
-          </div>
-        )}
         {captureLastUpload && (
           <div className="mt-2 text-xs text-zinc-400">
             Last clip: <span className="text-zinc-200">{captureLastUpload.repId}</span> ·{" "}

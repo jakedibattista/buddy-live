@@ -2,15 +2,13 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
 from typing import Any
 
 from google.adk.tools.tool_context import ToolContext
 
 from app.firestore_client import db, session_ref
+from app.tools._common import SESSION_SUMMARIES_COLLECTION, get_session_id, now_iso
 from app.tools.grounding import lookup_drill_knowledge
-
-_SESSION_SUMMARIES_COLLECTION = "session_summaries"
 
 _logger = logging.getLogger(__name__)
 
@@ -242,8 +240,7 @@ def end_session_recap(tool_context: ToolContext) -> dict[str, Any]:
         Dict with `total_reps`, `by_drill`, `average_scores`, `biggest_opportunity`,
         and `summary` (one short paragraph).
     """
-    state = tool_context.state or {}
-    session_id = state.get("session_id") or state.get("sessionId")
+    session_id = get_session_id(tool_context)
     if not session_id:
         return {"summary": "Great work out there today.", "total_reps": 0}
 
@@ -305,7 +302,7 @@ def end_session_recap(tool_context: ToolContext) -> dict[str, Any]:
         else:
             summary = f"Nice session: {rep_summary}. Keep grinding."
 
-    ended_at = datetime.now(timezone.utc).isoformat()
+    ended_at = now_iso()
     if ref is not None:
         try:
             update_data = {
@@ -381,16 +378,13 @@ def _write_session_summary(
         "by_drill": by_drill,
         "weakest_metric": biggest_opportunity,
         "average_scores": averages,
-        "framing_struggles": int(session_doc.get("framing_failure_count") or 0),
-        "warmup_motion_misses": int(session_doc.get("warmup_motion_miss_count") or 0),
-        "warmup_moves_checked": int(session_doc.get("warmup_moves_checked") or 0),
         "final_phase": session_doc.get("currentPhase"),
         "player_name": session_doc.get("player_name"),
         "player_age": session_doc.get("player_age"),
         "player_name_normalized": session_doc.get("player_name_normalized"),
         "user_id": session_doc.get("user_id"),
     }
-    client.collection(_SESSION_SUMMARIES_COLLECTION).document(session_id).set(
+    client.collection(SESSION_SUMMARIES_COLLECTION).document(session_id).set(
         summary_doc,
         merge=True,
     )

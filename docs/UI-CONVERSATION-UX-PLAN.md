@@ -4,7 +4,7 @@
 **Updated:** 2026-05-25  
 **Source:** UI review against [Lovable’s chatbot UI guide](https://lovable.dev/guides/how-to-build-a-chatbot-ui), plus follow-up discussion on a live “talking puck” mascot.
 
-**Status:** Phases 1–3 **shipped** (`ee8e1b1`, prompt polish `4a78321`). Only **deferred** item: interrupt / barge-in button (verify ElevenLabs WebRTC SDK support).
+**Status:** Phases 1–3 **shipped** (`ee8e1b1`, prompt polish `4a78321`). **Deferred:** interrupt / barge-in button (SDK has mute duck only — `CoachAudioMuteButton`). Hackathon assets: [`submission/`](submission/).
 
 This doc preserves recommendations from that conversation and turns them into an execution plan. Buddy Live is **voice-first coaching** — the transcript and mascot support the session; they are not a standalone text chat product.
 
@@ -248,7 +248,7 @@ If ElevenLabs exposes interrupt on WebRTC path: **Stop coach** (mid-speech) dist
 - New: `apps/buddy-live/public/mascot/coach-puck-speak.png` (mouth-open frame)
 - `apps/buddy-live/src/app/coach/page.tsx`
 
-### Phase 3 — Polish (P1) — **DONE** (except deferred interrupt)
+### Phase 3 — Polish (P1) — **DONE**
 
 - [x] Transcript timestamps (clock + elapsed after 30s)
 - [x] Long message splitting (`splitLongMessage` in `lib/transcript.ts`)
@@ -256,7 +256,7 @@ If ElevenLabs exposes interrupt on WebRTC path: **Stop coach** (mid-speech) dist
 - [x] `currentPhase` in sidebar
 - [x] Voice quick-prompt chips (`I'm ready`, `Wrap up`, `Repeat that`)
 - [x] Coach output mute button (`CoachAudioMuteButton`)
-- [ ] Interrupt button — **deferred** (verify ElevenLabs WebRTC interrupt API)
+- Interrupt button — **deferred** (mute ships instead; see status above)
 
 ---
 
@@ -402,7 +402,7 @@ Rep scores, session metadata, clips, and analysis `results` remain in **Firestor
 - [x] While recording, user sees **60s countdown**, can tap **Stop & upload**, clip auto-stops at limit
 - [x] Puck visibly reacts while Coach Buddy speaks (volume-reactive mouth)
 - [x] Mascot does not obstruct camera framing during rep capture
-- [ ] Interrupt mid-speech — **deferred** (not blocking; mute button ships instead)
+- Interrupt mid-speech — **deferred** (mute button ships instead)
 
 ---
 
@@ -413,10 +413,3 @@ Rep scores, session metadata, clips, and analysis `results` remain in **Firestor
 - [ElevenLabs client events](https://elevenlabs.io/docs/eleven-agents/customization/events/client-events) — WebRTC vs WebSocket audio event behavior
 - Prior handoff: [`handoffs/2026-05-24-handoff.md`](handoffs/2026-05-24-handoff.md) (peek visibility, drill flow)
 
----
-
-## Next step
-
-1. **Devpost:** Demo video + 1-pager (see README checklist).
-2. **Live tuning:** Adult players (14+ age band), interrupt/barge-in, real-session edge cases on Vercel.
-3. **Optional:** Interrupt / barge-in once ElevenLabs WebRTC interrupt is confirmed in SDK.

@@ -71,10 +71,7 @@ export function buildResultsReadyMessage(repId?: string | null): string {
 
 export function buildWarmupTimerDoneMessage(exercise: string): string {
   return (
-    `(Warm-up timer finished for ${exercise}. Do NOT call peek_warmup or any vision tool. ` +
-    `Ask the player verbally how that felt in one short sentence, then introduce and start the next move.)`
+    `(Warm-up timer finished for ${exercise}. Ask the player verbally how that ` +
+    `felt in one short sentence, then introduce and start the next move.)`
   );
 }
-
-export const CAMERA_RECHECK_MESSAGE =
-  "(Camera check — please call peek_camera now to see if the player fixed their framing.)";

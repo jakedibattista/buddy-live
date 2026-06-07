@@ -7,16 +7,16 @@ phases. Use this for hackathon narrative and handoffs. Backlog:
 
 ---
 
-## Sequencing (2026-05-30)
+## Sequencing (2026-05-30) — completed
 
-We agreed to front-load **architecture bets** before polish and demo assets:
+Plan we followed before submission packaging (all steps done):
 
 1. Cheap **pre-refactor eval-failures baseline** (snapshot scores)
 2. **Phase 5 multi-agent** splits (incremental sub-agents)
 3. **Deploy** each slice → verify on Vercel production
 4. **Post-split eval-failures** baseline (compare scores)
 5. **GEPA optimize** once agent shape stabilizes (optional re-run)
-6. Ops toggles (Cloud Trace, Vertex Search, Marcus seed) + hackathon submission
+6. Ops toggles (Cloud Trace, Vertex Search) + hackathon submission → **done** (`submission/`)
 
 **Why:** GEPA only optimizes the **root** instruction. Splitting sub-agents
 after a prompt merge would throw away optimizer work. Eval baselines before/after
@@ -185,26 +185,25 @@ spoken name. `ensure_session` hydrates ADK state from Firestore. No valid
 
 ---
 
-## What's next
+## What's next (2026-06-07)
 
-- [x] Ops: Vertex Search data store, Marcus demo seed, Cloud Trace
-- [x] **Pre-human eval gate:** `make eval` 6/6 passed (2026-05-30)
-- [ ] **Your smoke:** see [`PRE-HUMAN-TEST-CHECKLIST.md`](PRE-HUMAN-TEST-CHECKLIST.md)
-- [ ] Hackathon: demo video, 1-pager, architecture diagram (after smoke)
-- [ ] Optional: GEPA re-run, Vertex ADC for safety_v1
+Hackathon submission packet shipped in [`submission/`](submission/). Still open:
+**demo video** + **Cloud Trace screenshot** — see [`TRACK2-TODOS.md`](TRACK2-TODOS.md).
+
+Proof session for judges: `session_summaries/live-3oxrisz06vae` (wristshot, 1 rep, recap).
 
 ---
 
-## Ops shipped (2026-05-30, pre-human test)
+## Ops shipped (2026-05-30)
 
 | Item | Detail |
 | --- | --- |
 | **Vertex Search** | Data store `buddy-live-drills`, 9 docs via JSONL import; `lookup_drill_knowledge('wristshot')` → 3 results |
 | **Cloud Run env** | `BUDDY_ENABLE_CLOUD_TRACE=1` + `BUDDY_VERTEX_SEARCH_DATA_STORE_ID` (rev `00053-2rw`+) |
-| **Marcus seed** | Firestore `demo-prior-marcus-jake` (uid `UXNBj…`), `demo-prior-marcus-alt` (uid `PZGW…`) |
 | **Eval baselines** | `make eval` 6/6 PASSED; `make eval-failures` 6/6 PASSED (2026-05-30) |
 | **Scripts** | `infra/scripts/setup_vertex_search.py`, `infra/scripts/seed_demo_memory.py` |
-- [ ] Deferred: durable `SessionService`, Workflow graph
+
+Deferred (documented in [`ARCHITECTURE.md`](ARCHITECTURE.md)): durable `SessionService`, Workflow graph, voice welcome-back on connect.
 
 ---
 
@@ -308,6 +307,29 @@ ends but keep the middle. Owner: Jake. Optional bridge from this repo — pass a
 (`ffprobe` + a mid-frame) turned "analysis is broken" into three distinct,
 separately-owned root causes (client orientation, our coach behavior, their
 shot detector).
+
+---
+
+## Phase guard expansion (2026-06-06)
+
+**What shipped:** Extended `phase_guard` beyond the original rep/recap/vision
+gates so high-risk tools are blocked in code, not just in prompts.
+
+| Guard | Why |
+| --- | --- |
+| `set_focus_drill` once per session | Stops duplicate drill writes and blocks re-entry during `iq_practice` |
+| `show_iq_visual` shooting-flow block | Keeps IQ visual cards in `iq_coach` — shooting sessions use verbal inline IQ only |
+| `analyze_rep` framing gate | Same prerequisites as `start_rep_capture` (`focus_drill` + `setup_framing_passed`) |
+
+**Files:** `app/callbacks.py`, `tests/test_phase_guard.py`
+
+**What we measured:** `make test` — 59 passed (11 new phase-guard cases).
+
+**What we learned:** prompt-only flow control was the main weakness in the
+sub-agent split; structural gates on the ~7 highest-risk tools close the gap
+without needing a full ADK Workflow graph rewrite.
+
+**What's next:** deploy ADK to Cloud Run so production picks up the new guards.
 
 ---
 

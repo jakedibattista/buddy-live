@@ -8,23 +8,14 @@ diagram description.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
 from typing import Any
 
 from google.adk.tools.tool_context import ToolContext
 
 from app.firestore_client import session_ref
+from app.tools._common import get_session_id, now_iso
 
 _logger = logging.getLogger(__name__)
-
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
-
-
-def _get_session_id(tool_context: ToolContext) -> str | None:
-    state = tool_context.state or {}
-    return state.get("session_id") or state.get("sessionId")
 
 
 def show_iq_visual(
@@ -50,7 +41,7 @@ def show_iq_visual(
     Returns:
         Dict with status confirmation.
     """
-    session_id = _get_session_id(tool_context)
+    session_id = get_session_id(tool_context)
 
     if not session_id:
         return {"status": "no_session"}
@@ -68,14 +59,14 @@ def show_iq_visual(
                 "scenario": (scenario or "").strip(),
                 "options": clean_options,
                 "diagram": (diagram or "").strip(),
-                "created_at": _now_iso(),
+                "created_at": now_iso(),
             }
         )
         sref.set(
             {
                 "currentPhase": "iq_practice",
                 "iq_scenario": (scenario or "").strip(),
-                "iq_updated_at": _now_iso(),
+                "iq_updated_at": now_iso(),
             },
             merge=True,
         )

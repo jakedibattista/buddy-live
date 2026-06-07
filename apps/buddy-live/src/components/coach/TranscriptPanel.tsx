@@ -97,7 +97,6 @@ export function TranscriptPanel({ entries, sessionStartMs, className, fillHeight
                 className={cn(
                   "max-w-[95%] rounded-full px-3 py-1 text-center text-[11px] leading-snug",
                   e.kind === "error" && "bg-red-500/15 text-red-200",
-                  e.kind === "peek" && "bg-amber-500/15 text-amber-100",
                   e.kind === "recording" && "bg-red-500/15 text-red-100",
                   e.kind === "upload" && "pill-brand",
                   e.kind === "analysis" && "pill-brand",

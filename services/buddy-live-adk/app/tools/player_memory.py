@@ -17,10 +17,9 @@ from typing import Any
 from google.adk.tools.tool_context import ToolContext
 
 from app.firestore_client import db, session_ref
+from app.tools._common import SESSION_SUMMARIES_COLLECTION
 
 _logger = logging.getLogger(__name__)
-
-_SESSION_SUMMARIES_COLLECTION = "session_summaries"
 
 
 def _normalize_name(name: str) -> str:
@@ -166,7 +165,7 @@ def load_player_memory(
     try:
         # Scan recent summaries and sort in-process (avoids composite indexes).
         raw_snaps = list(
-            client.collection(_SESSION_SUMMARIES_COLLECTION).limit(100).stream()
+            client.collection(SESSION_SUMMARIES_COLLECTION).limit(100).stream()
         )
         raw_snaps.sort(
             key=lambda s: (s.to_dict() or {}).get("created_at") or "",

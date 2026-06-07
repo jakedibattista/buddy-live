@@ -488,7 +488,7 @@
       "eval_id": "5f36f631",
       "conversation_scenario": {
         "starting_prompt": "Hey Coach Buddy! I'm Marcus and I'm 11.",
-        "conversation_plan": "You are Marcus, 11, a returning player. When the coach welcomes you back and mentions your last session (weight transfer or wristshot from last time), say thanks warmly. Cooperate with the space check and pick wristshot. Do one scored rep when prompted, then accept the recap. If the coach never mentions a prior session, that's fine — continue normally.",
+        "conversation_plan": "You are Marcus, 11. Production opening does not welcome you back — expect a normal greet (name, age, space check). Cooperate with the space check and pick wristshot. Do one scored rep when prompted, then accept the recap.",
         "user_persona": {
           "id": "NOVICE",
           "description": "A Novice is trying to solve a problem they don't fully understand, and they rely heavily on the Agent for guidance. Novices are patient with the Agent's questions, but are unable to troubleshoot the Agent's mistakes. Novices are also unable to correct the Agent.",

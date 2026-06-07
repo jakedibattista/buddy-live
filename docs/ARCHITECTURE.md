@@ -11,8 +11,8 @@ Where each piece runs, how data flows, and how it connects to the existing Puck 
 │                                 │     │                                  │
 │  • Next.js web UI (/coach)      │     │  • Python FastAPI + Google ADK   │
 │  • Webcam + MediaRecorder       │     │  • /chat/completions SSE         │
-│  • ElevenLabs React widget      │────▶│  • Gemini Flash + 10 tools       │
-│  • /api/session, /api/peek,     │     │                                  │
+│  • ElevenLabs React widget      │────▶│  • Gemini Flash + 15 tools       │
+│  • /api/session,                │     │                                  │
 │    /api/clips/upload,           │     │  make deploy → gcloud builds     │
 │    /api/reps/analyze|refresh    │     │  submit                          │
 │  vercel deploy --prod           │     │                                  │
@@ -22,7 +22,7 @@ Where each piece runs, how data flows, and how it connects to the existing Puck 
 ┌─────────────────────────────────┐     ┌──────────────────────────────────┐
 │  FIREBASE (puck-buddy project)  │     │  ELEVENLABS (their cloud)        │
 │  • Firestore live_sessions/     │     │  • Voice ASR + TTS               │
-│  • Storage clips + peek frames  │     │  • Calls your ADK on each turn   │
+│  • Storage rep clips            │     │  • Calls your ADK on each turn   │
 └─────────────────────────────────┘     └──────────────────────────────────┘
                │
                ▼
@@ -53,14 +53,10 @@ Player (browser)
   │                            ADK Service (Cloud Run)
   │                                 │
   │                                 ├─ Gemini Flash (conversation)
-  │                                 ├─ peek_camera → Fallback setup framing (verbal confirmation preferred)
-  │                                 ├─ peek_warmup → Fallback warm-up check (verbal confirmation preferred)
   │                                 ├─ start_warmup_timer → Firestore command (UI countdown)
   │                                 ├─ start_rep_capture → Firestore command
   │                                 ├─ stop_rep_capture → Firestore stop_capture command
   │                                 └─ analyze_rep → modelforpuckbuddy API
-  │
-  ├─ webcam JPEG every ~2.5s ──▶ /api/peek (Vercel) ──▶ Firebase Storage + Firestore
   │
   └─ rep clip on command ──────▶ signed PUT URL (/api/clips/upload-url) ──▶ Storage (direct)
                                       │  then /api/clips/upload finalises ──▶ Firestore
@@ -82,14 +78,14 @@ The `/coach` page is voice-first but follows conversational UI patterns from [`U
 | Concern | Implementation |
 |---|---|
 | Activity / “social silence” | `CoachActivityIndicator` — speaking, listening, thinking |
-| Timeline | `TranscriptPanel` — user/coach bubbles + system pills (record, upload, peek, connection) |
+| Timeline | `TranscriptPanel` — user/coach bubbles + system pills (record, upload, connection) |
 | Next action | `NextTurnCue` + `VoiceQuickPrompts` chips |
 | Mascot | `CoachPuckAvatar` on camera — crossfades `coach-puck.png` ↔ `coach-puck-speak.png` via `getOutputByteFrequencyData()` (baked face, no SVG overlay) |
 | Recording | `RecordingTimer` — 60s REC countdown + verbal / click stop instructions; driven by `useRepCapture` |
 | Warm-up timer | `WarmupTimerBridge` + `CountdownOverlay` — amber m:ss countdown per move; driven by `start_warmup_timer` command |
 | Voice resilience | `CoachConversation` — auto-reconnect on ElevenLabs drop (using a secure backend-mints WebRTC token and no unauthorized overrides) combined with ADK backend reconnect detection to suppress double greetings |
 | Session phase | Sidebar label from Firestore `currentPhase` (`lib/phases.ts`) |
-| Setup framing | Verbal confirmation by default (framing automatically passes when focus drill is set); fallback to `peek_camera` tool |
+| Setup framing | Verbal confirmation only — framing passes when the focus drill is set (no camera framing tool) |
 | Errors | Retry connect (ElevenLabs) and retry camera permission |
 | Recap Dashboard | Full-screen interactive recap of all scored reps in the center panel during `recap` and `ended` phases |
 | Picture-in-Picture | Camera view smoothly scales down to a floating PiP in the bottom-right corner during final recap |
@@ -113,14 +109,7 @@ data: [DONE]
 live_sessions/{sessionId}                 (TTL: ~24h via expires_at)
   session_id, user_id, startedAt, expires_at, currentPhase
   focus_drill, focus_drill_set_at
-  peek_url, peek_updated_at, peek_url_history[]   (ring buffer, ≤8 frames)
-  last_peek_person_visible, last_peek_full_body_in_frame,
-  last_peek_facing_camera, last_peek_stick_visible, last_peek_setup,
-  setup_framing_passed, camera_hint, peek_status_updated_at,
-  framing_failure_count                       (counts pass→fail transitions)
-  last_warmup_exercise, last_warmup_form, last_warmup_moving,
-  last_warmup_motion_detected, last_warmup_frames_analyzed, last_warmup_setup,
-  warmup_moves_checked, warmup_motion_miss_count, warmup_peek_updated_at,
+  setup_framing_passed                        (set by set_focus_drill; verbal)
   last_warmup_timer_label, last_warmup_timer_seconds, warmup_timer_started_at,
   results_ready_at, ended_at
 
@@ -137,8 +126,7 @@ live_sessions/{sessionId}                 (TTL: ~24h via expires_at)
 
 session_summaries/{sessionId}              (kept forever — weekly review record)
   session_id, started_at, created_at, drill, rep_count, by_drill,
-  weakest_metric, average_scores,
-  framing_struggles, warmup_motion_misses, warmup_moves_checked, final_phase
+  weakest_metric, average_scores, final_phase
 ```
 
 `drill_id` is canonicalised to `wristshot | slapshot_form | backhand`; legacy
@@ -157,13 +145,38 @@ session_summaries/{sessionId}              (kept forever — weekly review recor
 
 ### ADK guardrails (main.py)
 
+Turn-level guards on the `/chat/completions` bridge — apply to whichever
+sub-agent is active on that turn.
+
 | Guard | Effect |
 | --- | --- |
 | `max_llm_calls=10` | Caps tool-calling rounds per user turn (default was 500) |
 | Silence filter | `"..."` / empty from ElevenLabs → immediate empty SSE, no Gemini call |
+| Turn dedupe | Collapses duplicate/resend transcripts within ~4s so tools don't double-fire |
+| `_trim_user_text` | Caps open-mic ramble at 240 chars (reconnect context messages exempt) |
 | Per-session asyncio lock | Serializes concurrent turns on same session |
 | 30s turn timeout | `asyncio.timeout` — fails fast instead of hanging until Cloud Run kills at 300s |
 | Reconnect detection | Suppresses default welcome/greeting on reconnecting turns if the session already exists |
+| `_clean_coach_text` | Strips leaked `_thought` blocks and speaker labels before TTS |
+| IQ phase flip | Sets `currentPhase: iq_practice` when `iq_coach` authors a turn |
+
+### ADK guardrails (`callbacks.py` — `phase_guard`)
+
+Tool-level `before_tool_callback` on **all three agents** (root +
+`drill_coach`, `iq_coach`). Whichever agent invokes a
+guarded tool runs the check first. Firestore is the source of truth.
+Hermetic unit tests: [`tests/test_phase_guard.py`](../services/buddy-live-adk/tests/test_phase_guard.py).
+
+| Tool | Structural gate |
+| --- | --- |
+| `set_focus_drill` | Once per session — blocked if `focus_drill` already set or `currentPhase == iq_practice` |
+| `show_iq_visual` | Blocked in shooting flow (`focus_drill` set and phase ≠ `iq_practice`); blocked after wrap-up |
+| `start_rep_capture` | Requires `focus_drill` + `setup_framing_passed`; blocks if any rep is already `completed` (single-rep policy) |
+| `analyze_rep` | Same prerequisites as `start_rep_capture`; blocked after wrap-up |
+| `end_session_recap` | Requires a `completed` rep (shooting flow); exempt when `currentPhase == iq_practice` |
+
+All other tools (`start_warmup_timer`, `get_rep_result`, `mark_iq_answer`,
+etc.) rely on prompt rules and ADK `transfer_to_agent` — not code gates.
 
 See [`infra/storage-lifecycle.md`](../infra/storage-lifecycle.md) for the Sunday
 review workflow.
@@ -187,26 +200,28 @@ See [FIRESTORE_RULES.md](./FIRESTORE_RULES.md) for safe rules deployment into th
 
 We're on `google-adk==2.0.0` and already use:
 
-- **Sub-agents** — `buddy_live_coach` (root) delegates to three specialists via
+- **Sub-agents** — `buddy_live_coach` (root) delegates to two specialists via
   ADK 2.0 `sub_agents=[...]` in
   [`services/buddy-live-adk/app/agent.py`](../services/buddy-live-adk/app/agent.py):
 
   | Agent | Tools / role |
   | --- | --- |
-  | `vision_coach` | `peek_camera`, `peek_warmup` — framing and warm-up vision |
   | `drill_coach` | Rep capture, `analyze_rep`, scorecard, recap, drill knowledge |
   | `iq_coach` | Hockey IQ visuals and answer marking |
 
-  Root keeps opening → warm-up → setup and memory tools (`start_warmup_timer`,
-  `set_focus_drill`, `remember_player_profile`, `load_player_memory`). Transfers
+  Root keeps opening → warm-up → setup and memory tools (`lookup_warmup_moves`,
+  `start_warmup_timer`, `set_focus_drill`, `remember_player_profile`,
+  `load_player_memory`). Warm-up picks 3 general + 2 hockey moves (30s each)
+  from the knowledge corpus. Transfers
   use `transfer_to_agent("…")` when phase or player need dictates (e.g. no space
   → `iq_coach`; after setup → `drill_coach`).
 
   Phase-by-phase notes: [`TRACK2-PHASE-JOURNAL.md`](./TRACK2-PHASE-JOURNAL.md).
 - **`before_tool_callback`** — `phase_guard` in
   [`services/buddy-live-adk/app/callbacks.py`](../services/buddy-live-adk/app/callbacks.py)
-  structurally blocks `start_rep_capture` without framing and
-  `end_session_recap` without ready results.
+  on root + all sub-agents. Structural gates on drill selection, rep
+  capture/analysis, IQ visuals, and recap — see table above.
+  Covered by [`tests/test_phase_guard.py`](../services/buddy-live-adk/tests/test_phase_guard.py).
 
 The following ADK 2.0 features are **intentionally deferred** and tracked here
 so they don't get lost:

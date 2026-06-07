@@ -3,9 +3,7 @@
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CameraFlipButton } from "@/components/camera/CameraFlipButton";
-import { CameraPeekNudge } from "@/components/camera/CameraPeekNudge";
 import { CameraView } from "@/components/camera/CameraView";
-import { FramingIndicator } from "@/components/camera/FramingIndicator";
 import { MicVUMeter } from "@/components/camera/MicVUMeter";
 import { RecordingTimer } from "@/components/camera/RecordingTimer";
 import { CoachConversation, CoachVoiceShell } from "@/components/coach/CoachConversation";
@@ -20,7 +18,6 @@ import { IqVisualCard } from "@/components/iq/IqVisualCard";
 import { IqScorecard } from "@/components/iq/IqScorecard";
 import { useLiveSession } from "@/hooks/useLiveSession";
 import { useMobileCoachLayout } from "@/hooks/useMobileCoachLayout";
-import { usePeekFrameUploader } from "@/hooks/usePeekFrameUploader";
 import { useRepCapture } from "@/hooks/useRepCapture";
 import { useRepResultsPolling } from "@/hooks/useRepResultsPolling";
 import {
@@ -54,13 +51,6 @@ export function CoachPageClient() {
     sessionId: live.sessionId,
     stream,
     commands: live.commands,
-  });
-
-  usePeekFrameUploader({
-    sessionId: live.sessionId,
-    videoRef,
-    enabled: Boolean(live.sessionId && stream && live.session?.currentPhase !== "iq_practice"),
-    warmupActive: warmupTimerActive,
   });
 
   useRepResultsPolling({ sessionId: live.sessionId, reps: live.reps });
@@ -161,8 +151,6 @@ export function CoachPageClient() {
     currentPhase === "ended" ||
     (resultsReady && reps.length > 0 && !capture.recording);
 
-  const framingPassedOnceRef = useRef(false);
-  if (setupFramingPassed) framingPassedOnceRef.current = true;
   const connected = coachStatus === "connected" || coachStatus === "wrapping up";
   const phaseLabel = humanSessionPhase(live.session?.currentPhase);
   const sessionStartMs = live.session?.startedAt
@@ -183,19 +171,6 @@ export function CoachPageClient() {
     }),
     [focusDrill, currentPhase, reps.length, setupFramingPassed, lastRepId, awaitingReview],
   );
-
-  const cameraHint = live.session?.camera_hint;
-  const showSetupBanner =
-    connected &&
-    !capture.recording &&
-    focusDrill != null &&
-    currentPhase === "stance_check" &&
-    !setupFramingPassed &&
-    Boolean(cameraHint);
-
-  const setupBannerText =
-    cameraHint ??
-    "Step back — Coach Buddy needs to see you from head to toes, facing the camera.";
 
   const handleWarmupTimerActiveChange = useCallback((active: boolean, label: string | null) => {
     setWarmupTimerActive(active);
@@ -226,43 +201,6 @@ export function CoachPageClient() {
     }
     prevUploadRef.current = cur;
   }, [capture.lastUpload, appendSystem]);
-
-  const prevPeekAtRef = useRef<string | undefined>(undefined);
-  useEffect(() => {
-    const at = live.session?.peek_status_updated_at;
-    if (!at || at === prevPeekAtRef.current) return;
-    prevPeekAtRef.current = at;
-
-    if (live.session?.setup_framing_passed) {
-      appendSystem(
-        "Camera framing looks good — ask for drill help or a practice rep, then say ready.",
-        "peek",
-      );
-    } else if (live.session?.camera_hint) {
-      appendSystem(live.session.camera_hint, "peek");
-    }
-  }, [
-    live.session?.peek_status_updated_at,
-    live.session?.setup_framing_passed,
-    live.session?.camera_hint,
-    appendSystem,
-  ]);
-
-  const prevWarmupPeekRef = useRef<string | undefined>(undefined);
-  useEffect(() => {
-    const at = live.session?.warmup_peek_updated_at;
-    if (!at || at === prevWarmupPeekRef.current) return;
-    prevWarmupPeekRef.current = at;
-
-    const form = live.session?.last_warmup_form;
-    if (form === "good") {
-      appendSystem("Warm-up move looked good.", "peek");
-    } else if (form === "adjust") {
-      appendSystem("Coach Buddy spotted something to adjust — listen for his cue.", "peek");
-    } else {
-      appendSystem("Coach Buddy checked your move — keep going.", "peek");
-    }
-  }, [live.session?.warmup_peek_updated_at, live.session?.last_warmup_form, appendSystem]);
 
   const prevCoachStatusRef = useRef(coachStatus);
   useEffect(() => {
@@ -463,34 +401,10 @@ export function CoachPageClient() {
                   </div>
                 )}
 
-                {!inIqPractice && showSetupBanner && (
-                  <div className="pointer-events-none absolute left-4 top-4 z-10 max-w-[55%] sm:max-w-sm">
-                    <div className="rounded-xl border border-amber-400/40 bg-amber-500/25 px-4 py-2 text-xs leading-snug text-amber-50 shadow-md backdrop-blur-md sm:text-sm">
-                      {setupBannerText}
-                    </div>
-                  </div>
-                )}
-
-                {!inIqPractice && (
+                {!inIqPractice && !permissionError && stream && (
                   <div className="pointer-events-none absolute right-4 top-4 z-30 flex max-w-[45%] flex-col items-end gap-1.5 [&>*]:pointer-events-auto">
-                    <FramingIndicator
-                      framingPassedOnce={framingPassedOnceRef.current}
-                      lastFullBodyInFrame={live.session?.last_peek_full_body_in_frame}
-                      inSetupPhase={currentPhase === "stance_check"}
-                    />
-                    {!permissionError && stream && (
-                      <CameraFlipButton onFlip={flipCamera} disabled={capture.recording} />
-                    )}
+                    <CameraFlipButton onFlip={flipCamera} disabled={capture.recording} />
                   </div>
-                )}
-
-                {!inIqPractice && (
-                  <CameraPeekNudge
-                    currentPhase={currentPhase}
-                    setupFramingPassed={setupFramingPassed}
-                    peekStatusUpdatedAt={live.session?.peek_status_updated_at}
-                    onNudge={() => appendSystem("Asked Coach to re-check framing.", "peek")}
-                  />
                 )}
 
                 {!inIqPractice && (

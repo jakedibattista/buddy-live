@@ -46,9 +46,6 @@ calls `end_session_recap`.
   by_drill: Record<string, number>;
   weakest_metric: string | null;     // e.g. "front_knee_bend"
   average_scores: Record<string, number>;
-  framing_struggles: number;         // # of times framing went pass -> fail
-  warmup_motion_misses: number;      // # of peek_warmup calls with no motion
-  warmup_moves_checked: number;      // total peek_warmup calls
   final_phase: string | null;        // recap | ended | (something else = drop-off)
 }
 ```
@@ -69,11 +66,6 @@ calls `end_session_recap`.
 
 - `final_phase != "recap"` → the session was abandoned. Listen to the
   ElevenLabs transcript: where did the kid drop off?
-- `warmup_motion_misses >= 2` → the warm-up loop felt sticky. Was the agent
-  too strict, or did the kid actually not move? Sample 2-3 of the peek frames
-  from Cloud Logging (`peek_url_history`) to judge.
-- `framing_struggles >= 3` → camera placement guidance isn't landing. Tweak
-  the `CAMERA HINTS` section of `services/buddy-live-adk/app/prompts.py`.
 - `weakest_metric` consistent across kids → either the metric definition is
   too harsh in `modelforpuckbuddy`, or the prompt isn't cueing it well — pick
   one to fix that week.

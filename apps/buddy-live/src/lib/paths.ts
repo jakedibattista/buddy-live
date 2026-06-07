@@ -22,10 +22,6 @@ export function coachLogCollectionPath(sessionId: string): string {
   return `${sessionDocPath(sessionId)}/coach_log`;
 }
 
-export function peekStoragePath(sessionId: string): string {
-  return `${SESSIONS_COLLECTION}/${sessionId}/peek_latest.jpg`;
-}
-
 export function repStoragePath(sessionId: string, repId: string, ext = "webm"): string {
   return `${SESSIONS_COLLECTION}/${sessionId}/reps/${repId}.${ext}`;
 }

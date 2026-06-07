@@ -12,13 +12,15 @@ described in the plan:
   3. `get_rep_result` polls the modelforpuckbuddy job-status endpoint (or reads
      the cached result from Firestore) and returns a scorecard or "still processing".
 
-The agent uses NON_BLOCKING behaviour on `analyze_rep` so it can keep talking.
+`analyze_rep` never blocks the voice turn: if the clip is still uploading it
+returns `waiting_for_clip` immediately. The browser separately kicks off the
+same analysis idempotently the moment the upload finishes (see the Next.js
+`/api/reps/analyze` route), so analysis always starts without the agent waiting.
 """
 from __future__ import annotations
 
 import logging
 import os
-import time
 import uuid
 from datetime import datetime, timezone
 from typing import Any
@@ -26,7 +28,8 @@ from typing import Any
 import httpx
 from google.adk.tools.tool_context import ToolContext
 
-from app.firestore_client import db, rep_ref, session_ref
+from app.firestore_client import rep_ref, session_ref
+from app.tools._common import get_session_id, now_iso
 
 _logger = logging.getLogger(__name__)
 
@@ -42,10 +45,6 @@ _DRILL_ID_MAP = {
     "slapshot_form": "slapshot_form",
     "backhand": "backhand",
 }
-
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
 
 
 # After the player shoots, the browser stops recording, uploads the .webm, and
@@ -71,11 +70,6 @@ def _seconds_since(iso_ts: str | None) -> float:
         return (datetime.now(timezone.utc) - dt).total_seconds()
     except Exception:
         return 0.0
-
-
-def _get_session_id(tool_context: ToolContext) -> str | None:
-    state = tool_context.state or {}
-    return state.get("session_id") or state.get("sessionId")
 
 
 def _normalize_drill(drill_id: str) -> str:
@@ -109,7 +103,7 @@ def start_rep_capture(
     Returns:
         Dict with `rep_id` (use this with analyze_rep) and `status`.
     """
-    session_id = _get_session_id(tool_context)
+    session_id = get_session_id(tool_context)
     if not session_id:
         return {"status": "no_session", "rep_id": None}
 
@@ -128,7 +122,7 @@ def start_rep_capture(
                 "requested_drill": drill_id,
                 "hint": hint,
                 "status": "pending_capture",
-                "created_at": _now_iso(),
+                "created_at": now_iso(),
             }
         )
 
@@ -140,7 +134,7 @@ def start_rep_capture(
                 "rep_id": rep_id,
                 "drill_id": canonical,
                 "hint": hint,
-                "created_at": _now_iso(),
+                "created_at": now_iso(),
             }
         )
         sref.set({"currentPhase": "scored_reps"}, merge=True)
@@ -160,7 +154,7 @@ def stop_rep_capture(rep_id: str, tool_context: ToolContext) -> dict[str, Any]:
     Returns:
         Dict with `status` and `rep_id`.
     """
-    session_id = _get_session_id(tool_context)
+    session_id = get_session_id(tool_context)
     if not session_id:
         return {"status": "no_session", "rep_id": rep_id}
 
@@ -170,13 +164,13 @@ def stop_rep_capture(rep_id: str, tool_context: ToolContext) -> dict[str, Any]:
             {
                 "type": "stop_capture",
                 "rep_id": rep_id,
-                "created_at": _now_iso(),
+                "created_at": now_iso(),
             }
         )
 
     ref = rep_ref(session_id, rep_id)
     if ref is not None:
-        ref.set({"status": "capturing", "capture_stopped_at": _now_iso()}, merge=True)
+        ref.set({"status": "capturing", "capture_stopped_at": now_iso()}, merge=True)
 
     return {"status": "stop_requested", "rep_id": rep_id}
 
@@ -199,7 +193,7 @@ def _submit_analysis(
             {
                 "status": "stub_queued",
                 "drill_id": canonical,
-                "queued_at": _now_iso(),
+                "queued_at": now_iso(),
             }
         )
         return {"status": "queued_stub", "rep_id": rep_id, "job_id": None}
@@ -229,7 +223,7 @@ def _submit_analysis(
             "status": "analyzing",
             "job_id": job_id,
             "drill_id": canonical,
-            "queued_at": _now_iso(),
+            "queued_at": now_iso(),
         }
     )
     return {"status": "queued", "rep_id": rep_id, "job_id": job_id}
@@ -254,7 +248,7 @@ def analyze_rep(
     Returns:
         Dict with `status` ("queued" | "no_clip" | "error"), `rep_id`, `job_id`.
     """
-    session_id = _get_session_id(tool_context)
+    session_id = get_session_id(tool_context)
     if not session_id:
         return {"status": "no_session", "rep_id": rep_id}
 
@@ -276,29 +270,16 @@ def analyze_rep(
 
     storage_path = rep.get("storage_path")
     if not storage_path:
-        # Clip may still be uploading after stop_rep_capture — wait briefly.
-        wait_secs = float(os.getenv("ANALYZE_CLIP_WAIT_SECS", "25"))
-        deadline = time.monotonic() + wait_secs
-        while time.monotonic() < deadline:
-            time.sleep(1.0)
-            snap = ref.get()
-            rep = snap.to_dict() or {}
-            if rep.get("job_id"):
-                return {
-                    "status": "already_queued",
-                    "rep_id": rep_id,
-                    "job_id": rep.get("job_id"),
-                }
-            storage_path = rep.get("storage_path")
-            if storage_path:
-                break
-        if not storage_path:
-            ref.update({"status": "awaiting_clip", "analysis_pending": True})
-            return {
-                "status": "waiting_for_clip",
-                "rep_id": rep_id,
-                "hint": "Clip still uploading — analysis will start automatically.",
-            }
+        # The clip may still be uploading. Don't block the voice turn waiting
+        # for it — the browser calls /api/reps/analyze the moment the upload
+        # finalizes (idempotent kickoff), so analysis starts on its own. Mark
+        # the rep pending and return immediately so the coach keeps talking.
+        ref.update({"status": "awaiting_clip", "analysis_pending": True})
+        return {
+            "status": "waiting_for_clip",
+            "rep_id": rep_id,
+            "hint": "Clip still uploading — analysis will start automatically.",
+        }
 
     canonical = _normalize_drill(drill_id)
     return _submit_analysis(session_id, rep_id, canonical, storage_path)
@@ -313,7 +294,7 @@ def _mark_results_ready(session_id: str) -> None:
         snap = sref.get()
         if snap.exists and (snap.to_dict() or {}).get("results_ready_at"):
             return
-        sref.set({"results_ready_at": _now_iso()}, merge=True)
+        sref.set({"results_ready_at": now_iso()}, merge=True)
     except Exception:
         _logger.exception("results_ready_at write failed")
 
@@ -330,7 +311,7 @@ def get_rep_result(rep_id: str, tool_context: ToolContext) -> dict[str, Any]:
     Returns:
         Dict with `status` and (when ready) `scores`, `coach_summary`, `weakest_metric`.
     """
-    session_id = _get_session_id(tool_context)
+    session_id = get_session_id(tool_context)
     if not session_id:
         return {"status": "no_session", "rep_id": rep_id}
 
@@ -363,7 +344,7 @@ def get_rep_result(rep_id: str, tool_context: ToolContext) -> dict[str, Any]:
         if status in _CLIP_PENDING_STATUSES:
             started = rep.get("capture_stopped_at") or rep.get("created_at")
             if _seconds_since(started) > _CLIP_WATCHDOG_SECS:
-                ref.update({"status": "clip_failed", "clip_failed_at": _now_iso()})
+                ref.update({"status": "clip_failed", "clip_failed_at": now_iso()})
                 _logger.warning(
                     "rep clip watchdog fired session=%s rep=%s status=%s",
                     session_id,
@@ -492,15 +473,3 @@ def _summarize_results(rep_id: str, results: dict[str, Any]) -> dict[str, Any]:
         "weakest_score": weakest_score,
         "coach_summary": results.get("coach_summary"),
     }
-
-
-def _record_session_event(session_id: str, event: dict[str, Any]) -> None:
-    client = db()
-    if client is None:
-        return
-    try:
-        client.collection("live_sessions").document(session_id).collection(
-            "coach_log"
-        ).add({**event, "ts": _now_iso()})
-    except Exception:
-        _logger.exception("failed to log session event")
