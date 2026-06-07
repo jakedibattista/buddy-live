@@ -56,6 +56,7 @@ def set_iq_question_goal(question_count: int, tool_context: ToolContext) -> dict
         ref.set(
             {
                 "iq_question_goal": count,
+                "currentPhase": "iq_practice",
                 "iq_updated_at": _now_iso(),
             },
             merge=True,

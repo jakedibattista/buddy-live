@@ -30,10 +30,17 @@ export interface WarmupTimerState {
 interface Options {
   sessionId: string | null;
   commands: CoachCommand[];
+  /** When false, dismiss any active timer and ignore new start commands. */
+  enabled?: boolean;
   onComplete?: (exercise: string, label: string) => void;
 }
 
-export function useWarmupTimer({ sessionId, commands, onComplete }: Options): WarmupTimerState {
+export function useWarmupTimer({
+  sessionId,
+  commands,
+  enabled = true,
+  onComplete,
+}: Options): WarmupTimerState {
   const [activeTimer, setActiveTimer] = useState<ActiveWarmupTimer | null>(null);
   const [remainingMs, setRemainingMs] = useState(0);
   const [leadInRemainingMs, setLeadInRemainingMs] = useState(0);
@@ -41,7 +48,14 @@ export function useWarmupTimer({ sessionId, commands, onComplete }: Options): Wa
   const completedRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!sessionId) return;
+    if (!enabled) {
+      setActiveTimer(null);
+      return;
+    }
+  }, [enabled]);
+
+  useEffect(() => {
+    if (!sessionId || !enabled) return;
 
     for (const cmd of commands) {
       if (handledIdsRef.current.has(cmd.id)) continue;
@@ -66,7 +80,7 @@ export function useWarmupTimer({ sessionId, commands, onComplete }: Options): Wa
         }).catch(() => {});
       }
     }
-  }, [commands, sessionId]);
+  }, [commands, sessionId, enabled]);
 
   useEffect(() => {
     if (!activeTimer) {

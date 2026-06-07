@@ -399,12 +399,6 @@ export function CoachPageClient() {
                     ) : (
                       iqPlaceholder
                     )}
-                    <WarmupTimerBridge
-                      sessionId={live.sessionId}
-                      commands={live.commands}
-                      onTranscript={handleTranscript}
-                      onActiveChange={handleWarmupTimerActiveChange}
-                    />
                   </div>
                 ) : (
                   <div
@@ -539,14 +533,13 @@ export function CoachPageClient() {
                   <RecordingTimer recording={capture.recording} onStop={capture.stopRecording} />
                 )}
 
-                {!inIqPractice && (
-                  <WarmupTimerBridge
-                    sessionId={live.sessionId}
-                    commands={live.commands}
-                    onTranscript={handleTranscript}
-                    onActiveChange={handleWarmupTimerActiveChange}
-                  />
-                )}
+                <WarmupTimerBridge
+                  sessionId={live.sessionId}
+                  commands={live.commands}
+                  enabled={currentPhase === "warmup"}
+                  onTranscript={handleTranscript}
+                  onActiveChange={handleWarmupTimerActiveChange}
+                />
 
                 {!mobileLayout && (
                   <div className="absolute bottom-4 right-4">

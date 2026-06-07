@@ -11,6 +11,8 @@ import type { CoachCommand, TranscriptEntry } from "@/lib/types";
 interface Props {
   sessionId: string | null;
   commands: CoachCommand[];
+  /** Only show and accept timers during the warmup phase. */
+  enabled?: boolean;
   onTranscript: (entry: TranscriptEntry) => void;
   onActiveChange?: (active: boolean, label: string | null) => void;
 }
@@ -18,6 +20,7 @@ interface Props {
 export function WarmupTimerBridge({
   sessionId,
   commands,
+  enabled = true,
   onTranscript,
   onActiveChange,
 }: Props) {
@@ -34,16 +37,19 @@ export function WarmupTimerBridge({
   const timer = useWarmupTimer({
     sessionId,
     commands,
+    enabled,
     onComplete: handleComplete,
   });
 
+  const overlayActive = enabled && timer.active;
+
   useEffect(() => {
-    onActiveChange?.(timer.active, timer.label);
-  }, [timer.active, timer.label, onActiveChange]);
+    onActiveChange?.(overlayActive, overlayActive ? timer.label : null);
+  }, [overlayActive, timer.label, onActiveChange]);
 
   return (
     <CountdownOverlay
-      active={timer.active}
+      active={overlayActive}
       remainingMs={timer.remainingMs}
       variant="warmup"
       label={timer.label ?? undefined}
