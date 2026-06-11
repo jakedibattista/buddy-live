@@ -333,6 +333,47 @@ without needing a full ADK Workflow graph rewrite.
 
 ---
 
+## Submission-day hardening (2026-06-11)
+
+**What shipped:**
+
+- `evals/adk_patches.py` — `apply_vertex_safety_adc_fix()`: ADK's
+  `_VertexAiEvalFacade` prefers `GOOGLE_API_KEY` and builds
+  `vertexai.Client(api_key=...)`, which 401s against the Vertex Gen AI Eval
+  service. The patch (opt-in `BUDDY_SAFETY_VERTEX_ADC=1`) hides the API key
+  only while the facade constructs its client, so the safety judge uses ADC
+  (`puck-buddy` / `us-central1`) while the agent and user simulator keep the
+  Gemini API key. Applied at import in `evals/agent_module/agent.py`.
+
+**What we measured:**
+
+1. **safety_v1 first-ever run** (`BUDDY_SAFETY_VERTEX_ADC=1 make eval`):
+   **1.0 on all 6 scenarios** at threshold 0.8; hallucinations_v1 also 6/6.
+   Log: `evals/baselines/2026-06-11-safety-adc-eval-happy.log`.
+2. **Regression investigation** — two fresh `make eval-failures` runs on the
+   unchanged post-split agent
+   (`2026-06-11-rerun{1,2}-eval-failures.log`):
+
+   | Scenario | Post 05-30 | 06-11 R1 | 06-11 R2 |
+   | --- | --- | --- | --- |
+   | IQ handoff | 0.84 | 0.65 | 0.78 |
+   | Framing struggle | 0.88 | 0.60 | 0.79 |
+   | Analysis timeout | 0.75 | 0.87 | 0.71 |
+   | Eager / disorganized | 0.72 | 0.67 | 0.83 |
+   | Happy path | 0.82 | 0.90 | 0.76 |
+   | Returning (Marcus) | — | 0.90 | 1.00 |
+
+**What we learned:** the suspected post-split "regressions" (Alex 0.89→0.75,
+Tyler 0.94→0.82) recovered with zero code changes, while Riley swung
+0.88→0.60→0.79 on identical code — per-scenario judge variance is
+±0.15–0.28. Single-run deltas inside that band are noise in *either*
+direction; the reproducible signal is the 100% pass rate on every suite
+execution. Submission docs updated to claim only that.
+
+**What's next:** demo video + Cloud Trace screenshot (last open items).
+
+---
+
 ## How to update this doc
 
 After each phase slice or significant eval run, add a dated subsection with:

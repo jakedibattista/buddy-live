@@ -6,17 +6,17 @@ Use this as a script outline. Speak naturally — contractions, kid-friendly ene
 
 ---
 
-## 0:00 — Hook (15s)
+## 0:00 — Hook + business case (20s)
 
-> "This is Buddy Live — a voice AI hockey coach for kids practicing in a basement or garage. You talk, it watches your webcam, scores your shot, and tells you what to fix. The brain is **Google ADK** on Cloud Run; the voice layer is ElevenLabs."
+> "This is Buddy Live — a voice AI hockey coach for kids practicing in a basement. **Thousands of kids already use our PuckBuddy app** to get shot scorecards — and they told us the same thing: less reading, fewer buttons, more coach. Private shooting coaches run $80–150 an hour. Buddy Live puts one in the room for cents a session — the brain is **Gemini on Google ADK**, running on Cloud Run."
 
 ---
 
-## 0:15 — Architecture flash (20s)
+## 0:20 — Architecture flash (20s)
 
 Show the diagram in [ARCHITECTURE-DIAGRAM.md](./ARCHITECTURE-DIAGRAM.md) or README.
 
-> "ElevenLabs handles real-time voice — mic, transcription, TTS. On every turn it calls our ADK agent over an OpenAI-compatible SSE bridge. ADK runs Gemini Flash, calls tools, and streams the reply back as speech. Shot mechanics go through our existing video analysis API — not Gemini Live — because a wristshot release is faster than 1 FPS video can catch."
+> "Every turn flows through **Google ADK 2.0**: Gemini Flash does the reasoning, sub-agents own drills and Hockey IQ, tools write to Firestore, and **Vertex AI Search** grounds drill advice. ElevenLabs is just the mouth and ears — it streams each turn to our ADK service on Cloud Run. We deliberately did **not** use Gemini Live for shot mechanics: a wristshot release is 150–300 milliseconds, faster than 1 FPS video can catch — so high-FPS clips go to our analysis pipeline instead. That's an engineering trade-off, not a workaround."
 
 ---
 
@@ -48,22 +48,23 @@ Recent proof: `live-c6vkymv41exc` (2026-06-07), `iq_practice` phase.
 
 ---
 
-## 2:35 — ADK + Track 2 (35s)
+## 2:35 — Track 2: the optimization loop (40s) — **the money shot**
 
-> "We didn't stop at a demo agent. Track 2 is the engineering loop:"
+> "Track 2 is about taking an agent that works in a sandbox and making it survive real kids. Our headline: **eval-gated refactoring beat prompt optimization.**"
 
-1. **Simulation** — `make eval` runs fake kids against mocked tools; judges groundedness.
-2. **Observability** — Cloud Trace shows `buddy_live.turn` → tool spans per live session.
-3. **Sub-agents** — vision, drill, and IQ specialists with `phase_guard` callbacks so the model can't skip framing or double-record.
-4. **Grounding** — Vertex AI Search backs drill recommendations at recap.
+1. **Simulation first** — ADK User + Environment Simulation: synthetic kid personas against fully mocked tools, with failure injection (`make eval-failures`).
+2. **Refactor under measurement** — split the monolith into drill and IQ sub-agents, re-running the suite after every slice. When two scenarios appeared to regress, we didn't hand-wave it — we re-ran the suite three times and proved the dips were LLM-judge variance (±0.2 on identical code). The reproducible result: **100% pass rate on every run**, before and after.
+3. **Optimizer as verification** — a full GEPA run scored validation 1.0 and kept the seed prompt — the optimizer confirmed the structural fix was already optimal.
+4. **Real-world loop** — Cloud Trace + Firestore on live kid sessions caught failures no simulation predicted — including the agent reading its private reasoning out loud to a 5-year-old. Root-caused, fixed in code, redeployed, re-measured.
+5. **Safety for kids** — `safety_v1` (threshold 0.8) runs against the Vertex Gen AI Eval service, because this product talks to children.
 
-Screenshot or quick cut: Trace Explorer + eval PASS table from [JUDGE-TOOLKIT.md](./JUDGE-TOOLKIT.md).
+On screen: Trace Explorer (`buddy_live.turn` spans) + the run-by-run variance table from [JUDGE-TOOLKIT.md](./JUDGE-TOOLKIT.md).
 
 ---
 
-## 3:10 — Close (10s)
+## 3:15 — Close (10s)
 
-> "Buddy Live is live on Vercel, ADK on Cloud Run, full stack in the repo. Built for kids who want a real coach in the room — not a chatbot."
+> "Buddy Live is live on Vercel, Gemini and ADK on Cloud Run, full stack in the repo. AI that gets kids moving and learning — a real coach in the room, not a chatbot."
 
 ---
 

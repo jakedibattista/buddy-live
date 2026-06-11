@@ -1,7 +1,48 @@
 """Monkey-patches for ADK eval/optimize gaps in google-adk 2.0.0."""
 from __future__ import annotations
 
+import os
 from typing import Any
+
+
+def apply_vertex_safety_adc_fix() -> None:
+    """Route safety_v1's Vertex Gen AI Eval client through ADC, not the API key.
+
+    ADK's _VertexAiEvalFacade prefers GOOGLE_API_KEY when present and builds
+    ``vertexai.Client(api_key=...)`` — which 401s because a plain Gemini API
+    key isn't valid for the Vertex Gen AI Eval service. The agent and user
+    simulator still need GOOGLE_API_KEY for their own Gemini calls, so we
+    can't just remove it from .env. Instead, hide the key only while the
+    facade constructs its client so it falls back to
+    GOOGLE_CLOUD_PROJECT/GOOGLE_CLOUD_LOCATION + Application Default
+    Credentials.
+
+    Opt-in via BUDDY_SAFETY_VERTEX_ADC=1 (requires `gcloud auth
+    application-default login`).
+    """
+    if os.environ.get("BUDDY_SAFETY_VERTEX_ADC") != "1":
+        return
+
+    from google.adk.evaluation import vertex_ai_eval_facade as facade_mod
+
+    cls = facade_mod._VertexAiEvalFacade
+    if getattr(cls, "_buddy_adc_patched", False):
+        return
+
+    original_init = cls.__init__
+
+    def _init(self, *args: Any, **kwargs: Any) -> None:
+        api_key = os.environ.pop("GOOGLE_API_KEY", None)
+        os.environ.setdefault("GOOGLE_CLOUD_PROJECT", "puck-buddy")
+        os.environ.setdefault("GOOGLE_CLOUD_LOCATION", "us-central1")
+        try:
+            original_init(self, *args, **kwargs)
+        finally:
+            if api_key is not None:
+                os.environ["GOOGLE_API_KEY"] = api_key
+
+    cls.__init__ = _init  # type: ignore[method-assign]
+    cls._buddy_adc_patched = True
 
 
 def apply_local_eval_sampler_null_score_fix() -> None:

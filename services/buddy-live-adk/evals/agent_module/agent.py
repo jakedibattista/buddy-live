@@ -25,6 +25,11 @@ from google.adk.tools.base_tool import BaseTool
 from google.adk.tools.environment_simulation import EnvironmentSimulationFactory
 from google.adk.tools.tool_context import ToolContext
 
+from evals.adk_patches import apply_vertex_safety_adc_fix
+
+# No-op unless BUDDY_SAFETY_VERTEX_ADC=1 — lets safety_v1 reach Vertex via ADC.
+apply_vertex_safety_adc_fix()
+
 from app.prompts import (
     COACH_SETH_LIVE_PROMPT,
     DRILL_COACH_PROMPT,

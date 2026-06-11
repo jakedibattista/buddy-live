@@ -90,9 +90,70 @@ export function IqScorecard({ commands }: Props) {
         </div>
       </div>
 
-      {/* Main Grid */}
-      <div className="mt-6 grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-8">
-        
+      {/* Single column: recommendations first (player feedback: they were
+          hidden in a side column), then the per-question breakdown. */}
+      <div className="mt-6 space-y-8">
+
+        {/* Study Guide & Recommendations */}
+        <div className="space-y-4">
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-400 flex items-center gap-2">
+            <BookOpen className="h-4 w-4 text-brand" />
+            Study Recommendations
+          </h3>
+
+          <div className="rounded-xl border border-white/[0.04] bg-zinc-900/20 p-4 space-y-4">
+            {wrongAnswers.length > 0 ? (
+              <>
+                <p className="text-xs text-zinc-400 leading-relaxed">
+                  Based on your missed scenarios, here are a few tactical concepts to study before your next game:
+                </p>
+                <div className="space-y-3">
+                  {wrongAnswers.map((item, index) => {
+                    const vis = item.visual;
+                    let topic = "Positional Play";
+                    let tip = "Pay close attention to where defenders slide on the ice.";
+
+                    const sc = vis.scenario.toLowerCase();
+                    if (sc.includes("puck") && (sc.includes("line") || sc.includes("goal"))) {
+                      topic = "Rules: Scoring Boundary";
+                      tip = "The entire puck must completely cross the red goal line. If even a tiny sliver is on the line, it is no goal.";
+                    } else if (sc.includes("goalie") && sc.includes("skate") && sc.includes("other net")) {
+                      topic = "Rules: Goalie Boundaries";
+                      tip = "Goalies are not allowed to cross the center red line. Playing offense down the ice is restricted by the rules.";
+                    } else if (sc.includes("pass") || sc.includes("2-on-1") || sc.includes("2 on 1")) {
+                      topic = "Passing Lanes";
+                      tip = "Pass when the defender slides toward you. Shoot if they cover your teammate. Always read the sliding defender's path.";
+                    } else if (sc.includes("defender") || sc.includes("block")) {
+                      topic = "Puck Protection";
+                      tip = "If a defender slides to block your shot, use a quick toe-drag or wait a split second for them to slide past before shooting.";
+                    } else if (sc.includes("pull") || sc.includes("goalie")) {
+                      topic = "Game Strategy: Pulling the Goalie";
+                      tip = "Pull your goalie for an extra attacker only when down by 1 or 2 goals with very little time remaining, or on a delayed penalty.";
+                    }
+
+                    return (
+                      <div key={index} className="space-y-1">
+                        <div className="text-xs font-bold text-brand">{topic}</div>
+                        <p className="text-[11px] text-zinc-400 leading-snug">
+                          {tip}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-6">
+                <CheckCircle2 className="h-8 w-8 text-emerald-500 mx-auto mb-2" />
+                <div className="text-sm font-semibold text-white">Perfect Score!</div>
+                <p className="text-xs text-zinc-400 mt-1 max-w-[200px] mx-auto">
+                  You read every diagram perfectly. Keep using those eyes to dominate the play!
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Scenarios Breakdown */}
         <div className="space-y-4">
           <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-400 flex items-center gap-2">
@@ -100,7 +161,7 @@ export function IqScorecard({ commands }: Props) {
             Decision Breakdown
           </h3>
 
-          <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-2 custom-scrollbar">
+          <div className="space-y-4">
             {paired.map((item, index) => {
               const vis = item.visual;
               const ans = item.answer;
@@ -163,74 +224,9 @@ export function IqScorecard({ commands }: Props) {
                     </div>
                   )}
 
-                  {vis.diagram && (
-                    <div className="mt-2 ml-6 text-[10px] text-zinc-500 font-mono truncate">
-                      DIAGRAM: {vis.diagram}
-                    </div>
-                  )}
                 </div>
               );
             })}
-          </div>
-        </div>
-
-        {/* Study Guide & Recommendations */}
-        <div className="space-y-4">
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-400 flex items-center gap-2">
-            <BookOpen className="h-4 w-4 text-brand" />
-            Study Recommendations
-          </h3>
-
-          <div className="rounded-xl border border-white/[0.04] bg-zinc-900/20 p-4 space-y-4">
-            {wrongAnswers.length > 0 ? (
-              <>
-                <p className="text-xs text-zinc-400 leading-relaxed">
-                  Based on your missed scenarios, here are a few tactical concepts to study before your next game:
-                </p>
-                <div className="space-y-3">
-                  {wrongAnswers.map((item, index) => {
-                    const vis = item.visual;
-                    let topic = "Positional Play";
-                    let tip = "Pay close attention to where defenders slide on the ice.";
-
-                    const sc = vis.scenario.toLowerCase();
-                    if (sc.includes("puck") && (sc.includes("line") || sc.includes("goal"))) {
-                      topic = "Rules: Scoring Boundary";
-                      tip = "The entire puck must completely cross the red goal line. If even a tiny sliver is on the line, it is no goal.";
-                    } else if (sc.includes("goalie") && sc.includes("skate") && sc.includes("other net")) {
-                      topic = "Rules: Goalie Boundaries";
-                      tip = "Goalies are not allowed to cross the center red line. Playing offense down the ice is restricted by the rules.";
-                    } else if (sc.includes("pass") || sc.includes("2-on-1") || sc.includes("2 on 1")) {
-                      topic = "Passing Lanes";
-                      tip = "Pass when the defender slides toward you. Shoot if they cover your teammate. Always read the sliding defender's path.";
-                    } else if (sc.includes("defender") || sc.includes("block")) {
-                      topic = "Puck Protection";
-                      tip = "If a defender slides to block your shot, use a quick toe-drag or wait a split second for them to slide past before shooting.";
-                    } else if (sc.includes("pull") || sc.includes("goalie")) {
-                      topic = "Game Strategy: Pulling the Goalie";
-                      tip = "Pull your goalie for an extra attacker only when down by 1 or 2 goals with very little time remaining, or on a delayed penalty.";
-                    }
-
-                    return (
-                      <div key={index} className="space-y-1">
-                        <div className="text-xs font-bold text-brand">{topic}</div>
-                        <p className="text-[11px] text-zinc-400 leading-snug">
-                          {tip}
-                        </p>
-                      </div>
-                    );
-                  })}
-                </div>
-              </>
-            ) : (
-              <div className="text-center py-6">
-                <CheckCircle2 className="h-8 w-8 text-emerald-500 mx-auto mb-2" />
-                <div className="text-sm font-semibold text-white">Perfect Score!</div>
-                <p className="text-xs text-zinc-400 mt-1 max-w-[200px] mx-auto">
-                  You read every diagram perfectly. Keep using those eyes to dominate the play!
-                </p>
-              </div>
-            )}
           </div>
         </div>
 

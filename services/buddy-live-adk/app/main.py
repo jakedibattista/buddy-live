@@ -185,6 +185,23 @@ def _trim_user_text(text: str) -> str:
     return tail.strip() or text[-_MAX_USER_TEXT_CHARS:].strip()
 
 
+def _is_duplicate_utterance(new_text: str, prev_text: str) -> bool:
+    """Decide whether an in-window utterance is a resend we should drop.
+
+    Identical resends and shrinking prefixes collapse. A transcript that
+    EXTENDS the previous one with real new content is NOT a dupe -- the player
+    kept talking after we already answered the partial. Dropping it eats their
+    words (session live-3gh4vmj133s5: the player's explanation after "Um..."
+    was discarded and they called it out).
+    """
+    a, b = new_text, prev_text
+    if a == b or b.startswith(a):
+        return True
+    if a.startswith(b):
+        return len(a) - len(b) < 15
+    return False
+
+
 _THOUGHT_MARKER = re.compile(
     r'(?im)(?:^|\n)\s*(?:_+\s*thought\b|<\s*thought\s*>|thought\s*:|thinking\s*:)'
 )
@@ -221,7 +238,12 @@ def _clean_coach_text(text: str) -> str:
     the reliable fix."""
     if not text:
         return text
-    cleaned = _strip_thought_block(text)
+    # Explicit <thought>...</thought> blocks can appear mid-sentence (seen in
+    # session live-3gh4vmj133s5: "...skate around? <thought>The player needs
+    # to answer...</thought>"). Remove them anywhere -- including an unclosed
+    # trailing tag -- before the line-start heuristics below.
+    cleaned = re.sub(r'(?is)<\s*thought\s*>.*?(?:<\s*/\s*thought\s*>|$)', ' ', text)
+    cleaned = _strip_thought_block(cleaned)
     cleaned = re.sub(
         r'(?im)\b(?:stafford|coach\s*buddy|coach|buddy|player|user|assistant)\s*:\s*',
         '',
@@ -360,8 +382,7 @@ async def chat_completions(payload: ChatCompletionRequest, request: Request) -> 
                         and prev is not None
                         and (now - prev[1]) < _DEDUPE_WINDOW_SECONDS
                     ):
-                        a, b = cleaned_user_text, prev[0]
-                        is_dupe = a == b or a.startswith(b) or b.startswith(a)
+                        is_dupe = _is_duplicate_utterance(cleaned_user_text, prev[0])
                     if cleaned_user_text:
                         _recent_turns[session_id] = (cleaned_user_text, now)
                     if is_dupe:
@@ -408,6 +429,14 @@ async def chat_completions(payload: ChatCompletionRequest, request: Request) -> 
                             is_partial = getattr(event, "partial", False)
                             if is_partial or not full_text_parts:
                                 full_text_parts.append(text)
+
+                # Restart the dedupe window now that the run is done. The
+                # check above stamps the window at turn START, so an identical
+                # copy that queued behind the session lock for longer than the
+                # window got re-answered (session live-3gh4vmj133s5 said
+                # goodbye twice). Stamping at completion collapses it.
+                if cleaned_user_text:
+                    _recent_turns[session_id] = (cleaned_user_text, time.monotonic())
 
                 coach_text = _clean_coach_text("".join(full_text_parts))
                 span.set_attribute("buddy_live.response_text_len", len(coach_text))

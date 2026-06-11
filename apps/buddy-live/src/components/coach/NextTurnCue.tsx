@@ -35,7 +35,9 @@ export function NextTurnCue({
 
   let message: string | null = null;
 
-  if (recording) {
+  if (currentPhase === "recap" || currentPhase === "ended") {
+    message = "Session wrapped — review your summary and homework with Coach Buddy.";
+  } else if (recording) {
     message = 'Perform your rep — say "stop" or hit the red button when done.';
   } else if (resultsReady && repCount > 0 && currentPhase !== "recap" && currentPhase !== "ended") {
     message = "Your results are ready — review your scorecard in the center with Coach.";

@@ -121,6 +121,9 @@ interface Positions {
   playerStart?: Position | null;
   defenderStart?: Position | null;
   drawPassLine?: boolean;
+  /* Role-reversed scenarios (YOU are the defender): the attacking opponents. */
+  opponent?: Position | null;
+  opponent2?: Position | null;
 }
 
 function DiagramVisual({ diagram, size = "sm" }: { diagram: string; size?: "sm" | "lg" }) {
@@ -270,6 +273,42 @@ function DiagramVisual({ diagram, size = "sm" }: { diagram: string; size?: "sm" 
           </g>
         )}
 
+        {/* --- OPPONENTS (role-reversed plays: YOU defend a rush) --- */}
+        {positions.opponent && positions.opponent2 && (
+          /* Pass-threat lane between the two attackers — the read the
+             defender is being asked to make. */
+          <line
+            x1={positions.opponent.x}
+            y1={positions.opponent.y}
+            x2={positions.opponent2.x}
+            y2={positions.opponent2.y}
+            stroke="#dc2626"
+            strokeWidth="1"
+            strokeDasharray="1.5 2.5"
+            opacity="0.7"
+            filter="url(#marker)"
+          />
+        )}
+        {[positions.opponent, positions.opponent2].map(
+          (opp, i) =>
+            opp && (
+              <g key={i} filter="url(#marker)">
+                <circle cx={opp.x} cy={opp.y} r="3" fill="#fef2f2" stroke="#dc2626" strokeWidth="0.95" />
+                <text
+                  x={opp.x}
+                  y={opp.y + 1}
+                  textAnchor="middle"
+                  fontSize="3.2"
+                  fill="#b91c1c"
+                  fontWeight="bold"
+                  fontFamily="monospace"
+                >
+                  O
+                </text>
+              </g>
+            ),
+        )}
+
         {/* --- DEFENDER (Red Marker O / D) --- */}
         {positions.defender && (
           <g filter="url(#marker)">
@@ -380,6 +419,29 @@ function parseDiagramPositions(diagram: string): Positions {
     defenderStart: null,
     drawPassLine: false,
   };
+
+  // Role reversal: YOU are the defender facing a 2-on-1 rush, so TWO
+  // attackers must render. (Live session live-3gh4vmj133s5: only one showed
+  // and the player said "I don't see the second position".)
+  const youAreDefender =
+    /\byou(?:'re| are)?\s+the\s+(?:only\s+)?defender\b/.test(lower) ||
+    lower.includes("defender back");
+  const twoAttackers =
+    /(2[- ]on[- ]1|two[- ]on[- ]one|one opponent[\s\S]*another|another (?:is |one )?open)/.test(lower);
+  if (youAreDefender && twoAttackers) {
+    const carrierOnRight = /puck\b[^.;,]*\bright/.test(lower);
+    return {
+      player: { x: 50, y: 30 },
+      goalie: { x: 50, y: 13 },
+      defender: null,
+      teammate: null,
+      playerStart: null,
+      defenderStart: null,
+      drawPassLine: false,
+      opponent: { x: carrierOnRight ? 70 : 30, y: 58 },
+      opponent2: { x: carrierOnRight ? 30 : 70, y: 52 },
+    };
+  }
 
   const segments = lower.split(/[.;,]/).map(s => s.trim()).filter(Boolean);
   const playerSegment = findSegmentForEntity(segments, ["you", "your", "player"], ["teammate", "defender", "d-man", "opponent", "goalie"]) || lower;

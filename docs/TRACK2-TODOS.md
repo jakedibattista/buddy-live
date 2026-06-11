@@ -23,7 +23,6 @@ lists only what is still open — not a history of completed work (see
 | Live `lookup_drill_knowledge` verify in Trace during recap | Grounding works locally; screenshot optional |
 | More IQ eval personas | Only if human testing surfaces gaps |
 | GEPA re-run | Seed prompt was best on first full run |
-| Vertex ADC for `safety_v1` in local evals | Eval harness uses hallucinations_v1 primarily |
 | Knowledge corpus re-ingest | **19** `.md` files shipped (warm-ups, recovery, homework, IQ catalog, `sources.md`). Re-upload to GCS + Discovery Engine import after edits — see `services/buddy-live-adk/knowledge/README.md` |
 | Voice welcome-back on connect | `load_player_memory` wired; opening prompt uses `remember_player_profile` only |
 | Vertex Memory Bank / Agent Engine | Upgrade path; Firestore `session_summaries/` ships today |

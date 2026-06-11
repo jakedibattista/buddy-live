@@ -346,7 +346,11 @@ export function CoachPageClient() {
                     )}
                   >
                     {showReport && !mobileLayout && (
-                      <div className="absolute inset-0 z-10 flex items-center justify-center overflow-y-auto bg-zinc-950 p-4 sm:p-6 pb-24 md:pb-6">
+                      /* No items-center here: centered children taller than the
+                         container clip at the top and can't be scrolled to
+                         (player feedback: "I can't scroll down"). Children use
+                         my-auto so short reports still center vertically. */
+                      <div className="absolute inset-0 z-10 flex justify-center overflow-y-auto bg-zinc-950 p-4 sm:p-6 pb-24 md:pb-6">
                         {reps.length > 0 ? (
                           reps.length === 1 ? (
                             <div className="my-auto w-full max-w-3xl">
@@ -376,7 +380,13 @@ export function CoachPageClient() {
                       className={cn(
                         "transition-all duration-500 ease-in-out",
                         showReport && !mobileLayout
-                          ? "absolute bottom-4 right-4 z-20 h-28 w-44 rounded-xl border border-zinc-800 shadow-xl"
+                          ? reps.length > 0
+                            ? "absolute bottom-4 right-4 z-20 h-28 w-44 rounded-xl border border-zinc-800 shadow-xl"
+                            : // IQ recap: no clip to monitor — the floating
+                              // thumbnail just covered the bottom of the
+                              // scorecard (player feedback: "you're blocking
+                              // question three"). Leave it behind the overlay.
+                              "h-full w-full"
                           : mobileLayout
                             ? "absolute inset-0 h-full w-full"
                             : "h-full w-full",

@@ -8,7 +8,12 @@ These guard the two reliability fixes that came out of live session triage:
 """
 from __future__ import annotations
 
-from app.main import _MAX_USER_TEXT_CHARS, _clean_coach_text, _trim_user_text
+from app.main import (
+    _MAX_USER_TEXT_CHARS,
+    _clean_coach_text,
+    _is_duplicate_utterance,
+    _trim_user_text,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -61,6 +66,26 @@ def test_clean_leaves_reply_with_quote_untouched():
     assert _clean_coach_text(reply) == reply
 
 
+def test_clean_strips_inline_thought_tags_keeps_reply():
+    # Real leak from session live-3gh4vmj133s5: the model appended a literal
+    # <thought> block AFTER the spoken question, three times in one session.
+    raw = (
+        "You're on a breakaway and the goalie is deep in their net. Do you "
+        "shoot quickly to take the open space, or fake and skate around? "
+        "<thought>The player needs to answer. I will stay silent and wait "
+        "for their choice.</thought>"
+    )
+    cleaned = _clean_coach_text(raw)
+    assert "thought" not in cleaned.lower()
+    assert "stay silent" not in cleaned
+    assert cleaned.endswith("or fake and skate around?")
+
+
+def test_clean_strips_unclosed_inline_thought_tag():
+    raw = "Nice shot, Jake! <thought>Now I should check the score"
+    assert _clean_coach_text(raw) == "Nice shot, Jake!"
+
+
 def test_clean_handles_empty():
     assert _clean_coach_text("") == ""
 
@@ -68,6 +93,31 @@ def test_clean_handles_empty():
 def test_clean_strips_support_phrase_leak():
     raw = "Option B: Wait. Can we help you?"
     assert _clean_coach_text(raw) == "Option B: Wait."
+
+
+# ---------------------------------------------------------------------------
+# _is_duplicate_utterance — open-mic resend collapse
+# ---------------------------------------------------------------------------
+
+
+def test_dedupe_identical_resend_is_dupe():
+    assert _is_duplicate_utterance("My answer is B.", "My answer is B.")
+
+
+def test_dedupe_shrinking_prefix_is_dupe():
+    assert _is_duplicate_utterance("My answer", "My answer is B.")
+
+
+def test_dedupe_superset_with_new_content_is_processed():
+    # Session live-3gh4vmj133s5: the player kept explaining after a pause and
+    # the fuller transcript was wrongly dropped as a duplicate.
+    partial = "It is better to just kind of shoot. Um..."
+    full = partial + " I guess I kind of just like skating around faking."
+    assert not _is_duplicate_utterance(full, partial)
+
+
+def test_dedupe_superset_with_trivial_tail_is_dupe():
+    assert _is_duplicate_utterance("My answer is B. Yeah", "My answer is B.")
 
 
 # ---------------------------------------------------------------------------
