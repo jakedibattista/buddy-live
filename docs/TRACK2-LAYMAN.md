@@ -127,9 +127,10 @@ After name + age, the coach calls **`remember_player_profile`** only. Session
 recaps write durable rows to `session_summaries/` (drill, rep count, weakest
 metric) scoped to the browser's Firebase `user_id`.
 
-**Voice welcome-back is deferred:** `load_player_memory` is still a tool and
-eval mocks exist, but the **opening prompt does not call it** — each session
-starts with a normal greet unless we re-enable welcome-back later.
+**Voice welcome-back is deferred:** `load_player_memory` is **unwired** from the
+production agent (2026-06-11 — its docstring caused spontaneous welcome-back
+calls). The tool remains in `app.tools` for evals and a future opt-in feature.
+Each session starts with a normal greet today.
 
 ### Is it tied to this computer? Auth?
 
