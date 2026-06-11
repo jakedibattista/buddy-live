@@ -30,8 +30,7 @@ This README only covers running the evals.
 ## Prereqs
 
 1. Python deps installed: `make install` from `services/buddy-live-adk/`.
-2. `GOOGLE_API_KEY` (or Vertex creds) in `services/buddy-live-adk/.env` — the
-   agent and the user simulator both make Gemini calls.
+2. `GOOGLE_API_KEY` (or Vertex credentials) in `services/buddy-live-adk/.env` where the agent and the user simulator both make Gemini calls.
 3. ADK 2.x (`google-adk==2.0.0` already pinned in `requirements.txt`).
 
 ## Running
@@ -39,10 +38,10 @@ This README only covers running the evals.
 From `services/buddy-live-adk/`:
 
 ```bash
-# Happy-path scenarios — every mocked tool succeeds.
+# Happy-path scenarios, where every mocked tool succeeds.
 make eval
 
-# Failure-injection variant — adds probabilistic get_rep_result "processing"
+# Failure-injection variant, which adds probabilistic get_rep_result "processing"
 # responses to stress edge-case handling.
 make eval-failures
 
@@ -74,8 +73,8 @@ the optimized prompt into `app/prompts.py`.
 
 | Scenario id (first eval case) | What it exercises |
 | --- | --- |
-| Scenario 1 — `NOVICE`, wristshot full session | Baseline happy path: drill pick → warmup → reps → recap |
-| Scenario 2 — `NOVICE`, no space (`285f6d24` in eval set) | Sub-agent transfer from root coach to `iq_coach` — **Hockey IQ eval** |
+| Scenario 1 — `NOVICE`, wristshot full session | Baseline happy path: drill pick, warmup, reps, and recap |
+| Scenario 2 — `NOVICE`, no space (`285f6d24` in eval set) | Sub-agent transfer from root coach to `iq_coach` for a **Hockey IQ eval** |
 | Scenario 3 — `EXPERT`, slapshot, pushes back on warmup | Robustness to user corrections, sharper follow-up questions |
 | Scenario 4 — `NOVICE`, eager but disorganized | Recovery from a player who can't follow setup instructions |
 | Scenario 5 — `NOVICE`, impatient for results | Graceful waiting behaviour while `get_rep_result` is still processing |
@@ -89,25 +88,18 @@ Scenarios 4 & 5 are the most useful "before / after" demo material:
 
 ## Cost
 
-Each scenario does:
+Each scenario runs:
 
-- One agent run (`gemini-flash-latest`) — full multi-turn conversation.
-- One user simulator (`gemini-flash-latest`) — drives the conversation.
-- Two LLM-judged criteria (`hallucinations_v1`, `safety_v1`).
+- One agent run using `gemini-flash-latest` for a full multi-turn conversation.
+- One user simulator using `gemini-flash-latest` that drives the conversation.
+- Two LLM-judged criteria (`hallucinations_v1` and `safety_v1`).
 
 Budget roughly **$0.05–$0.20 per scenario** depending on conversation length
 and how many tool calls the agent makes. Full evalset = ~$0.50–$1.00 per run.
 
 ## Why criteria are limited to `hallucinations_v1` and `safety_v1`
 
-ADK's User Simulation is incompatible with criteria that need
-ground-truth reference responses or expected tool trajectories — the user
-simulator generates queries dynamically, so there's no fixed expected
-output. Per the
-[ADK eval criteria reference](https://github.com/google/adk-docs/blob/main/docs/evaluate/index.md),
-only `hallucinations_v1` and `safety_v1` support this mode today. Both are
-appropriate for Buddy Live: a children-facing voice coach must stay grounded
-in tool outputs (no made-up scorecards) and stay safe.
+ADK's User Simulation is incompatible with criteria that need ground-truth reference responses or expected tool trajectories. The user simulator generates queries dynamically, so there is no fixed expected output. Per the [ADK eval criteria reference](https://github.com/google/adk-docs/blob/main/docs/evaluate/index.md), only `hallucinations_v1` and `safety_v1` support this mode today. Both are appropriate for Buddy Live: a children-facing voice coach must stay grounded in tool outputs (no made-up scorecards) and stay safe.
 
 ## Why a separate `agent_module/`
 

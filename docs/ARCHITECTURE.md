@@ -1,8 +1,8 @@
-# Buddy Live — Architecture
+# Buddy Live: System Architecture
 
-Where each piece runs, how data flows, and how it connects to the existing Puck Buddy stack.
+Discover where each component of Buddy Live runs, how data flows, and how the system connects to the existing Puck Buddy stack.
 
-## Hosting map
+## Hosting Map
 
 ```
 ┌─────────────────────────────────┐     ┌──────────────────────────────────┐
@@ -16,32 +16,32 @@ Where each piece runs, how data flows, and how it connects to the existing Puck 
 │    /api/clips/upload,           │     │  make deploy → gcloud builds     │
 │    /api/reps/analyze|refresh    │     │  submit                          │
 │  vercel deploy --prod           │     │                                  │
-└──────────────┬──────────────────┘     └──────────────────────────────────┘
+│└──────────────┬──────────────────┘     └──────────────────────────────────┘
                │
                ▼
 ┌─────────────────────────────────┐     ┌──────────────────────────────────┐
 │  FIREBASE (puck-buddy project)  │     │  ELEVENLABS (their cloud)        │
 │  • Firestore live_sessions/     │     │  • Voice ASR + TTS               │
 │  • Storage rep clips            │     │  • Calls your ADK on each turn   │
-└─────────────────────────────────┘     └──────────────────────────────────┘
+│└─────────────────────────────────┘     └──────────────────────────────────┘
                │
                ▼
 ┌─────────────────────────────────┐
 │  EXISTING Cloud Run             │
 │  modelforpuckbuddy              │
 │  /api/analyze-video             │
-└─────────────────────────────────┘
+│└─────────────────────────────────┘
 ```
 
 | Component | Host | Deploy |
 |---|---|---|
 | Web app (UI + API routes) | **Vercel** | `cd apps/buddy-live && vercel deploy --prod` |
 | ADK agent brain | **Google Cloud Run** | `cd services/buddy-live-adk && make deploy` |
-| Database + file storage | **Firebase** (`puck-buddy`) | Deploy merged rules from `modelforpuckbuddy` — see [FIRESTORE_RULES.md](./FIRESTORE_RULES.md) |
-| Voice layer | **ElevenLabs** | Dashboard config only |
-| Shot analysis | **Existing Cloud Run** | Already deployed at `api.buddysports.app` |
+| Database and file storage | **Firebase** (`puck-buddy`) | Deploy merged rules from `modelforpuckbuddy` (see [FIRESTORE_RULES.md](./FIRESTORE_RULES.md)) |
+| Voice layer | **ElevenLabs** | Configured via dashboard |
+| Shot analysis | **Existing Cloud Run** | Pre-deployed at `api.buddysports.app` |
 
-## End-to-end request flow
+## End-to-End Request Flow
 
 ```
 Player (browser)
@@ -71,39 +71,41 @@ Player (browser)
                                UI scorecard + ADK get_rep_result tool
 ```
 
-## Conversation UI (browser)
+## Conversation UI (Browser)
 
-The `/coach` page is voice-first but follows conversational UI patterns from [`UI-CONVERSATION-UX-PLAN.md`](./UI-CONVERSATION-UX-PLAN.md):
+The `/coach` page delivers a voice-first experience. It follows conversational UI patterns from [`UI-CONVERSATION-UX-PLAN.md`](./UI-CONVERSATION-UX-PLAN.md):
 
 | Concern | Implementation |
 |---|---|
-| Activity / “social silence” | `CoachActivityIndicator` — speaking, listening, thinking |
-| Timeline | `TranscriptPanel` — user/coach bubbles + system pills (record, upload, connection) |
-| Next action | `NextTurnCue` + `VoiceQuickPrompts` chips |
-| Mascot | `CoachPuckAvatar` on camera — crossfades `coach-puck.png` ↔ `coach-puck-speak.png` via `getOutputByteFrequencyData()` (baked face, no SVG overlay) |
-| Recording | `RecordingTimer` — 60s REC countdown + verbal / click stop instructions; driven by `useRepCapture` |
-| Warm-up timer | `WarmupTimerBridge` + `CountdownOverlay` — amber m:ss countdown per move; driven by `start_warmup_timer` command |
-| Voice resilience | `CoachConversation` — auto-reconnect on ElevenLabs drop; full-session `sendUserActivity()` keepalive (5s); tab-visibility reconnect; ADK backend reconnect detection suppresses double greetings; reconnect context includes `player_name`, drill, phase, rep state |
-| Session phase | Sidebar label from Firestore `currentPhase` (`lib/phases.ts`) |
-| Setup framing | Verbal confirmation only — framing passes when the focus drill is set (no camera framing tool) |
-| Errors | Retry connect (ElevenLabs) and retry camera permission |
-| Recap Dashboard | Full-screen interactive recap of all scored reps in the center panel during `recap` and `ended` phases |
-| Picture-in-Picture | Camera view smoothly scales down to a floating PiP in the bottom-right corner during final recap |
+| Activity and "social silence" | `CoachActivityIndicator` handles speaking, listening, and thinking states. |
+| Chat history timeline | `TranscriptPanel` shows user and coach bubbles. It also shows system status pills for recording, uploading, and connecting. |
+| Next actions | `NextTurnCue` and `VoiceQuickPrompts` show dynamic suggestion chips. |
+| Interactive mascot | `CoachPuckAvatar` overlays the camera. It crossfades `coach-puck.png` and `coach-puck-speak.png` using real-time audio data from `getOutputByteFrequencyData()`. This uses a baked face instead of a complex SVG overlay. |
+| Recording indicators | `RecordingTimer` displays a 60-second countdown. It provides verbal and clickable stop instructions. This is driven by the `useRepCapture` hook. |
+| Warm-up timer | `WarmupTimerBridge` and `CountdownOverlay` show an amber countdown for each exercise. This is triggered by the `start_warmup_timer` tool. |
+| Voice resilience | `CoachConversation` handles automatic reconnection if ElevenLabs drops. It sends keepalive signals every 5 seconds. It also triggers reconnects when switching browser tabs. The backend detects reconnects to prevent double greetings, restoring the player's name, active drill, current phase, and shot state. |
+| Current phase | The sidebar displays the active phase from Firestore's `currentPhase` field (mapped in `lib/phases.ts`). |
+| Camera setup and framing | Guided by verbal confirmation. Setup passes automatically when the focus drill is selected. This avoids complex visual framing checks. |
+| Error recovery | Supports automatic reconnect attempts for ElevenLabs and prompts to retry camera permissions. |
+| Final recap dashboard | Displays an interactive recap of all scored reps in the center panel during the `recap` and `ended` phases. |
+| Picture-in-Picture camera | The webcam feed scales down to a floating box in the bottom-right corner during the final recap. |
 
-Transcript text is **in-memory only** (ElevenLabs `onMessage`). Rep scores and session metadata persist in Firestore.
+Transcript text is kept in-memory within browser state via ElevenLabs listeners. Shot scores and session metadata persist permanently in Firestore.
 
-## What “OpenAI-compatible SSE” means
+## What "OpenAI-Compatible SSE" Means
 
-ElevenLabs Custom LLM speaks **OpenAI Chat Completions streaming format**. Our ADK service exposes `/chat/completions` and returns SSE chunks like:
+ElevenLabs agents communicate using the standard **OpenAI Chat Completions streaming format**. Our ADK service hosts a `/chat/completions` endpoint. It returns Server-Sent Events (SSE) in real time:
 
 ```
 data: {"choices":[{"delta":{"content":"Front knee was a 6"}}]}
 data: [DONE]
 ```
 
-**The model is still Gemini Flash** inside ADK. “OpenAI-compatible” refers only to the HTTP wire format ElevenLabs expects, not the LLM provider.
+Our system still runs **Google Gemini Flash** under the hood. The phrase "OpenAI-compatible" simply refers to the network format that ElevenLabs expects. It does not mean we use OpenAI's models.
 
-## Firestore data model
+## Firestore Data Model
+
+Our database uses a simple schema in Firestore:
 
 ```
 live_sessions/{sessionId}                 (TTL: ~24h via expires_at)
@@ -124,113 +126,95 @@ live_sessions/{sessionId}                 (TTL: ~24h via expires_at)
   coach_log/{logId}        (reserved; not fully wired yet)
   ambient_notes/{noteId}   (reserved)
 
-session_summaries/{sessionId}              (kept forever — weekly review record)
+session_summaries/{sessionId}              (kept forever as a weekly review record)
   session_id, started_at, created_at, drill, rep_count, by_drill,
   weakest_metric, average_scores, final_phase
 ```
 
-`drill_id` is canonicalised to `wristshot | slapshot_form | backhand`; legacy
-`snapshot` / `skating` ids were retired in the 2026-05-26 cleanup pass.
+The system standardizes `drill_id` values to `wristshot`, `slapshot_form`, or `backhand`. We retired older `snapshot` and `skating` categories in our May 26 cleanup pass.
 
-**Conversation turns** (chat history) live in ADK `InMemorySessionService` on Cloud Run — not in Firestore today. The UI transcript is in browser state from ElevenLabs `onMessage` callbacks plus client-side system events (`lib/transcript.ts`).
+**Active conversation history** lives in memory on Cloud Run using ADK's `InMemorySessionService`. It is not stored in Firestore. The browser displays transcripts in real time using ElevenLabs event listeners combined with local system events (`lib/transcript.ts`).
 
-## Storage cleanup + observability
+## Storage Cleanup and Observability
 
 | Layer | Path | Mechanism |
 | --- | --- | --- |
-| GCS | `gs://puck-buddy.firebasestorage.app/live_sessions/**` | Object Lifecycle rule, delete after 1 day (`infra/storage-lifecycle.json`) |
-| Firestore | `live_sessions/{sid}` + subcollections | TTL policy on `expires_at` (≈24h) |
-| Firestore | `session_summaries/{sid}` | Not on TTL — durable per-session record for weekly review |
-| Errors | ADK service | Sentry FastAPI integration (`SENTRY_DSN` env var on Cloud Run) |
+| Google Cloud Storage | `gs://puck-buddy.firebasestorage.app/live_sessions/**` | Object Lifecycle rule. Automatically deletes videos after 1 day (`infra/storage-lifecycle.json`). |
+| Firestore | `live_sessions/{sid}` + subcollections | Automated TTL policy. Deletes expired session documents within 24 hours of creation. |
+| Firestore | `session_summaries/{sid}` | Exempt from deletion. Maintained as a durable, long-term record for weekly coach reviews. |
+| Error Tracking | ADK service | Centralized monitoring using the Sentry FastAPI integration (`SENTRY_DSN` environment variable). |
 
-### ADK guardrails (main.py)
+### ADK Guardrails (`main.py`)
 
-Turn-level guards on the `/chat/completions` bridge — apply to whichever
-sub-agent is active on that turn.
+These turn-level safety checks run on the `/chat/completions` gateway. They protect whichever sub-agent is active during the current turn.
 
-| Guard | Effect |
+| Guardrail | Operation and Benefit |
 | --- | --- |
-| `max_llm_calls=10` | Caps tool-calling rounds per user turn (default was 500) |
-| Silence filter | `"..."` / empty from ElevenLabs → immediate empty SSE, no Gemini call |
-| Turn dedupe | Collapses duplicate/resend transcripts within ~4s; extending utterances with ≥15 new chars are kept; results-ready pushes deduped 10 min |
-| `_trim_user_text` | Caps open-mic ramble at 240 chars (reconnect context messages exempt) |
-| Per-session asyncio lock | Serializes concurrent turns on same session |
-| 30s turn timeout | `asyncio.timeout` — fails fast instead of hanging until Cloud Run kills at 300s |
-| Reconnect detection | Suppresses default welcome/greeting on reconnecting turns if the session already exists |
-| `_clean_coach_text` | Strips inline `<thought>` blocks (including unclosed) and speaker labels before TTS |
-| IQ phase flip | Sets `currentPhase: iq_practice` when `iq_coach` authors a turn |
+| `max_llm_calls=10` | Restricts the agent to a maximum of 10 tool-calling iterations per turn. This prevents infinite tool-calling loops. |
+| Silence filter | Blocks empty audio transmissions from ElevenLabs. The system returns an immediate blank response without making a costly Gemini call. |
+| Turn deduplication | Merges duplicate voice transmissions received within 4 seconds. New utterances extending the conversation by 15 or more characters are allowed. Scoring notifications are deduped for 10 minutes. |
+| User text capping (`_trim_user_text`) | Limits input text to 240 characters to prevent accidental open-microphone loops. Reconnection signals are exempt from this limit. |
+| Session locking | Uses an asynchronous lock to serialize multiple requests coming from the same user session. |
+| Turn timeout | Limits execution to 30 seconds using standard asyncio.timeout parameters. The session fails fast instead of hanging and wasting resources. |
+| Reconnect detection | Recognizes returning connections and suppresses standard welcome greetings if the session already exists. |
+| Speech sanitization (`_clean_coach_text`) | Strips internal `<thought>` brackets and speaker names before sending text to the ElevenLabs voice synthesizer. |
+| IQ phase synchronization | Automatically changes `currentPhase` to `iq_practice` whenever the Hockey IQ coach is talking. |
 
-### ADK guardrails (`callbacks.py` — `phase_guard`)
+### Structural Guardrails (`callbacks.py` — `phase_guard`)
 
-Tool-level `before_tool_callback` on **all three agents** (root +
-`drill_coach`, `iq_coach`). Whichever agent invokes a
-guarded tool runs the check first. Firestore is the source of truth.
-Hermetic unit tests: [`tests/test_phase_guard.py`](../services/buddy-live-adk/tests/test_phase_guard.py).
+These code-enforced gates run immediately before any of the three agents (Root, Shooting, or IQ Coach) invoke a protected tool. Firestore acts as our source of truth. We verify these behaviors with unit tests in [`tests/test_phase_guard.py`](../services/buddy-live-adk/tests/test_phase_guard.py).
 
-| Tool | Structural gate |
+| Protected Tool | Code-Enforced Rules |
 | --- | --- |
-| `set_focus_drill` | Once per session — blocked if `focus_drill` already set or `currentPhase == iq_practice` |
-| `show_iq_visual` | Blocked in shooting flow (`focus_drill` set and phase ≠ `iq_practice`); blocked after wrap-up |
-| `start_rep_capture` | Requires `focus_drill` + `setup_framing_passed`; blocks if any rep is already `completed` (single-rep policy) |
-| `analyze_rep` | Same prerequisites as `start_rep_capture`; blocked after wrap-up |
-| `end_session_recap` | Requires a `completed` rep (shooting flow); exempt when `currentPhase == iq_practice` |
+| `set_focus_drill` | Restricts drill selection to once per session. This is blocked if a drill is already active or if the player is in Hockey IQ mode. |
+| `show_iq_visual` | Blocks visual cards during standard shooting flows. This tool is only allowed when the phase is set to Hockey IQ, and it is blocked once the session wraps up. |
+| `start_rep_capture` | Requires both an active drill and passed camera framing. This enforces a strict single-rep policy by blocking capture if any shot is already completed. |
+| `analyze_rep` | Enforces the same requirements as rep capture and blocks analysis once the session is finished. |
+| `end_session_recap` | Requires at least one completed shot to summarize the shooting flow. This check is bypassed if the player is in Hockey IQ mode. |
 
-All other tools (`start_warmup_timer`, `get_rep_result`, `mark_iq_answer`,
-etc.) rely on prompt rules and ADK `transfer_to_agent` — not code gates.
+All remaining tools (including warm-up timers, video results, and IQ scoring) rely on conversational guidelines and direct agent handoffs instead of hard code barriers.
 
-See [`infra/storage-lifecycle.md`](../infra/storage-lifecycle.md) for the Sunday
-review workflow.
+You can learn more about our data management in the Sunday review guide: [`infra/storage-lifecycle.md`](../infra/storage-lifecycle.md).
 
-## Environment split (hackathon)
+## Sandbox vs. Production Environments
 
-| Env | Web app | ADK service | analyze-video API |
+| Environment | Web Application | ADK Backend Service | Video Analysis API |
 |---|---|---|---|
-| **Testing (this project)** | **Vercel only** — [buddy-live-indol.vercel.app](https://buddy-live-indol.vercel.app) (deployment protection on). No local QA. | Cloud Run `buddy-live-adk` (always deployed) | `https://api.buddysports.app` |
-| Local dev (reference) | `localhost:3000` — not used for Buddy Live QA | `localhost:8080` + ngrok — not used | dev Cloud Run URL |
+| **Testing (this project)** | **Vercel Production Only**: [buddy-live-indol.vercel.app](https://buddy-live-indol.vercel.app) with deployment protection active. No local QA is performed. | Google Cloud Run: `buddy-live-adk` (continuously deployed). | Production Endpoint: `https://api.buddysports.app` |
+| **Local Development (reference)** | `localhost:3000` (not used for active QA on this project). | `localhost:8080` with ngrok (not used). | Development Endpoint. |
 
-For heavy testing, point `MODELFORPUCKBUDDY_API_URL` at the **dev** API so you don't load prod workers:
+For intensive testing, point the `MODELFORPUCKBUDDY_API_URL` environment variable at our dedicated dev API to avoid overloading production queue workers:
 
 ```
 https://puck-buddy-model-api-dev-22317830094.us-central1.run.app
 ```
 
-See [FIRESTORE_RULES.md](./FIRESTORE_RULES.md) for safe rules deployment into the shared `puck-buddy` Firebase project.
+Refer to [FIRESTORE_RULES.md](./FIRESTORE_RULES.md) to safely deploy security rules to our shared Firebase database project.
 
-## Deferred ADK 2.0 work
+## Implemented and Future ADK 2.0 Features
 
-We're on `google-adk==2.0.0` and already use:
+We are currently running on `google-adk==2.0.0` and utilize the following features:
 
-- **Sub-agents** — `buddy_live_coach` (root) delegates to two specialists via
-  ADK 2.0 `sub_agents=[...]` in
-  [`services/buddy-live-adk/app/agent.py`](../services/buddy-live-adk/app/agent.py):
+* **Decomposed Sub-Agents:** Our main `buddy_live_coach` delegates work to two specialists defined in `sub_agents=[...]` inside [`services/buddy-live-adk/app/agent.py`](../services/buddy-live-adk/app/agent.py):
 
-  | Agent | Tools / role |
+  | Agent | Tools and Primary Responsibilities |
   | --- | --- |
-  | `drill_coach` | Rep capture, `analyze_rep`, scorecard, recap, drill knowledge |
-  | `iq_coach` | Hockey IQ visuals and answer marking |
+  | `drill_coach` | Handles video captures, calls `analyze_rep`, reviews the scorecard, delivers the recap, and references drill safety rules. |
+  | `iq_coach` | Manages Hockey IQ visual displays and evaluates player answers. |
 
-  Root keeps opening → warm-up → setup and session tools (`lookup_warmup_moves`,
-  `start_warmup_timer`, `set_focus_drill`, `remember_player_profile`).
-  `load_player_memory` exists in `app.tools` but is **not wired** to the agent —
-  production greets fresh every session. Warm-up picks 3 general + 2 hockey moves (30s each)
-  from the knowledge corpus. Transfers
-  use `transfer_to_agent("…")` when phase or player need dictates (e.g. no space
-  → `iq_coach`; after setup → `drill_coach`).
+  The Root agent manages the opening sequence, warm-up pacing, webcam positioning, and basic session tools (such as `lookup_warmup_moves` and `set_focus_drill`). 
+  
+  The `load_player_memory` tool is fully built but remains intentionally unwired to ensure that every student session begins with a fresh, welcoming greeting. The warm-up sequence chooses 3 general and 2 hockey-specific moves (30 seconds each) dynamically. Seamless agent handoffs are performed via `transfer_to_agent("...")` based on student needs.
+  
+  Review the complete step-by-step history in [`docs/TRACK2-PHASE-JOURNAL.md`](./TRACK2-PHASE-JOURNAL.md).
 
-  Phase-by-phase notes: [`TRACK2-PHASE-JOURNAL.md`](./TRACK2-PHASE-JOURNAL.md).
-- **`before_tool_callback`** — `phase_guard` in
-  [`services/buddy-live-adk/app/callbacks.py`](../services/buddy-live-adk/app/callbacks.py)
-  on root + all sub-agents. Structural gates on drill selection, rep
-  capture/analysis, IQ visuals, and recap — see table above.
-  Covered by [`tests/test_phase_guard.py`](../services/buddy-live-adk/tests/test_phase_guard.py).
+* **Before Tool Execution Interceptors:** Mapped in `phase_guard` inside [`services/buddy-live-adk/app/callbacks.py`](../services/buddy-live-adk/app/callbacks.py) across all three agents. This enforces hard programmatic code boundaries on drill selections, rep captures, analytical requests, and recap pages. Mapped unit tests are located in [`tests/test_phase_guard.py`](../services/buddy-live-adk/tests/test_phase_guard.py).
 
-The following ADK 2.0 features are **intentionally deferred** and tracked here
-so they don't get lost:
+The following ADK 2.0 features are intentionally deferred and tracked here for future development:
 
-### 1. Graph workflow rewrite (HIGH effort, MEDIUM value)
+### 1. Unified Graph-Based Workflow (High Effort, Medium Short-Term Value)
 
-Replace the prompt-driven phase machine in `COACH_SETH_LIVE_PROMPT` with an
-explicit `google.adk.workflow.Workflow` graph:
+We plan to transition the conversational phase machine in `COACH_SETH_LIVE_PROMPT` into a formal, declarative `google.adk.workflow.Workflow` diagram:
 
 ```
 [Opening] → [SpaceCheck] → branch
@@ -239,43 +223,24 @@ explicit `google.adk.workflow.Workflow` graph:
                             └─ no_space → [IQPracticeLoop] → [IQWrap]
 ```
 
-**Why deferred:** the [`services/buddy-live-adk/app/main.py`](../services/buddy-live-adk/app/main.py)
-`/chat/completions` endpoint streams via `runner.run_async(agent=...)` which is wired
-to an `Agent`, not a `Workflow`. The ElevenLabs OpenAI-compatible SSE bridge would
-need to be re-implemented against the Workflow Runtime's event stream. Risk: high
-without local staging — we currently can't run locally (see Vercel-only testing rule).
+**Why deferred:** Our current server endpoint in `/chat/completions` (defined in `services/buddy-live-adk/app/main.py`) streams chunks using `runner.run_async()`, which is designed around individual `Agent` classes instead of workflows. Migrating to the Workflow Runtime would require rewiring our streaming server logic. This carries high operational risk without local testing environments.
 
-**Prerequisites before doing this:**
-1. Stand up a staging Cloud Run service (`buddy-live-adk-staging`) and point a staging
-   ElevenLabs agent at it.
-2. Verify the Workflow Runtime emits ADK `Event` objects compatible with the existing
-   SSE chunk format (`event.content.parts[].text`, `event.partial`).
-3. Migrate one phase at a time (start with `Recap` — lowest blast radius).
-4. Keep `Agent`-based path behind an env flag (`ADK_USE_WORKFLOW=false` default) for
-   instant rollback during the cutover.
+**Development Prerequisites:**
+1. Provision a dedicated staging server (`buddy-live-adk-staging`) and point a staging ElevenLabs agent at it.
+2. Confirm the Workflow Runtime emits real-time events that easily convert to our standard chunk response format.
+3. Migrate the conversational flows incrementally, starting with the `Recap` phase to limit risk.
+4. Keep the agent-driven path active by default and gated behind a toggle (such as `ADK_USE_WORKFLOW=false`).
 
-### 2. Persistent (Firestore-backed) `SessionService` (MEDIUM effort, LOW value today)
+### 2. Persistent Firestore-Backed Session Service (Medium Effort, Low Short-Term Value)
 
-Implement a `BaseSessionService` subclass that persists `Session.state` and `Event`
-log to Firestore so sessions survive Cloud Run scale-to-zero.
+We plan to implement a custom `BaseSessionService` subclass that persists conversation sessions and event histories to Firestore. This will allow active student sessions to survive backend server restarts.
 
-**Why deferred:** the voice reconnect flow already restores `player_name`,
-`focus_drill`, `currentPhase`, `repCount`, `setupFramingPassed`, and
-`awaitingReview` via a hidden context message
-(see [`apps/buddy-live/src/lib/hiddenAgentMessages.ts`](../apps/buddy-live/src/lib/hiddenAgentMessages.ts)).
-That covers the main failure mode (Cloud Run restart mid-session) without needing
-custom event serialization. **Caveat:** any push to `main` triggers a Cloud Run
-revision swap — avoid deploying during an active demo session.
+**Why deferred:** Our client-side voice reconnection system already restores crucial state (including player name, active drill, current phase, and rep count) using hidden instructions (see [`apps/buddy-live/src/lib/hiddenAgentMessages.ts`](../apps/buddy-live/src/lib/hiddenAgentMessages.ts)). This mitigates server restarts without requiring custom serialization code. *Note: Avoid pushing new code to production during live recording sessions.*
 
-**Revisit when:** we add features that depend on full conversation replay (e.g.
-session resume in a new browser tab, post-hoc transcript analysis, or evaluator runs
-that need the full event log).
+**Future triggers to revisit:** This will become necessary if we expand to multi-device session handoffs or require complete historical replay for deep analytics and debugging.
 
-### 3. Split shooting flow further (LOW effort, LOW value today)
+### 3. Granular Coach Decomposition (Low Effort, Low Short-Term Value)
 
-Could split `buddy_live_coach` further into `warmup_coach`, `setup_coach`,
-`drill_coach`, `recap_coach`. Each gets a smaller prompt, easier to test in isolation.
+We can split the main coach further into highly focused sub-agents, such as a `warmup_coach`, a `setup_coach`, and a `recap_coach`.
 
-**Why deferred:** the current root prompt is mature and tested. The IQ split was the
-high-value one because IQ was a new feature; further splits are mostly tidiness.
-Revisit if a single sub-flow starts misbehaving frequently.
+**Why deferred:** The main coaching agent has been thoroughly hardened. Decomposing the Hockey IQ mode was our highest-value split because it isolated a completely new, classroom-style experience. Further splits are primarily for organization and will be done if specific sections of the flow require independent prompt updates.

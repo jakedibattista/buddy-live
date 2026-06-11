@@ -20,22 +20,22 @@ Firebase Storage
 |---|---|
 | [`apps/buddy-live/`](apps/buddy-live) | Next.js 16 web app (TS, App Router, Tailwind v4, `@elevenlabs/react`). Live session UI, ElevenLabs widget, MediaRecorder rep capture, Firestore listeners. |
 | [`services/buddy-live-adk/`](services/buddy-live-adk) | Python FastAPI + Google ADK 2.0 agent. OpenAI-compatible `/chat/completions` SSE endpoint hit by ElevenLabs' Custom LLM. **15 tools** across root + sub-agents (see [ARCHITECTURE.md](docs/ARCHITECTURE.md)). |
-| [`docs/UI-CONVERSATION-UX-PLAN.md`](docs/UI-CONVERSATION-UX-PLAN.md) | Conversation UI plan (Lovable chatbot UX applied to voice coaching) — **phases 1–3 shipped**; interrupt button deferred. |
+| [`docs/UI-CONVERSATION-UX-PLAN.md`](docs/UI-CONVERSATION-UX-PLAN.md) | Conversation UI plan, applying lovable chatbot UX to voice coaching. Phases 1 to 3 are fully shipped; the interrupt button has been deferred. |
 | [`infra/`](infra) | Cloud Build, Firestore + Storage rules, Firebase config, deploy guide, [`infra/scripts/`](infra/scripts) ops helpers. |
-| [`docs/README.md`](docs/README.md) | Index of all documentation (product, Track 2, checklists, audits). |
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Hosting map (Vercel / Cloud Run / Firebase / ElevenLabs), data flow, env split. |
+| [`docs/README.md`](docs/README.md) | Index of all documentation including product guidelines, Track 2 details, checklists, and audits. |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Comprehensive hosting map detailing Vercel, Cloud Run, Firebase, ElevenLabs, data flows, and environment setups. |
 | [`docs/FIRESTORE_RULES.md`](docs/FIRESTORE_RULES.md) | Safe merge + deploy of `live_sessions/` into the existing `puck-buddy` database. |
 
 ## How it actually works
 
 1. The player opens **/coach**. The app signs in anonymously to Firebase, creates a `live_sessions/{sessionId}` doc, and asks for camera + mic permission.
-2. They hit **Start session** -- the ElevenLabs React widget opens a WebRTC connection to the ElevenLabs Agent.
+2. They hit **Start session** and the ElevenLabs React widget opens a WebRTC connection to the ElevenLabs Agent.
 3. The agent is configured with `llm: custom_llm` pointing at the ADK service. On every conversational turn, ElevenLabs POSTs OpenAI-style messages to `/chat/completions` with `customLlmExtraBody.arbitrary_identifier = sessionId`.
 4. The ADK service routes that to the same persistent ADK `Session`, runs the LLM (Gemini Flash), and streams back SSE chunks. Tools run inside ADK with full session memory.
-5. Coach Buddy drives the session in voice: **timed warm-up** (on-screen m:ss countdown per move) → **verbal setup** (player confirms head-to-toes framing) → drill explanation or practice rep → **one scored rep**. Hockey IQ questions fill the wait while analysis runs (~30–90s).
-6. Warm-up calls `lookup_warmup_moves` twice (3 general + 2 hockey-specific moves from the knowledge corpus, 30s each), then `start_warmup_timer` per move. When each timer hits zero, Coach Buddy verbally asks how it felt and introduces the next move — warm-up is verbal only, no vision tools.
+5. Coach Buddy drives the session using voice: a **timed warm-up** with on-screen countdowns, a **verbal setup** checking head-to-toes framing, a drill explanation or practice rep, and finally **one scored rep**. Hockey IQ questions fill the wait while video analysis runs in the background for about 30 to 90 seconds.
+6. Warm-up calls `lookup_warmup_moves` twice to choose 3 general and 2 hockey-specific moves from the knowledge corpus. These are 30 seconds each, followed by a `start_warmup_timer` call. When each timer hits zero, Coach Buddy verbally asks how it felt and introduces the next move. This warm-up is completely verbal and does not require vision tools.
 7. For the scored rep, the agent calls `start_rep_capture` (UI shows REC + 60s countdown), then `stop_rep_capture` when the player shoots. The browser mints a signed PUT URL from `/api/clips/upload-url` and uploads the clip **directly to Firebase Storage** (bypassing Vercel's 4.5 MB serverless body limit), then finalises via `/api/clips/upload`; `/api/reps/analyze` and `/api/reps/refresh` keep the scorecard pipeline moving even if the agent is mid-conversation.
-8. The agent calls `analyze_rep` which POSTs to [modelforpuckbuddy](https://github.com/jakedibattista/modelforpuckbuddy) `/api/analyze-video`. When results land, the coach asks **"Want to walk through the scorecard together?"** then reviews weakest metric + fix cue, checks in, and assigns homework. Wrap-up uses `end_session_recap` + `recommend_drill`. Setup framing and warm-up form are confirmed verbally — there are no webcam vision tools.
+8. The agent calls `analyze_rep` which POSTs to [modelforpuckbuddy](https://github.com/jakedibattista/modelforpuckbuddy) `/api/analyze-video`. When results land, the coach asks **"Want to walk through the scorecard together?"** then reviews weakest metric + fix cue, checks in, and assigns homework. Wrap-up uses `end_session_recap` + `recommend_drill`. Setup framing and warm-up form are confirmed verbally, without webcam vision tools.
 
 If the ElevenLabs voice link drops mid-session, the web app **auto-reconnects** (up to 5 attempts) and resumes the Firebase session with a reconnect first message — it does not restart from “what’s your name?” unless the player ends the call manually.
 
@@ -119,7 +119,7 @@ ADK errors are tracked in **Sentry** (`SENTRY_DSN` env var on Cloud Run). For th
 
 ### Why hybrid (ElevenLabs + ADK + Gemini Flash on demand) instead of Gemini Live?
 
-The [Gemini Live API caps video input at 1 FPS](https://firebase.google.com/docs/ai-logic/live-api/limits-and-specs) and explicitly warns it is "unsuitable for use cases that require analyzing fast-changing video, such as play-by-play in high-speed sports." A hockey wristshot release happens in ~150-300ms -- Live API would miss the shot. We use it only for ambient awareness (stance, grip, framing) via single-shot Gemini Flash calls, and route actual shot-mechanics analysis through the existing MediaPipe + Roboflow + Coach Seth pipeline at modelforpuckbuddy. Audio + voice + barge-in goes through ElevenLabs because their TTS latency and quality currently beats Gemini Live's native audio, and the [ElevenLabs Custom LLM SSE pattern](https://elevenlabs.io/blog/practical-guide-open-source-agent-frameworks-and-elevenagents) lets us slot in an ADK agent as the brain.
+The [Gemini Live API caps video input at 1 FPS](https://firebase.google.com/docs/ai-logic/live-api/limits-and-specs) and explicitly warns it is "unsuitable for use cases that require analyzing fast-changing video, such as play-by-play in high-speed sports." A hockey wristshot release happens in about 150 to 300 milliseconds, meaning the Live API would miss the shot entirely. We use Gemini Flash only for ambient awareness, such as checking player stance, grip, and framing. Actual shot-mechanics analysis is routed through our specialized MediaPipe, Roboflow, and Coach Seth pipeline. Audio, voice, and user interruptions are handled by ElevenLabs because their low voice latency and high audio quality beat other real-time options. The ADK agent plugs directly in as the system's brain.
 
 ### Why ADK as the brain?
 
@@ -138,12 +138,12 @@ The hackathon judging criterion. Beyond that, ADK gives us a clean `Agent` + `Ru
 
 ## Devpost submission checklist
 
-- [ ] 3-min demo video — script: [`docs/submission/DEMO-TALKING-POINTS.md`](docs/submission/DEMO-TALKING-POINTS.md)
-- [x] Architecture diagram — [`docs/submission/ARCHITECTURE-DIAGRAM.md`](docs/submission/ARCHITECTURE-DIAGRAM.md)
+- [ ] 3-minute demo video. The script is available at [`docs/submission/DEMO-TALKING-POINTS.md`](docs/submission/DEMO-TALKING-POINTS.md)
+- [x] Architecture diagram, available at [`docs/submission/ARCHITECTURE-DIAGRAM.md`](docs/submission/ARCHITECTURE-DIAGRAM.md)
 - [ ] Built with: **Google ADK, Gemini Flash, Firebase, Cloud Run, ElevenLabs, Next.js, Vercel**
-- [x] Public GitHub repo — [github.com/jakedibattista/buddy-live](https://github.com/jakedibattista/buddy-live)
+- [x] Public GitHub repo, located at [github.com/jakedibattista/buddy-live](https://github.com/jakedibattista/buddy-live)
 - [x] Live URL (protected): [buddy-live-indol.vercel.app](https://buddy-live-indol.vercel.app) (also `buddy-live-buddy-tech.vercel.app`; Buddy Tech login required)
-- [x] 1-pager + judge toolkit — [`docs/submission/DEVPOST-1-PAGER.md`](docs/submission/DEVPOST-1-PAGER.md), [`docs/submission/JUDGE-TOOLKIT.md`](docs/submission/JUDGE-TOOLKIT.md)
+- [x] 1-pager + judge toolkit, located at [`docs/submission/DEVPOST-1-PAGER.md`](docs/submission/DEVPOST-1-PAGER.md) and [`docs/submission/JUDGE-TOOLKIT.md`](docs/submission/JUDGE-TOOLKIT.md)
 
 ## Credits
 
