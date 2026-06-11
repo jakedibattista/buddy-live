@@ -36,11 +36,13 @@ def test_set_focus_drill_blocked_when_already_set(tool_context, monkeypatch):
     assert result["status"] == "blocked_drill_already_set"
 
 
-def test_set_focus_drill_blocked_in_iq_mode(tool_context, monkeypatch):
+def test_set_focus_drill_allowed_in_iq_mode_for_switch_to_shooting(tool_context, monkeypatch):
+    # Player started in Hockey IQ (no space), then found a stick and space.
+    # set_focus_drill must be allowed so the root coach can switch them to
+    # shooting (session live-os7zhrniobny). focus_drill is unset in IQ-first
+    # sessions, so the call proceeds and the tool flips phase to warmup.
     _patch_doc(monkeypatch, {"currentPhase": "iq_practice"})
-    result = phase_guard(_tool("set_focus_drill"), {"drill_id": "wristshot"}, tool_context)
-    assert result is not None
-    assert result["status"] == "blocked_iq_mode"
+    assert phase_guard(_tool("set_focus_drill"), {"drill_id": "wristshot"}, tool_context) is None
 
 
 def test_set_focus_drill_allowed_when_unset(tool_context, monkeypatch):

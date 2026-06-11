@@ -8,7 +8,8 @@ None lets the tool proceed normally.
 
 Structural gates (Firestore-backed, read once per guarded call):
 
-1. set_focus_drill — once per session; not after IQ hand-off or wrap-up.
+1. set_focus_drill — once per session; not after wrap-up. Allowed during
+   iq_practice so a player who finds space can switch from IQ to shooting.
 2. show_iq_visual — only in IQ mode (no focus drill, or phase iq_practice);
    requires iq_question_goal set first.
 3. start_rep_capture / analyze_rep — require focus drill + setup_framing_passed;
@@ -152,18 +153,14 @@ def phase_guard(
         return _blocked_session_over(tool_name)
 
     if tool_name == "set_focus_drill":
-        if doc.get("currentPhase") == "iq_practice":
-            _logger.info(
-                "phase_guard blocked set_focus_drill: iq_practice session=%s",
-                session_id,
-            )
-            return {
-                "status": "blocked_iq_mode",
-                "reason": (
-                    "Cannot set a shooting drill during Hockey IQ practice. "
-                    "Stay in iq_coach and continue IQ scenarios."
-                ),
-            }
+        # NOTE: we intentionally allow set_focus_drill during iq_practice.
+        # Only the root agent owns this tool (iq_coach can't call it), so a
+        # call here means the player switched out of IQ to shooting after
+        # finding space (session live-os7zhrniobny: kid found a stick mid-IQ,
+        # the old hard block left the coach with no exit and it invented a
+        # fake "answer 2 questions to unlock the camera" story, then ended the
+        # session). The tool itself rewrites currentPhase to "warmup", which
+        # also clears the stale IQ card from the UI.
         if doc.get("focus_drill"):
             _logger.info(
                 "phase_guard blocked set_focus_drill: already set session=%s",
