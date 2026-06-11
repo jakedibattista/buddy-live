@@ -376,7 +376,7 @@ Vercel + Cloud Run):
 - A prior rule ("do not ask ready to review?") fixed end-of-session stalls but caused the opposite failure: dumping the full scorecard in one breath. We replaced this with an announce-then-wait paced walkthrough.
 - Cloud Run deploy mid-session wipes `InMemorySessionService`. This reconnect context must carry the player's name, not just the drill, phase, or rep state. **Do not push to `main` while filming.**
 
-**What's next:** User films completed: the 3-minute Devpost video is available at [share.descript.com/view/w8U2RQQBIV4](https://share.descript.com/view/w8U2RQQBIV4) and the Cloud Trace screenshot is captured.
+**What's next:** User films completed: the 3-minute Devpost video is available at [youtu.be/3b9UTISihkA](https://youtu.be/3b9UTISihkA) and the Cloud Trace screenshot is captured.
 
 ---
 

@@ -10,7 +10,7 @@ lists only what is still open — not a history of completed work (see
 
 ## Devpost (you)
 
-- [x] **3-min demo video**: [share.descript.com/view/w8U2RQQBIV4](https://share.descript.com/view/w8U2RQQBIV4)
+- [x] **3-min demo video**: [youtu.be/3b9UTISihkA](https://youtu.be/3b9UTISihkA)
 - [x] **Cloud Trace screenshot**: filter `buddy_live.turn`; proof session `live-3gh4vmj133s5` (2026-06-11) captured ([`submission/JUDGE-TOOLKIT.md`](submission/JUDGE-TOOLKIT.md))
 - [x] Skim [`submission/DEMO-TALKING-POINTS.md`](submission/DEMO-TALKING-POINTS.md) before filming — **do not push to `main` during a live demo** (Cloud Run restart wipes in-memory ADK state)
 
