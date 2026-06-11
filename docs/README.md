@@ -27,7 +27,7 @@ Index of all docs in this folder. Start with [ARCHITECTURE.md](./ARCHITECTURE.md
 | [TRACK2-PLAN.md](./TRACK2-PLAN.md) | Historical Track 2 implementation plan (phases 1–6 complete) |
 | [TRACK2-LAYMAN.md](./TRACK2-LAYMAN.md) | Plain-language phase guide + eval commands |
 | [TRACK2-PHASE-JOURNAL.md](./TRACK2-PHASE-JOURNAL.md) | Phase notes, baselines, learnings |
-| [TRACK2-TODOS.md](./TRACK2-TODOS.md) | **Remaining work only** (video + Trace screenshot) |
+| [TRACK2-TODOS.md](./TRACK2-TODOS.md) | **Remaining work only** (video + Trace screenshot); production `27a9491` (2026-06-11) |
 
 ## Project history
 

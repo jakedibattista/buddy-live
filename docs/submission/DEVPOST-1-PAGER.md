@@ -32,7 +32,7 @@ Our agent worked in a sandbox and struggled with real kids. We treated that as a
 2. **Baselined**, then refactored the monolithic agent into **root + specialist sub-agents** (`drill_coach`, `iq_coach`), re-running the eval suite after every slice.
 3. **Measured the structural fix — then stress-tested our own measurement.** A single before/after run showed scores jumping on three scenarios and dipping on two. Instead of shipping that table, we re-ran the full failure-injection suite multiple times on the identical post-split agent and found per-scenario LLM-judge variance of ±0.15–0.28 (e.g. framing struggle scored 0.88, 0.60, 0.79 across three runs of the same code). The "regressions" recovered with zero code changes — they were judge noise. **The stable signal: every case-run across every suite execution passed the quality gate (hallucinations_v1), and traces confirm correct root → sub-agent transfers.** Full run-by-run table in [JUDGE-TOOLKIT.md](./JUDGE-TOOLKIT.md).
 4. **Verified with the Agent Optimizer (GEPA)** that prompt rewriting could not beat the structural fix: a full GEPA run scored validation 1.0 with `best_idx=0` — the optimizer confirmed our post-split seed prompt was already the optimum. We kept the architecture, not a generated prompt.
-5. **Closed the loop on real humans** — four live kid sessions observed via Cloud Trace, Cloud Run logs, and Firestore, each producing root-caused fixes (results-ready push, unscoreable-rep honesty, portrait-camera capture, never narrating chain-of-thought to a 5-year-old). All shipped, redeployed, re-measured.
+5. **Closed the loop on real humans** — live sessions observed via Cloud Trace, Cloud Run logs, and Firestore (`live-3gh4vmj133s5`, `live-inibrtfoscyy`, `live-utn2frbv3uva`, `live-fyg7c9kmng6g`), each producing root-caused fixes: voice keepalive during silence, inline `<thought>` stripping, scorecard announce-then-review (not dump-in-one-breath), unscoreable-rep retake, `load_player_memory` unwired for fresh greets, reconnect context carrying player name after backend restart. All shipped to production (`27a9491`, 2026-06-11).
 6. **Safety evaluation for a kids' product** — `safety_v1` via the Vertex Gen AI Eval service: **a perfect 1.0 on all six scenarios** at the 0.8 threshold (2026-06-11). Routing the eval judge through Application Default Credentials (while the agent keeps its Gemini API key) required a small ADK patch — `evals/adk_patches.py`.
 
 ---
@@ -53,8 +53,8 @@ Our agent worked in a sandbox and struggled with real kids. We treated that as a
 
 | Agent | Owns |
 | --- | --- |
-| **Root** | Opening, space check, drill pick, warm-up timers, `remember_player_profile` |
-| **drill_coach** | One scored rep, analysis wait, scorecard review, grounded recap |
+| **Root** | Opening, space check, drill pick, warm-up timers, `remember_player_profile` (no `load_player_memory` — fresh greet every session) |
+| **drill_coach** | One scored rep, analysis wait, scorecard review (announce + consent, paced walkthrough), grounded recap |
 | **iq_coach** | Hockey IQ practice when the player has no space to shoot |
 
 ### Structural guardrails (`phase_guard`)
@@ -79,6 +79,8 @@ Grounding via **Vertex AI Search** (`buddy-live-drills` corpus, 19 docs), observ
 | --- | --- | --- | --- |
 | **`live-3oxrisz06vae`** | 2026-06-03 | Full shooting: wristshot → 1 rep → recap | `session_summaries/live-3oxrisz06vae` — `rep_count: 1`, scores populated, `weakest_metric: topHand` |
 | **`live-c6vkymv41exc`** | 2026-06-07 | IQ practice path | `live_sessions` — `currentPhase: iq_practice`, `iq_question_goal: 8` |
+| **`live-3gh4vmj133s5`** | 2026-06-11 | IQ recap + Cloud Trace proof | Full session; use for Trace screenshot (`buddy_live.turn`) |
+| **`live-fyg7c9kmng6g`** | 2026-06-11 | Creator demo wristshot | Rep `919c76d216`; drove scorecard review UX fix |
 
 (`live_sessions/` docs expire ~24h; `session_summaries/` persist for review.)
 

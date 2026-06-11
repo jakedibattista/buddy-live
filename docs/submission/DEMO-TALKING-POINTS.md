@@ -29,10 +29,11 @@ Show the diagram in [ARCHITECTURE-DIAGRAM.md](./ARCHITECTURE-DIAGRAM.md) or READ
 | Connect | Tap Start practice. Coach greets: name → age → **space check** → drill pick. |
 | Warm-up | One timed move (or "skip warm-up" chip if short on time). Point at on-screen countdown. |
 | Hand-off | Coach transfers to drill mode — one **scored rep**. |
-| Shoot | "Ready" → record → one shot → coach reviews scorecard on screen **and** over voice. |
-| Recap | Homework cue from weakest metric. Mention `lookup_drill_knowledge` if you ask a drill question. |
+| Shoot | "Ready" → record → one shot → coach announces cool-down while scorecard cooks. |
+| Review | Coach says **"Hey, your scorecard's ready! Want to walk through it together?"** — you say yes → weakest metric + one fix cue → check-in → strength + homework. Scorecard is on screen the whole time. |
+| Recap | One homework cue from weakest metric; goodbye only after you say you're done. |
 
-**If analysis takes a moment:** Coach should keep you moving (recovery stretch + optional verbal hockey IQ) — then push results-ready and walk the scorecard.
+**If analysis takes a moment:** Coach keeps you moving (recovery stretch + optional verbal hockey IQ) — then results-ready push triggers the review beat above.
 
 **Proof you can cite without re-filming:** Session `live-3oxrisz06vae` (2026-06-03) — wristshot, 1 rep, recap, real scores in Firestore `session_summaries`.
 
@@ -58,7 +59,9 @@ Recent proof: `live-c6vkymv41exc` (2026-06-07), `iq_practice` phase.
 4. **Real-world loop** — Cloud Trace + Firestore on live kid sessions caught failures no simulation predicted — including the agent reading its private reasoning out loud to a 5-year-old. Root-caused, fixed in code, redeployed, re-measured.
 5. **Safety for kids** — `safety_v1` (threshold 0.8) runs against the Vertex Gen AI Eval service, because this product talks to children.
 
-On screen: Trace Explorer (`buddy_live.turn` spans) + the run-by-run variance table from [JUDGE-TOOLKIT.md](./JUDGE-TOOLKIT.md).
+On screen: Trace Explorer (`buddy_live.turn` spans) — proof session `live-3gh4vmj133s5` (2026-06-11) — plus the run-by-run variance table from [JUDGE-TOOLKIT.md](./JUDGE-TOOLKIT.md).
+
+> "Today's live sessions caught things simulation missed — voice drops during silence, the coach dumping a scorecard in one breath, a tool docstring triggering welcome-back when we wanted a fresh greet. Each one: Cloud Trace or Firestore → root cause → code fix → redeploy → re-test."
 
 ---
 
@@ -70,7 +73,9 @@ On screen: Trace Explorer (`buddy_live.turn` spans) + the run-by-run variance ta
 
 ## Pitfalls to avoid on camera
 
-- Don't promise **welcome-back** — opening uses name/age fresh each session (`remember_player_profile` only).
+- Don't promise **welcome-back** — `load_player_memory` is unwired; every session greets fresh (`remember_player_profile` only).
+- **Don't push to `main` while filming** — a Cloud Run deploy restarts the ADK process and the coach may forget your name mid-session (reconnect context now re-sends it, but avoid the disruption).
 - Use **portrait** camera — landscape clips often score poorly.
 - One scored rep per session — don't try to record twice.
+- Let the coach **ask before reviewing** the scorecard — don't interrupt the "want to walk through it?" beat.
 - Vercel deployment protection — log in with Buddy Tech before filming.

@@ -374,6 +374,46 @@ execution. Submission docs updated to claim only that.
 
 ---
 
+## Submission-day live triage (2026-06-11 PM)
+
+**What shipped** (commits `8872c08` → `a4761a3` → `27a9491`, all deployed to
+Vercel + Cloud Run):
+
+| Area | Fix | Session / trigger |
+| --- | --- | --- |
+| Voice resilience | Full-session `sendUserActivity()` keepalive (5s), tab-visibility reconnect, richer `voice_drop` telemetry in `coach_log` | `live-inibrtfoscyy` — drops during silence |
+| ElevenLabs agent | User updated dashboard: `turn_timeout` 60s, `turn_v3`, `max_duration_seconds` 1800, `silence_end_call_timeout` -1 | Same |
+| Turn sanitization | Inline `<thought>` tags stripped anywhere in coach text | `live-3gh4vmj133s5` — coach spoke its reasoning |
+| Turn dedupe | Extending utterances with real new content no longer dropped; results-ready pushes deduped 10 min | `live-3gh4vmj133s5`, `live-inibrtfoscyy` |
+| Post-shot UX | Mandatory cool-down announcement after rep stop; unscoreable rep gets one retake (`phase_guard`) | `live-utn2frbv3uva` |
+| IQ scorecard UI | Study recommendations above breakdown; scroll fix; hide camera PiP on IQ recap | `live-3gh4vmj133s5` |
+| IQ diagrams | 2-on-1 defender scenario shows both attackers | `live-3gh4vmj133s5` |
+| Fresh greet | `load_player_memory` **unwired** from root agent — tool docstring caused spontaneous "welcome back" | `live-fyg7c9kmng6g` |
+| Scorecard review | Announce + consent ("scorecard's ready — walk through it?"), paced 2-step review, goodbye gated | `live-fyg7c9kmng6g` — player spelled out desired flow |
+| Reconnect context | `player_name` from Firestore re-sent on voice reconnect (backend restart had dropped "Jake" → "buddy") | `live-fyg7c9kmng6g` — deploy mid-session |
+
+**What we measured:**
+
+- `make test` — **67 passed** after all slices.
+- Production health: `buddy-live-adk` `/health` OK; Vercel `/coach` 200 on SHA `27a9491`.
+- Cloud Trace: session `live-3gh4vmj133s5` (full IQ recap flow) — suitable for screenshot.
+
+**What we learned:**
+
+- Tool docstrings are implicit instructions — `load_player_memory` fired despite the
+  prompt not calling it. Structural fix (unwire) beats prompt hope.
+- A prior rule ("do not ask ready to review?") fixed end-of-session stalls but caused
+  the opposite failure: dumping the full scorecard in one breath. Replaced with
+  announce → wait → paced walkthrough.
+- Cloud Run deploy mid-session wipes `InMemorySessionService` — reconnect context must
+  carry player name, not just drill/phase/rep state. **Do not push to `main` while filming.**
+
+**What's next:** user films 3-min Devpost video using
+[`submission/DEMO-TALKING-POINTS.md`](submission/DEMO-TALKING-POINTS.md); grab Cloud
+Trace screenshot from `live-3gh4vmj133s5` or a fresh turn.
+
+---
+
 ## How to update this doc
 
 After each phase slice or significant eval run, add a dated subsection with:

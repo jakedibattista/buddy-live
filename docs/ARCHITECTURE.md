@@ -83,7 +83,7 @@ The `/coach` page is voice-first but follows conversational UI patterns from [`U
 | Mascot | `CoachPuckAvatar` on camera — crossfades `coach-puck.png` ↔ `coach-puck-speak.png` via `getOutputByteFrequencyData()` (baked face, no SVG overlay) |
 | Recording | `RecordingTimer` — 60s REC countdown + verbal / click stop instructions; driven by `useRepCapture` |
 | Warm-up timer | `WarmupTimerBridge` + `CountdownOverlay` — amber m:ss countdown per move; driven by `start_warmup_timer` command |
-| Voice resilience | `CoachConversation` — auto-reconnect on ElevenLabs drop (using a secure backend-mints WebRTC token and no unauthorized overrides) combined with ADK backend reconnect detection to suppress double greetings |
+| Voice resilience | `CoachConversation` — auto-reconnect on ElevenLabs drop; full-session `sendUserActivity()` keepalive (5s); tab-visibility reconnect; ADK backend reconnect detection suppresses double greetings; reconnect context includes `player_name`, drill, phase, rep state |
 | Session phase | Sidebar label from Firestore `currentPhase` (`lib/phases.ts`) |
 | Setup framing | Verbal confirmation only — framing passes when the focus drill is set (no camera framing tool) |
 | Errors | Retry connect (ElevenLabs) and retry camera permission |
@@ -152,12 +152,12 @@ sub-agent is active on that turn.
 | --- | --- |
 | `max_llm_calls=10` | Caps tool-calling rounds per user turn (default was 500) |
 | Silence filter | `"..."` / empty from ElevenLabs → immediate empty SSE, no Gemini call |
-| Turn dedupe | Collapses duplicate/resend transcripts within ~4s so tools don't double-fire |
+| Turn dedupe | Collapses duplicate/resend transcripts within ~4s; extending utterances with ≥15 new chars are kept; results-ready pushes deduped 10 min |
 | `_trim_user_text` | Caps open-mic ramble at 240 chars (reconnect context messages exempt) |
 | Per-session asyncio lock | Serializes concurrent turns on same session |
 | 30s turn timeout | `asyncio.timeout` — fails fast instead of hanging until Cloud Run kills at 300s |
 | Reconnect detection | Suppresses default welcome/greeting on reconnecting turns if the session already exists |
-| `_clean_coach_text` | Strips leaked `_thought` blocks and speaker labels before TTS |
+| `_clean_coach_text` | Strips inline `<thought>` blocks (including unclosed) and speaker labels before TTS |
 | IQ phase flip | Sets `currentPhase: iq_practice` when `iq_coach` authors a turn |
 
 ### ADK guardrails (`callbacks.py` — `phase_guard`)
@@ -209,9 +209,10 @@ We're on `google-adk==2.0.0` and already use:
   | `drill_coach` | Rep capture, `analyze_rep`, scorecard, recap, drill knowledge |
   | `iq_coach` | Hockey IQ visuals and answer marking |
 
-  Root keeps opening → warm-up → setup and memory tools (`lookup_warmup_moves`,
-  `start_warmup_timer`, `set_focus_drill`, `remember_player_profile`,
-  `load_player_memory`). Warm-up picks 3 general + 2 hockey moves (30s each)
+  Root keeps opening → warm-up → setup and session tools (`lookup_warmup_moves`,
+  `start_warmup_timer`, `set_focus_drill`, `remember_player_profile`).
+  `load_player_memory` exists in `app.tools` but is **not wired** to the agent —
+  production greets fresh every session. Warm-up picks 3 general + 2 hockey moves (30s each)
   from the knowledge corpus. Transfers
   use `transfer_to_agent("…")` when phase or player need dictates (e.g. no space
   → `iq_coach`; after setup → `drill_coach`).
@@ -258,11 +259,13 @@ without local staging — we currently can't run locally (see Vercel-only testin
 Implement a `BaseSessionService` subclass that persists `Session.state` and `Event`
 log to Firestore so sessions survive Cloud Run scale-to-zero.
 
-**Why deferred:** the voice reconnect flow already restores `focus_drill`,
-`currentPhase`, `repCount`, and `setupFramingPassed` via a hidden context message
+**Why deferred:** the voice reconnect flow already restores `player_name`,
+`focus_drill`, `currentPhase`, `repCount`, `setupFramingPassed`, and
+`awaitingReview` via a hidden context message
 (see [`apps/buddy-live/src/lib/hiddenAgentMessages.ts`](../apps/buddy-live/src/lib/hiddenAgentMessages.ts)).
 That covers the main failure mode (Cloud Run restart mid-session) without needing
-custom event serialization.
+custom event serialization. **Caveat:** any push to `main` triggers a Cloud Run
+revision swap — avoid deploying during an active demo session.
 
 **Revisit when:** we add features that depend on full conversation replay (e.g.
 session resume in a new browser tab, post-hoc transcript analysis, or evaluator runs

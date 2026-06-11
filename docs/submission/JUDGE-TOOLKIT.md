@@ -47,6 +47,17 @@ Doc: `live_sessions/live-c6vkymv41exc` (may expire; summarize from this table if
 
 **Not in current production opening.** Root agent only has `remember_player_profile`; `load_player_memory` is unwired from the agent entirely (kept in `app.tools` for a future opt-in welcome-back). Every session greets fresh. Do not demo Marcus seed for welcome-back.
 
+### Submission-day live triage (2026-06-11)
+
+Sessions reviewed end-to-end; fixes shipped same day (deploy `27a9491`).
+
+| Session | Flow | What we fixed from it |
+| --- | --- | --- |
+| `live-3gh4vmj133s5` | IQ recap | Cloud Trace proof session; IQ scorecard layout/scroll; 2-on-1 diagram; `<thought>` leak; utterance dedupe |
+| `live-inibrtfoscyy` | Shooting → unscoreable rep | Unscoreable retake policy; double-goodbye dedupe; voice keepalive |
+| `live-utn2frbv3uva` | Shooting → recap | Cool-down announcement mandate; no internal phase jargon |
+| `live-fyg7c9kmng6g` | Creator demo / wristshot | Unwired `load_player_memory`; scorecard announce+consent review; reconnect carries `player_name` |
+
 ---
 
 ## The optimization story (read this first)
@@ -112,14 +123,16 @@ make eval-failures
 
 ## Cloud Trace — what to screenshot
 
-1. Run one live turn on Vercel (`/coach`).
+1. Run one live turn on Vercel (`/coach`) — or use proof session **`live-3gh4vmj133s5`** (2026-06-11, full IQ recap).
 2. Open [Trace Explorer](https://console.cloud.google.com/traces/list?project=puck-buddy).
-3. Filter: `buddy_live.turn` or service `buddy-live-adk`.
+3. Filter: `buddy_live.turn` or service `buddy-live-adk`; optional: `buddy_live.session_id = live-3gh4vmj133s5`.
 4. Capture a trace showing:
    - Parent span `buddy_live.turn` with `buddy_live.session_id`
    - Child spans for ADK agent / LLM / tool calls (`set_focus_drill`, `start_rep_capture`, `analyze_rep`, `lookup_drill_knowledge`, etc.)
 
 Env on Cloud Run: `BUDDY_ENABLE_CLOUD_TRACE=1`
+
+**Production deploy:** `27a9491` (2026-06-11) — Vercel + `buddy-live-adk` Cloud Run.
 
 ---
 
@@ -140,7 +153,7 @@ flowchart LR
 | Sub-agents | 3 (+ root) |
 | Tools | 16 |
 | `phase_guard` gates | 7 tool families |
-| Unit tests | 59 (`make test`) |
+| Unit tests | 67 (`make test`) |
 
 Full diagram: [ARCHITECTURE-DIAGRAM.md](./ARCHITECTURE-DIAGRAM.md)
 
@@ -166,7 +179,7 @@ Full diagram: [ARCHITECTURE-DIAGRAM.md](./ARCHITECTURE-DIAGRAM.md)
 
 | Item | Status |
 | --- | --- |
-| Voice welcome-back on connect | Tool exists; prompt does not call it |
+| Voice welcome-back on connect | `load_player_memory` unwired from agent (docstring caused spontaneous calls) |
 | Interrupt / barge-in button | SDK has mute duck only (`CoachAudioMuteButton`); hard interrupt deferred |
 | ADK Workflow graph | Prompt-driven phases + `phase_guard` instead |
 | Vertex Memory Bank | Firestore summaries + reconnect context instead |
