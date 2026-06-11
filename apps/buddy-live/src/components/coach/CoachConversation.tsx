@@ -27,12 +27,6 @@ interface CoachConversationProps {
   compact?: boolean;
   /** `results_ready_at` from the session doc — drives the results-ready push. */
   resultsReadyAt?: string | null;
-  /**
-   * True during expected-silent windows (warm-up timer, analysis wait). We
-   * pulse sendUserActivity so the agent doesn't force a turn on silence and the
-   * link stays warm — the player noticed it dropping when quiet ~10s.
-   */
-  keepAlive?: boolean;
   onTranscript: (entry: TranscriptEntry) => void;
   onStatusChange?: (status: string) => void;
 }
@@ -46,6 +40,8 @@ const WRAP_UP_MESSAGE =
 // primary path to WebSocket without strong evidence.
 const MAX_RECONNECT_ATTEMPTS = 8;
 const RECONNECT_DELAYS_MS = [1000, 2000, 3000, 5000, 8000, 8000, 8000, 8000];
+/** Pulse ElevenLabs so WebRTC does not idle out during silence (warm-up, recording setup, analysis). */
+const SESSION_KEEPALIVE_MS = 5000;
 
 function formatVoiceConnectionError(raw: string): string {
   if (/elevenlabs.*500|unexpected error occurred/i.test(raw)) {
@@ -72,7 +68,6 @@ function CoachConversationInner({
   sessionReady = true,
   resumeContext,
   resultsReadyAt,
-  keepAlive = false,
   compact = false,
   onTranscript,
   onStatusChange,
@@ -104,12 +99,23 @@ function CoachConversationInner({
       const db = getDb();
       if (!db) return;
       const d = (details ?? {}) as Record<string, unknown>;
+      const ctx = resumeContextRef.current;
+      let detailsJson: string | null = null;
+      try {
+        detailsJson = JSON.stringify(details).slice(0, 1500);
+      } catch {
+        detailsJson = String(details).slice(0, 500);
+      }
       void addDoc(collection(db, coachLogCollectionPath(sessionId)), {
         event: "voice_drop",
         kind,
         reason: typeof d.reason === "string" ? d.reason : null,
         code: typeof d.code === "number" ? d.code : null,
         message: typeof d.message === "string" ? d.message : null,
+        phase: ctx.currentPhase ?? null,
+        rep_count: ctx.repCount,
+        focus_drill: ctx.focusDrill ?? null,
+        details_json: detailsJson,
         attempt: reconnectAttemptRef.current,
         at: serverTimestamp(),
       }).catch(() => {});
@@ -215,6 +221,9 @@ function CoachConversationInner({
       const msg = formatVoiceConnectionError(e instanceof Error ? e.message : String(e));
       setError(msg);
       onStatusChange?.(`error: ${msg}`);
+      if (!userEndedRef.current) {
+        logVoiceEvent("voice_error", e instanceof Error ? { message: e.message, name: e.name } : e);
+      }
     },
     onMessage: (msg: { source: string; message: string }) => {
       if (!msg?.message) return;
@@ -352,20 +361,38 @@ function CoachConversationInner({
     }
   }, [resultsReadyAt, convo, sendResultsReadyPush]);
 
-  // Keepalive during expected-silent windows: pulse user activity so the agent
-  // holds its turn and the WebRTC link doesn't idle out while the player is
-  // quietly doing a warm-up move or waiting on analysis.
+  // Full-session keepalive: pulse while the voice link is up so WebRTC does not
+  // idle out during silence (warm-up moves, recording setup, analysis wait,
+  // coach thinking). Previously limited to warmupTimerActive || analyzingCount,
+  // which left most of a 7-min warm-up unprotected (live-inibrtfoscyy: 5 drops).
   useEffect(() => {
-    if (!keepAlive || convo.status !== "connected") return;
+    if (convo.status !== "connected") return;
     const handle = window.setInterval(() => {
+      if (userEndedRef.current) return;
       try {
         convoRef.current?.sendUserActivity();
       } catch {
         // ignore — link may be mid-drop
       }
-    }, 5000);
+    }, SESSION_KEEPALIVE_MS);
     return () => window.clearInterval(handle);
-  }, [keepAlive, convo.status]);
+  }, [convo.status]);
+
+  // If the tab was backgrounded, WebRTC often freezes; reconnect when visible.
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState !== "visible") return;
+      if (userEndedRef.current || !hadConnectedRef.current) return;
+      const phase = resumeContextRef.current.currentPhase;
+      if (phase === "recap" || phase === "ended") return;
+      if (convoRef.current?.status === "connected") return;
+      if (reconnectTimerRef.current != null) return;
+      logVoiceEvent("visibility_reconnect", { trigger: "tab_visible" });
+      scheduleReconnect();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [scheduleReconnect, logVoiceEvent]);
 
   const canStart =
     sessionReady &&
