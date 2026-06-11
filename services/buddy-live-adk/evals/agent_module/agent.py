@@ -39,7 +39,6 @@ from app.tools import (
     analyze_rep,
     end_session_recap,
     get_rep_result,
-    load_player_memory,
     lookup_drill_knowledge,
     lookup_warmup_moves,
     mark_iq_answer,
@@ -138,12 +137,14 @@ root_agent = Agent(
     description="Real-time hockey shooting coach (voice + webcam).",
     model=_model,
     instruction=COACH_SETH_LIVE_PROMPT,
+    # Lockstep with app/agent.py: load_player_memory is not wired to the
+    # production root agent (fresh greet every session), so the eval mirror
+    # drops it too. The Marcus scenario expects a normal greeting.
     tools=[
         lookup_warmup_moves,
         start_warmup_timer,
         set_focus_drill,
         remember_player_profile,
-        load_player_memory,
     ],
     sub_agents=[_drill_coach, _iq_coach],
     before_tool_callback=_env_sim_callback,

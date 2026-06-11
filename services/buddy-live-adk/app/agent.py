@@ -48,7 +48,6 @@ from app.tools import (
     analyze_rep,
     end_session_recap,
     get_rep_result,
-    load_player_memory,
     lookup_drill_knowledge,
     lookup_warmup_moves,
     mark_iq_answer,
@@ -158,12 +157,17 @@ def _build_agent() -> Agent:
         description="Real-time hockey shooting coach (voice + webcam).",
         model=_build_model(),
         instruction=COACH_SETH_LIVE_PROMPT,
+        # load_player_memory is deliberately NOT wired here. Its docstring
+        # invites the model to call it in the opening, and Gemini did so
+        # spontaneously (session live-fyg7c9kmng6g: "Awesome to see you back,
+        # Jake!") despite the prompt not mentioning it. Production policy is a
+        # fresh greet every session; the tool stays in app.tools for evals and
+        # a future opt-in welcome-back feature.
         tools=[
             lookup_warmup_moves,
             start_warmup_timer,
             set_focus_drill,
             remember_player_profile,
-            load_player_memory,
         ],
         sub_agents=[
             _build_drill_coach(),

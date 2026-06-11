@@ -45,7 +45,7 @@ Doc: `live_sessions/live-c6vkymv41exc` (may expire; summarize from this table if
 
 ### Welcome-back
 
-**Not in current production opening.** Root prompt calls `remember_player_profile` only. `load_player_memory` exists for future use / evals but is not invoked on connect. Do not demo Marcus seed for welcome-back.
+**Not in current production opening.** Root agent only has `remember_player_profile`; `load_player_memory` is unwired from the agent entirely (kept in `app.tools` for a future opt-in welcome-back). Every session greets fresh. Do not demo Marcus seed for welcome-back.
 
 ---
 
