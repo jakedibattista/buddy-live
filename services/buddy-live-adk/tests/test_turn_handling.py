@@ -98,6 +98,53 @@ def test_clean_strips_support_phrase_leak():
 
 
 # ---------------------------------------------------------------------------
+# Internal-line / tool-narration / echo backstops (session live-ir6r5c4ywpza)
+# ---------------------------------------------------------------------------
+
+
+def test_clean_strips_tool_call_narration_to_filler():
+    # The model read its tool call aloud and left a stray "Text:" token.
+    raw = "Let's call `get_rep_result(rep_id='6759002696')` to check again.\nText:"
+    assert _clean_coach_text(raw) == "One sec — let me check that."
+
+
+def test_clean_strips_turn_scaffolding_to_filler():
+    raw = (
+        "Now we transition to Turn 2 of the scorecard walkthrough:\n"
+        "- Turn 2: one strength to reinforce, then homework.\n"
+        "- Strength from scorecard: power sequencing (5.5)."
+    )
+    assert _clean_coach_text(raw) == "One sec — let me check that."
+
+
+def test_clean_keeps_real_reply_drops_trailing_bullet():
+    raw = (
+        "Hey, your scorecard's ready! Want to walk through it together?\n"
+        "- Turn 1: front knee bend was a 1.5."
+    )
+    assert _clean_coach_text(raw) == (
+        "Hey, your scorecard's ready! Want to walk through it together?"
+    )
+
+
+def test_clean_drops_verbatim_echo_of_user():
+    user = "Yeah. So what should I do now?"
+    cleaned = _clean_coach_text("Yeah. So what should I do now?", user)
+    assert cleaned == "Sorry, I didn't catch that — can you say it again?"
+
+
+def test_clean_allows_short_confirmation_not_treated_as_echo():
+    # A short confirmation that mirrors the player's word is NOT an echo.
+    assert _clean_coach_text("Wristshot?", "wristshot") == "Wristshot?"
+
+
+def test_clean_normal_reply_with_user_text_untouched():
+    reply = "Big windup it is — bend that front knee and fire!"
+    user = "Big windup."
+    assert _clean_coach_text(reply, user) == reply
+
+
+# ---------------------------------------------------------------------------
 # _is_duplicate_utterance — open-mic resend collapse
 # ---------------------------------------------------------------------------
 

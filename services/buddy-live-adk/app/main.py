@@ -249,11 +249,66 @@ def _strip_thought_block(text: str) -> str:
     return _THOUGHT_MARKER.sub('\n', text).strip()
 
 
-def _clean_coach_text(text: str) -> str:
+# Lines that are clearly internal planning / tool narration / prompt
+# scaffolding the model read aloud (session live-ir6r5c4ywpza spoke
+# "Let's call `get_rep_result(...)`" and "Now we transition to Turn 2 of the
+# scorecard walkthrough: - Turn 2: ..."). We drop whole lines that match, then
+# fall back to the inline cleanups below.
+_INTERNAL_LINE_PATTERNS = [
+    re.compile(r'(?i)\b(?:let\'?s|let me|i\'?ll|i will|now we|we\'?ll|going to|gonna)\s+call\b'),
+    re.compile(r'(?i)\bcall\s+(?:the\s+)?(?:get_rep_result|start_rep_capture|stop_rep_capture|analyze_rep|set_focus_drill|show_iq_visual|mark_iq_answer|end_session_recap|recommend_drill|lookup_\w+|start_warmup_timer|set_iq_question_goal)\b'),
+    re.compile(r'(?i)\bnow we transition\b'),
+    re.compile(r'(?i)\bturn\s+\d+\b'),
+    re.compile(r'(?i)\b(?:scorecard walkthrough|strength from scorecard)\b'),
+    re.compile(r'`'),                       # any backtick / inline code
+    re.compile(r'^\s*[-*]\s+'),             # markdown bullet
+    re.compile(r'(?i)^\s*text\s*:\s*$'),    # stray "Text:" artifact
+]
+
+
+def _strip_internal_lines(text: str) -> str:
+    """Drop whole lines that are obviously internal (tool-call narration,
+    'Turn N' step labels, markdown bullets, backtick code, stray 'Text:')."""
+    if "\n" not in text and not any(p.search(text) for p in _INTERNAL_LINE_PATTERNS):
+        return text
+    kept = [
+        line
+        for line in text.splitlines()
+        if not any(p.search(line) for p in _INTERNAL_LINE_PATTERNS)
+    ]
+    return "\n".join(kept).strip()
+
+
+def _normalize_for_echo(text: str) -> str:
+    """Lowercase, strip punctuation/filler, collapse spaces for echo compare."""
+    lowered = re.sub(r'[^a-z0-9 ]+', ' ', text.lower())
+    return re.sub(r'\s+', ' ', lowered).strip()
+
+
+def _is_echo_of_user(coach_text: str, user_text: str) -> bool:
+    """True when the coach reply just parrots the player's words back (session
+    live-ir6r5c4ywpza: player said "Yeah. So what should I do now?" and the
+    coach replied with the identical sentence). Only fires on substantial
+    matches so short legit confirmations ("Wristshot?") are never caught."""
+    if not coach_text or not user_text:
+        return False
+    c = _normalize_for_echo(coach_text)
+    u = _normalize_for_echo(user_text)
+    if len(c) < 12:
+        return False
+    # Echo == the coach added nothing new: identical, or the whole reply is
+    # contained in what the player just said. We deliberately do NOT match the
+    # other direction (user-text contained in coach reply) — that's a coach who
+    # repeated the player's phrase and then kept coaching, which is fine.
+    return c == u or (len(c) > 20 and c in u)
+
+
+def _clean_coach_text(text: str, user_text: str = "") -> str:
     """Strip artifacts that leak into spoken output before they reach TTS:
     speaker-label prefixes ("Stafford:", "Coach Buddy:"), chain-of-thought
-    parentheticals ("(thought) I must never ..."), and leaked planning blocks
-    ("_thought ... (21 words)"). The model occasionally narrates its own
+    parentheticals ("(thought) I must never ..."), leaked planning blocks
+    ("_thought ... (21 words)"), tool-call narration / step scaffolding, and
+    verbatim echoes of the player. The model occasionally narrates its own
     reasoning aloud despite the prompt forbidding it, so this backend guard is
     the reliable fix."""
     if not text:
@@ -264,6 +319,7 @@ def _clean_coach_text(text: str) -> str:
     # trailing tag -- before the line-start heuristics below.
     cleaned = re.sub(r'(?is)<\s*thought\s*>.*?(?:<\s*/\s*thought\s*>|$)', ' ', text)
     cleaned = _strip_thought_block(cleaned)
+    cleaned = _strip_internal_lines(cleaned)
     cleaned = re.sub(
         r'(?im)\b(?:stafford|coach\s*buddy|coach|buddy|player|user|assistant)\s*:\s*',
         '',
@@ -283,7 +339,17 @@ def _clean_coach_text(text: str) -> str:
         cleaned,
     )
     cleaned = re.sub(r'[ \t]{2,}', ' ', cleaned)
-    return cleaned.strip()
+    cleaned = cleaned.strip()
+    # If the reply was ENTIRELY internal narration (e.g. only "Let's call
+    # get_rep_result(...)" + "Text:"), don't hand TTS dead air — the tool the
+    # model meant to call still fired as a separate function-call event.
+    if not cleaned and text.strip():
+        _logger.info("coach reply was all internal narration; using filler")
+        return "One sec — let me check that."
+    if _is_echo_of_user(cleaned, user_text):
+        _logger.info("dropped echo-of-user coach reply")
+        return "Sorry, I didn't catch that — can you say it again?"
+    return cleaned
 
 
 def _set_iq_phase(session_id: str) -> None:
@@ -460,7 +526,9 @@ async def chat_completions(payload: ChatCompletionRequest, request: Request) -> 
                 if cleaned_user_text:
                     _recent_turns[session_id] = (cleaned_user_text, time.monotonic())
 
-                coach_text = _clean_coach_text("".join(full_text_parts))
+                coach_text = _clean_coach_text(
+                    "".join(full_text_parts), cleaned_user_text
+                )
                 span.set_attribute("buddy_live.response_text_len", len(coach_text))
                 span.set_attribute("buddy_live.turn_outcome", "ok")
 
