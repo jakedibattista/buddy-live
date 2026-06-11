@@ -23,6 +23,7 @@ export interface LiveSessionDoc {
   session_id: string;
   user_id: string;
   startedAt: string;
+  player_name?: string;
   currentPhase?: SessionPhase;
   focus_drill?: FocusDrill;
   focus_drill_set_at?: string;

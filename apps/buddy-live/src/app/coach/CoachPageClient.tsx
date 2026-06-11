@@ -160,8 +160,10 @@ export function CoachPageClient() {
   const lastRepId = reps.length > 0 ? reps[reps.length - 1].rep_id : null;
   const awaitingReview =
     resultsReady && currentPhase !== "recap" && currentPhase !== "ended";
+  const playerName = live.session?.player_name ?? null;
   const voiceResumeContext = useMemo<VoiceResumeContext>(
     () => ({
+      playerName,
       focusDrill,
       currentPhase,
       repCount: reps.length,
@@ -172,6 +174,7 @@ export function CoachPageClient() {
       warmupTimerLabel,
     }),
     [
+      playerName,
       focusDrill,
       currentPhase,
       reps.length,

@@ -26,6 +26,12 @@ export const VOICE_RESUME_FIRST_MESSAGE =
   "Quick glitch — I'm still here. Give me one sec.";
 
 export interface VoiceResumeContext {
+  /**
+   * Player's name from the session doc. Re-sent on reconnect because a
+   * backend restart wipes in-memory ADK state — without it the coach falls
+   * back to "buddy" for the rest of the session (live-fyg7c9kmng6g).
+   */
+  playerName?: string | null;
   focusDrill?: string | null;
   currentPhase?: string | null;
   repCount: number;
@@ -42,10 +48,12 @@ export interface VoiceResumeContext {
 export function buildVoiceReconnectMessage(ctx: VoiceResumeContext): string {
   const drill = ctx.focusDrill ?? "not set yet";
   const phase = ctx.currentPhase ?? "unknown";
+  const name = ctx.playerName ? `Player name: ${ctx.playerName}. ` : "";
   const review =
     ctx.awaitingReview && ctx.lastRepId
       ? `A scored rep (id ${ctx.lastRepId}) is awaiting review — its results are ready. ` +
-        `Call get_rep_result on it and walk the player through the scorecard. Do NOT record a new rep. `
+        `Call get_rep_result on it, announce the scorecard is ready and ask if they want to ` +
+        `walk through it, then review it step by step. Do NOT record a new rep. `
       : ctx.lastRepId
         ? `Last rep id: ${ctx.lastRepId}. Do NOT start a new recording. `
         : "";
@@ -58,6 +66,7 @@ export function buildVoiceReconnectMessage(ctx: VoiceResumeContext): string {
     : "";
   return (
     `(Voice reconnected — continue this existing session. Do NOT restart from name, age, or drill selection, and do NOT re-greet. ` +
+    name +
     `Focus drill: ${drill}. Phase: ${phase}. Reps completed: ${ctx.repCount}. ` +
     `Setup framing passed: ${ctx.setupFramingPassed ? "yes" : "no"}. ` +
     warmup +
@@ -75,8 +84,10 @@ export function buildResultsReadyMessage(repId?: string | null): string {
   const rep = repId ? ` (id ${repId})` : "";
   return (
     `(Scored rep results are ready${rep}. Call get_rep_result on it now, ` +
-    `say "Awesome, your results are ready! Let's look at the scorecard together.", ` +
-    `then walk the scorecard conversationally and move into the recap. Do NOT record another rep.)`
+    `then say "Hey, your scorecard's ready! Want to walk through it together?" ` +
+    `and WAIT for their answer — no scores in this turn. When they respond, review ` +
+    `it step by step like a coach: weakest metric + one fix cue first, check in, ` +
+    `then a strength and homework. Do NOT record another rep.)`
   );
 }
 
