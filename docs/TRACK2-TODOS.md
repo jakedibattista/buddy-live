@@ -10,9 +10,9 @@ lists only what is still open — not a history of completed work (see
 
 ## Devpost (you)
 
-- [ ] **3-min demo video** — script: [`submission/DEMO-TALKING-POINTS.md`](submission/DEMO-TALKING-POINTS.md) *(in progress)*
-- [ ] **Cloud Trace screenshot** — filter `buddy_live.turn`; proof session `live-3gh4vmj133s5` (2026-06-11) or one fresh turn ([`submission/JUDGE-TOOLKIT.md`](submission/JUDGE-TOOLKIT.md))
-- [ ] Skim [`submission/DEMO-TALKING-POINTS.md`](submission/DEMO-TALKING-POINTS.md) before filming — **do not push to `main` during a live demo** (Cloud Run restart wipes in-memory ADK state)
+- [x] **3-min demo video**: [share.descript.com/view/w8U2RQQBIV4](https://share.descript.com/view/w8U2RQQBIV4)
+- [x] **Cloud Trace screenshot**: filter `buddy_live.turn`; proof session `live-3gh4vmj133s5` (2026-06-11) captured ([`submission/JUDGE-TOOLKIT.md`](submission/JUDGE-TOOLKIT.md))
+- [x] Skim [`submission/DEMO-TALKING-POINTS.md`](submission/DEMO-TALKING-POINTS.md) before filming — **do not push to `main` during a live demo** (Cloud Run restart wipes in-memory ADK state)
 
 **Production deploy (2026-06-11):** `27a9491` on Vercel + Cloud Run — includes voice hardening, fresh-greet policy, scorecard review flow.
 

@@ -138,9 +138,9 @@ The hackathon judging criterion. Beyond that, ADK gives us a clean `Agent` + `Ru
 
 ## Devpost submission checklist
 
-- [ ] 3-minute demo video. The script is available at [`docs/submission/DEMO-TALKING-POINTS.md`](docs/submission/DEMO-TALKING-POINTS.md)
+- [x] 3-minute demo video: [share.descript.com/view/w8U2RQQBIV4](https://share.descript.com/view/w8U2RQQBIV4)
 - [x] Architecture diagram, available at [`docs/submission/ARCHITECTURE-DIAGRAM.md`](docs/submission/ARCHITECTURE-DIAGRAM.md)
-- [ ] Built with: **Google ADK, Gemini Flash, Firebase, Cloud Run, ElevenLabs, Next.js, Vercel**
+- [x] Built with: **Google ADK, Gemini Flash, Firebase, Cloud Run, ElevenLabs, Next.js, Vercel**
 - [x] Public GitHub repo, located at [github.com/jakedibattista/buddy-live](https://github.com/jakedibattista/buddy-live)
 - [x] Live URL (protected): [buddy-live-indol.vercel.app](https://buddy-live-indol.vercel.app) (also `buddy-live-buddy-tech.vercel.app`; Buddy Tech login required)
 - [x] 1-pager + judge toolkit, located at [`docs/submission/DEVPOST-1-PAGER.md`](docs/submission/DEVPOST-1-PAGER.md) and [`docs/submission/JUDGE-TOOLKIT.md`](docs/submission/JUDGE-TOOLKIT.md)

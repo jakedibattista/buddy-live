@@ -175,7 +175,7 @@ spoken name. `ensure_session` hydrates ADK state from Firestore. No valid
 
 ## What's next (2026-06-07)
 
-Hackathon submission packet shipped in [`submission/`](submission/). We still have a **demo video** and **Cloud Trace screenshot** to capture (refer to [`TRACK2-TODOS.md`](TRACK2-TODOS.md)).
+Hackathon submission packet shipped in [`submission/`](submission/). The **demo video** and **Cloud Trace screenshot** are captured and linked (refer to [`TRACK2-TODOS.md`](TRACK2-TODOS.md)).
 
 Proof session for judges: `session_summaries/live-3oxrisz06vae` (wristshot, 1 rep, recap).
 
@@ -342,7 +342,7 @@ without needing a full ADK Workflow graph rewrite.
 
 **What we learned:** the suspected post-split "regressions" (Alex 0.89 to 0.75, Tyler 0.94 to 0.82) recovered with zero code changes, while Riley swung 0.88 to 0.60 to 0.79 on identical code. This indicates per-scenario judge variance of about ±0.15–0.28. Single-run deltas inside that band are noise in *either* direction. The reproducible signal is the 100% pass rate on every suite execution, so we updated the submission docs to claim only that.
 
-**What's next:** capture the demo video and Cloud Trace screenshot (last open items).
+**What's next:** Capture of the demo video and Cloud Trace screenshot are fully completed.
 
 ---
 
@@ -376,9 +376,7 @@ Vercel + Cloud Run):
 - A prior rule ("do not ask ready to review?") fixed end-of-session stalls but caused the opposite failure: dumping the full scorecard in one breath. We replaced this with an announce-then-wait paced walkthrough.
 - Cloud Run deploy mid-session wipes `InMemorySessionService`. This reconnect context must carry the player's name, not just the drill, phase, or rep state. **Do not push to `main` while filming.**
 
-**What's next:** user films 3-min Devpost video using
-[`submission/DEMO-TALKING-POINTS.md`](submission/DEMO-TALKING-POINTS.md); grab Cloud
-Trace screenshot from `live-3gh4vmj133s5` or a fresh turn.
+**What's next:** User films completed: the 3-minute Devpost video is available at [share.descript.com/view/w8U2RQQBIV4](https://share.descript.com/view/w8U2RQQBIV4) and the Cloud Trace screenshot is captured.
 
 ---
 
