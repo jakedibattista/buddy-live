@@ -455,10 +455,13 @@ def _summarize_results(rep_id: str, results: dict[str, Any]) -> dict[str, Any]:
                 "Analysis didn't lock onto a clear shot in that clip (the "
                 "player likely set up or moved without taking one big, full, "
                 "committed shot). Be honest in one sentence, do NOT invent "
-                "scores, and do NOT blame their camera or framing. Tell them "
-                "next time to take one full shot and say 'shot!' right after so "
-                "we catch it, give one encouragement + homework cue, then move "
-                "to the recap."
+                "scores, and do NOT make up mechanics homework -- there is no "
+                "data. OFFER ONE RETAKE: \"That one didn't track -- want to "
+                "take one more shot? This time take one big full shot and say "
+                "'shot!' right after.\" If they say yes, call start_rep_capture "
+                "again (the retake is allowed). If they decline or this was "
+                "already the retake, give one encouragement, make the homework "
+                "the clean-shot cue itself, then move to the recap."
             ),
             "coach_summary": results.get("coach_summary"),
         }

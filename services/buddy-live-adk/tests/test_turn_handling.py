@@ -11,6 +11,8 @@ from __future__ import annotations
 from app.main import (
     _MAX_USER_TEXT_CHARS,
     _clean_coach_text,
+    _handled_results_pushes,
+    _is_duplicate_results_push,
     _is_duplicate_utterance,
     _trim_user_text,
 )
@@ -118,6 +120,39 @@ def test_dedupe_superset_with_new_content_is_processed():
 
 def test_dedupe_superset_with_trivial_tail_is_dupe():
     assert _is_duplicate_utterance("My answer is B. Yeah", "My answer is B.")
+
+
+# ---------------------------------------------------------------------------
+# _is_duplicate_results_push — re-delivered hidden results-ready pushes
+# ---------------------------------------------------------------------------
+
+
+def test_results_push_second_delivery_is_dupe():
+    # Session live-inibrtfoscyy: the same push arrived 6s apart (outside the
+    # normal 4s window) and the coach wrapped up twice.
+    _handled_results_pushes.clear()
+    push = "(Scored rep results are ready (id d6f399f190). Call get_rep_result...)"
+    assert not _is_duplicate_results_push("s1", push)
+    assert _is_duplicate_results_push("s1", push)
+
+
+def test_results_push_different_rep_is_not_dupe():
+    _handled_results_pushes.clear()
+    assert not _is_duplicate_results_push("s1", "(Scored rep results are ready (id aaa).)")
+    assert not _is_duplicate_results_push("s1", "(Scored rep results are ready (id bbb).)")
+
+
+def test_results_push_other_sessions_independent():
+    _handled_results_pushes.clear()
+    push = "(Scored rep results are ready (id ccc).)"
+    assert not _is_duplicate_results_push("s1", push)
+    assert not _is_duplicate_results_push("s2", push)
+
+
+def test_normal_text_never_results_push_dupe():
+    _handled_results_pushes.clear()
+    assert not _is_duplicate_results_push("s1", "I'm ready to shoot")
+    assert not _is_duplicate_results_push("s1", "I'm ready to shoot")
 
 
 # ---------------------------------------------------------------------------

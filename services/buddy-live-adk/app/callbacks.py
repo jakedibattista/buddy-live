@@ -90,6 +90,32 @@ def _has_completed_rep(session_id: str) -> bool:
         return False
 
 
+def _rep_is_scoreable(rep: dict[str, Any]) -> bool:
+    """A completed rep counts as scored only if the analyzer produced usable
+    numeric metrics. All-null results (analyzer never locked onto the shot)
+    are 'unscoreable' and should not burn the player's one scored rep."""
+    results = rep.get("results") or {}
+    shots = results.get("structured_shots") or []
+    metrics = (shots[0].get("metrics") or {}) if shots else (results.get("scores") or {})
+    return any(isinstance(v, (int, float)) for v in metrics.values())
+
+
+def _completed_rep_stats(session_id: str) -> tuple[int, bool]:
+    """Return (completed rep count, any rep scoreable) for the session."""
+    try:
+        completed = (
+            session_ref(session_id)
+            .collection("reps")
+            .where(filter=FieldFilter("status", "==", "completed"))
+            .get()
+        )
+        reps = [snap.to_dict() or {} for snap in completed]
+        return len(reps), any(_rep_is_scoreable(r) for r in reps)
+    except Exception as exc:
+        _logger.warning("phase_guard reps lookup failed session=%s: %s", session_id, exc)
+        return 0, False
+
+
 def phase_guard(
     tool: BaseTool,
     args: dict[str, Any],
@@ -217,8 +243,11 @@ def phase_guard(
         # Single-rep policy: we assume the player records ONE video. Once a rep
         # has scored, never auto-start another -- this is the structural backstop
         # against a reconnect (lost history) re-recording instead of reviewing
-        # the existing scorecard.
-        if _has_completed_rep(session_id):
+        # the existing scorecard. Exception (session live-inibrtfoscyy): if the
+        # analyzer came back UNSCOREABLE the player hasn't used their scored
+        # rep -- allow exactly one retake instead of dead-ending the session.
+        rep_count, any_scoreable = _completed_rep_stats(session_id)
+        if any_scoreable:
             _logger.info(
                 "phase_guard blocked start_rep_capture: rep already scored session=%s",
                 session_id,
@@ -229,6 +258,20 @@ def phase_guard(
                     "A scored rep already exists for this session. Do NOT record again. "
                     "Call get_rep_result on the existing rep and review the scorecard "
                     "with the player, then move to the recap."
+                ),
+            }
+        if rep_count >= 2:
+            _logger.info(
+                "phase_guard blocked start_rep_capture: retake already used session=%s",
+                session_id,
+            )
+            return {
+                "status": "blocked_retake_used",
+                "reason": (
+                    "The one retake was already used and the analysis still couldn't "
+                    "score it. Do NOT record again. Be honest, give the clean-clip "
+                    "homework cue (one big full shot, say 'shot' right after), and "
+                    "move to the recap."
                 ),
             }
         return None

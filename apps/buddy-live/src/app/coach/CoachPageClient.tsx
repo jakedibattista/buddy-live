@@ -168,8 +168,19 @@ export function CoachPageClient() {
       setupFramingPassed,
       lastRepId,
       awaitingReview,
+      warmupTimerActive,
+      warmupTimerLabel,
     }),
-    [focusDrill, currentPhase, reps.length, setupFramingPassed, lastRepId, awaitingReview],
+    [
+      focusDrill,
+      currentPhase,
+      reps.length,
+      setupFramingPassed,
+      lastRepId,
+      awaitingReview,
+      warmupTimerActive,
+      warmupTimerLabel,
+    ],
   );
 
   const handleWarmupTimerActiveChange = useCallback((active: boolean, label: string | null) => {

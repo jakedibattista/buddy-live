@@ -110,6 +110,26 @@ _TURN_TIMEOUT_SECONDS = 30
 _DEDUPE_WINDOW_SECONDS = float(os.getenv("TURN_DEDUPE_WINDOW_SECS", "4"))
 _recent_turns: dict[str, tuple[str, float]] = {}
 
+# The app's hidden results-ready push can be re-delivered well outside the
+# normal dedupe window (seen 6s apart in session live-inibrtfoscyy after voice
+# churn -- the coach wrapped up twice). It only ever needs to be acted on once
+# per rep, so remember handled pushes per session for much longer.
+_RESULTS_PUSH_PREFIX = "(Scored rep results are ready"
+_RESULTS_PUSH_WINDOW_SECONDS = 600.0
+_handled_results_pushes: dict[str, tuple[str, float]] = {}
+
+
+def _is_duplicate_results_push(session_id: str, text: str) -> bool:
+    """True when this exact results-ready push was already handled recently."""
+    if not text.startswith(_RESULTS_PUSH_PREFIX):
+        return False
+    now = time.monotonic()
+    prev = _handled_results_pushes.get(session_id)
+    if prev is not None and prev[0] == text and (now - prev[1]) < _RESULTS_PUSH_WINDOW_SECONDS:
+        return True
+    _handled_results_pushes[session_id] = (text, now)
+    return False
+
 # An open mic (e.g. the player chatting to someone in the room) makes
 # ElevenLabs send an ever-growing transcript. Feed the agent only the tail so
 # turn latency doesn't balloon and the coach reacts to the most recent words.
@@ -383,6 +403,8 @@ async def chat_completions(payload: ChatCompletionRequest, request: Request) -> 
                         and (now - prev[1]) < _DEDUPE_WINDOW_SECONDS
                     ):
                         is_dupe = _is_duplicate_utterance(cleaned_user_text, prev[0])
+                    if not is_dupe and user_text:
+                        is_dupe = _is_duplicate_results_push(session_id, user_text)
                     if cleaned_user_text:
                         _recent_turns[session_id] = (cleaned_user_text, now)
                     if is_dupe:

@@ -34,6 +34,9 @@ export interface VoiceResumeContext {
   lastRepId?: string | null;
   /** True when a scored rep's results are ready but not yet reviewed. */
   awaitingReview?: boolean;
+  /** True while an on-screen warm-up timer is still counting down. */
+  warmupTimerActive?: boolean;
+  warmupTimerLabel?: string | null;
 }
 
 export function buildVoiceReconnectMessage(ctx: VoiceResumeContext): string {
@@ -46,10 +49,18 @@ export function buildVoiceReconnectMessage(ctx: VoiceResumeContext): string {
       : ctx.lastRepId
         ? `Last rep id: ${ctx.lastRepId}. Do NOT start a new recording. `
         : "";
+  // A drop mid-move made the coach skip ahead to the next warm-up while the
+  // player's timer was still counting (session live-inibrtfoscyy: "I'm still
+  // doing the twist, the timer's still on the screen").
+  const warmup = ctx.warmupTimerActive
+    ? `A warm-up timer${ctx.warmupTimerLabel ? ` (${ctx.warmupTimerLabel})` : ""} is still ` +
+      `running on screen — do NOT introduce the next move; wait for the timer-finished note. `
+    : "";
   return (
     `(Voice reconnected — continue this existing session. Do NOT restart from name, age, or drill selection, and do NOT re-greet. ` +
     `Focus drill: ${drill}. Phase: ${phase}. Reps completed: ${ctx.repCount}. ` +
     `Setup framing passed: ${ctx.setupFramingPassed ? "yes" : "no"}. ` +
+    warmup +
     review +
     `Acknowledge the reconnect in one short sentence, then continue exactly where we left off.)`
   );

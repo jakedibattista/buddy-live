@@ -43,7 +43,7 @@ export function NextTurnCue({
     message = "Your results are ready — review your scorecard in the center with Coach.";
   } else if (analyzingCount > 0) {
     message =
-      "Analysis running — answer Coach's hockey question or keep shooting.";
+      "Scorecard cooking — do the cool-down with Coach while you wait.";
   } else if (focusDrill && currentPhase === "warmup") {
     if (warmupTimerActive && warmupTimerLabel) {
       message = `${warmupTimerLabel} — follow the timer on screen.`;

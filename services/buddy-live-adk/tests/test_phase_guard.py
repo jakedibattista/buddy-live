@@ -113,3 +113,60 @@ def test_show_iq_visual_blocked_after_session_ended(tool_context, monkeypatch):
     assert result["status"] == "blocked_session_over"
 
 
+# ---------------------------------------------------------------------------
+# start_rep_capture — single-rep policy with one unscoreable retake
+# ---------------------------------------------------------------------------
+
+_READY_DOC = {"focus_drill": "slapshot", "setup_framing_passed": True}
+
+
+def _patch_rep_stats(monkeypatch, count: int, any_scoreable: bool):
+    monkeypatch.setattr(
+        "app.callbacks._completed_rep_stats", lambda _sid: (count, any_scoreable)
+    )
+
+
+def test_rep_capture_allowed_with_no_completed_reps(tool_context, monkeypatch):
+    _patch_doc(monkeypatch, _READY_DOC)
+    _patch_rep_stats(monkeypatch, 0, False)
+    assert phase_guard(_tool("start_rep_capture"), {}, tool_context) is None
+
+
+def test_rep_capture_blocked_after_scoreable_rep(tool_context, monkeypatch):
+    _patch_doc(monkeypatch, _READY_DOC)
+    _patch_rep_stats(monkeypatch, 1, True)
+    result = phase_guard(_tool("start_rep_capture"), {}, tool_context)
+    assert result is not None
+    assert result["status"] == "blocked_rep_already_scored"
+
+
+def test_rep_capture_retake_allowed_after_unscoreable_rep(tool_context, monkeypatch):
+    # Session live-inibrtfoscyy: rep completed but analyzer produced no
+    # metrics; the player asked to re-record and was wrongly refused.
+    _patch_doc(monkeypatch, _READY_DOC)
+    _patch_rep_stats(monkeypatch, 1, False)
+    assert phase_guard(_tool("start_rep_capture"), {}, tool_context) is None
+
+
+def test_rep_capture_blocked_after_second_unscoreable_rep(tool_context, monkeypatch):
+    _patch_doc(monkeypatch, _READY_DOC)
+    _patch_rep_stats(monkeypatch, 2, False)
+    result = phase_guard(_tool("start_rep_capture"), {}, tool_context)
+    assert result is not None
+    assert result["status"] == "blocked_retake_used"
+
+
+def test_rep_is_scoreable_detection():
+    from app.callbacks import _rep_is_scoreable
+
+    assert _rep_is_scoreable(
+        {"results": {"structured_shots": [{"metrics": {"windUp": 4.5}}]}}
+    )
+    assert _rep_is_scoreable({"results": {"scores": {"stance": 7}}})
+    assert not _rep_is_scoreable(
+        {"results": {"structured_shots": [{"metrics": {"windUp": None}}]}}
+    )
+    assert not _rep_is_scoreable({"results": {}})
+    assert not _rep_is_scoreable({})
+
+
