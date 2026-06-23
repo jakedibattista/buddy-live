@@ -29,6 +29,7 @@ from opentelemetry import trace
 from app.agent import APP_NAME, ensure_session, get_runner, get_session_service
 from app.firestore_client import session_ref
 from app.models import ChatCompletionRequest, HealthResponse
+from app.reconnect_context import enrich_voice_reconnect_message
 from app.sse import sse_chunk, sse_done
 from app.telemetry import setup_cloud_trace
 
@@ -385,6 +386,11 @@ async def chat_completions(payload: ChatCompletionRequest, request: Request) -> 
     raw_user_text = payload.latest_user_text()
     cleaned_user_text = _clean_speaker_labels(raw_user_text)
     user_text = _trim_user_text(cleaned_user_text)
+    if session_id and user_text:
+        enriched = enrich_voice_reconnect_message(session_id, user_text)
+        if enriched != user_text:
+            user_text = enriched
+            cleaned_user_text = _clean_speaker_labels(user_text)
     _logger.info(
         "turn session=%s raw_user_text=%r user_text=%r",
         session_id,

@@ -14,7 +14,8 @@ Structural gates (Firestore-backed, read once per guarded call):
    requires iq_question_goal set first.
 3. start_rep_capture / analyze_rep — require focus drill + setup_framing_passed;
    start_rep_capture also blocks after one completed rep.
-4. end_session_recap — requires a completed rep (IQ wrap-up exempt).
+4. end_session_recap — requires a completed rep for drill_coach recap; root
+   coach may call with zero reps when the player exits early.
 
 Prefer structural enforcement to prompt rules. Source of truth is Firestore.
 """
@@ -280,18 +281,9 @@ def phase_guard(
         if doc.get("currentPhase") == "iq_practice":
             return None
 
+        # Shooting flow normally needs a scored rep; allow zero-rep exit when the
+        # player ends early (session live-h27pjmlwskuq: judge bailed mid warm-up).
         if not _has_completed_rep(session_id):
-            _logger.info(
-                "phase_guard blocked end_session_recap: no ready results session=%s",
-                session_id,
-            )
-            return {
-                "status": "blocked_no_ready_results",
-                "reason": (
-                    "Cannot recap until at least one rep result is ready. "
-                    "Call get_rep_result on recent rep_ids and wait for status=ready, "
-                    "or queue another bonus rep while you wait."
-                ),
-            }
+            return None
 
     return None

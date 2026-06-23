@@ -126,7 +126,9 @@ service cloud.firestore {
       match /coach_log/{logId} {
         allow read: if request.auth != null
                     && sessionDoc().data.user_id == request.auth.uid;
-        allow write: if false;
+        allow create: if request.auth != null
+                      && sessionDoc().data.user_id == request.auth.uid;
+        allow update, delete: if false;
       }
 
       match /ambient_notes/{noteId} {

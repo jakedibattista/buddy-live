@@ -5,6 +5,7 @@ import { ConversationProvider, useConversation } from "@elevenlabs/react";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { Mic, MicOff, PhoneOff } from "lucide-react";
 import { CoachAudioMuteButton } from "@/components/coach/CoachAudioMuteButton";
+import { fetchVoiceResumeContext } from "@/lib/fetchVoiceResumeContext";
 import { getDb } from "@/lib/firebase";
 import { coachLogCollectionPath } from "@/lib/paths";
 import { coachTranscriptEntries, systemTranscript, voiceTranscriptEntry } from "@/lib/transcript";
@@ -176,7 +177,17 @@ function CoachConversationInner({
         shouldSendReconnectRef.current = false;
         // Wait briefly after onConnect to ensure the channel is fully flushed and ready
         window.setTimeout(() => {
-          convo.sendUserMessage(buildVoiceReconnectMessage(resumeContextRef.current));
+          void (async () => {
+            const ctx = resumeContextRef.current;
+            const fresh = sessionId
+              ? await fetchVoiceResumeContext(sessionId, {
+                  warmupTimerActive: ctx.warmupTimerActive,
+                  warmupTimerLabel: ctx.warmupTimerLabel,
+                })
+              : ctx;
+            resumeContextRef.current = fresh;
+            convo.sendUserMessage(buildVoiceReconnectMessage(fresh));
+          })();
         }, 500);
         onTranscript(
           systemTranscript("Voice reconnected — Coach Buddy is picking up where you left off.", "connection"),
@@ -423,7 +434,7 @@ function CoachConversationInner({
     setError(null);
     try {
       convo.sendUserMessage(WRAP_UP_MESSAGE);
-      await new Promise((resolve) => window.setTimeout(resolve, 12000));
+      await new Promise((resolve) => window.setTimeout(resolve, 20000));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {

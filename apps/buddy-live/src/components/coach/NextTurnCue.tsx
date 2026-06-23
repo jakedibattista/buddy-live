@@ -36,32 +36,32 @@ export function NextTurnCue({
   let message: string | null = null;
 
   if (currentPhase === "recap" || currentPhase === "ended") {
-    message = "Session wrapped — review your summary and homework with Coach Buddy.";
+    message = "Session wrapped. Review your summary and homework with Coach Buddy.";
   } else if (recording) {
-    message = 'Perform your rep — say "stop" or hit the red button when done.';
+    message = 'Perform your rep. Say "stop" or hit the red button when done.';
   } else if (resultsReady && repCount > 0 && currentPhase !== "recap" && currentPhase !== "ended") {
-    message = "Your results are ready — review your scorecard in the center with Coach.";
+    message = "Your results are ready. Review your scorecard in the center with Coach.";
   } else if (analyzingCount > 0) {
     message =
-      "Scorecard cooking — do the cool-down with Coach while you wait.";
+      "Scorecard cooking. Follow the on-screen cool-down instructions while you wait.";
   } else if (focusDrill && currentPhase === "warmup") {
     if (warmupTimerActive && warmupTimerLabel) {
-      message = `${warmupTimerLabel} — follow the timer on screen.`;
+      message = `${warmupTimerLabel}: Follow the timer on screen.`;
     } else {
-      message = "Warm-up — one timed move at a time. Watch for the countdown.";
+      message = "Warm-up: One timed move at a time. Watch for the countdown.";
     }
   } else if (focusDrill && !setupFramingPassed && currentPhase === "stance_check") {
-    message = "Coach Buddy is checking your camera setup — follow his voice cues.";
+    message = "Coach Buddy is checking your camera setup. Follow his voice cues.";
   } else if (focusDrill && currentPhase === "drill_readiness" && repCount === 0) {
-    message = "Ask for a drill explanation or a practice rep — then say ready for rep 1.";
+    message = "Ask for a drill explanation or a practice rep, then say ready for rep 1.";
   } else if (currentPhase === "iq_practice") {
-    message = "Hockey IQ — talk through the scenario with Coach Buddy.";
+    message = "Hockey IQ: Talk through the scenario with Coach Buddy.";
   } else if (focusDrill && setupFramingPassed && repCount === 0) {
-    message = "Say ready when you want your scored rep — Coach will start recording.";
+    message = "Say ready when you want your scored rep. Coach will start recording.";
   } else if (focusDrill && setupFramingPassed) {
     message = "Say ready when you're set up for your scored rep.";
   } else if (coachStatus === "connected") {
-    message = "Answer Coach Buddy — pick your drill when asked.";
+    message = "Answer Coach Buddy. Pick your drill when asked.";
   }
 
   if (!message) return null;

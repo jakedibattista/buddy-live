@@ -29,6 +29,9 @@ export interface LiveSessionDoc {
   focus_drill_set_at?: string;
   setup_framing_passed?: boolean;
   results_ready_at?: string;
+  last_warmup_timer_label?: string;
+  last_warmup_timer_seconds?: number;
+  warmup_timer_started_at?: string;
   ended_at?: string;
   iq_question_goal?: number;
   iq_score_correct?: number;

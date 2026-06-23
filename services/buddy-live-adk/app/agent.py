@@ -168,6 +168,7 @@ def _build_agent() -> Agent:
             start_warmup_timer,
             set_focus_drill,
             remember_player_profile,
+            end_session_recap,
         ],
         sub_agents=[
             _build_drill_coach(),

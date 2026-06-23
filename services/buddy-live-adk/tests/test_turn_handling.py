@@ -223,6 +223,26 @@ def test_trim_keeps_only_the_tail_of_a_long_ramble():
     assert trimmed.endswith("I think it kind of crashed here.")
 
 
+def test_trim_keeps_voice_reconnect_note_intact():
+    note = (
+        "(Voice reconnected — continue this existing session. Do NOT restart from name, "
+        "age, or drill selection, and do NOT re-greet. Focus drill: wristshot. "
+        "Phase: warmup. Reps completed: 0. Setup framing passed: yes. "
+        "Acknowledge the reconnect in one short sentence, then continue exactly where we left off.)"
+    )
+    assert _trim_user_text(note) == note
+
+    # Mirrors the live storm: a short answer buried under bystander chatter.
+    rambling = (
+        "Skate around them. " * 20
+        + "So how do they know the right answers? Did you tell them? "
+        + "I think it kind of crashed here."
+    )
+    trimmed = _trim_user_text(rambling)
+    assert len(trimmed) <= _MAX_USER_TEXT_CHARS
+    assert trimmed.endswith("I think it kind of crashed here.")
+
+
 def test_trim_starts_at_a_sentence_boundary_when_possible():
     long_text = "x" * (_MAX_USER_TEXT_CHARS - 5) + "end. Fresh sentence here."
     trimmed = _trim_user_text(long_text)

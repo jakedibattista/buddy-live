@@ -172,3 +172,9 @@ def test_rep_is_scoreable_detection():
     assert not _rep_is_scoreable({})
 
 
+def test_end_session_recap_allowed_with_no_completed_reps(tool_context, monkeypatch):
+    _patch_doc(monkeypatch, {"currentPhase": "warmup", "focus_drill": "wristshot"})
+    monkeypatch.setattr("app.callbacks._has_completed_rep", lambda _sid: False)
+    assert phase_guard(_tool("end_session_recap"), {}, tool_context) is None
+
+

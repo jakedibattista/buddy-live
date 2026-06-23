@@ -11,10 +11,11 @@ import type { CoachCommand, TranscriptEntry } from "@/lib/types";
 interface Props {
   sessionId: string | null;
   commands: CoachCommand[];
-  /** Only show and accept timers during the warmup phase. */
+  /** Only show and accept timers during active phases. */
   enabled?: boolean;
   onTranscript: (entry: TranscriptEntry) => void;
   onActiveChange?: (active: boolean, label: string | null) => void;
+  currentPhase?: string | null;
 }
 
 export function WarmupTimerBridge({
@@ -23,6 +24,7 @@ export function WarmupTimerBridge({
   enabled = true,
   onTranscript,
   onActiveChange,
+  currentPhase,
 }: Props) {
   const { sendUserMessage } = useConversationControls();
 
@@ -51,7 +53,7 @@ export function WarmupTimerBridge({
     <CountdownOverlay
       active={overlayActive}
       remainingMs={timer.remainingMs}
-      variant="warmup"
+      variant={currentPhase === "scored_reps" ? "cooldown" : "warmup"}
       label={timer.label ?? undefined}
       phase={timer.phase}
       leadInRemainingMs={timer.leadInRemainingMs}

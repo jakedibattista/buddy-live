@@ -145,6 +145,7 @@ root_agent = Agent(
         start_warmup_timer,
         set_focus_drill,
         remember_player_profile,
+        end_session_recap,
     ],
     sub_agents=[_drill_coach, _iq_coach],
     before_tool_callback=_env_sim_callback,

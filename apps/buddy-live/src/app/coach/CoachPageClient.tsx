@@ -290,20 +290,22 @@ export function CoachPageClient() {
   };
 
   const iqPlaceholder = (
-    <div className="max-w-md text-center text-zinc-300">
-      <div className="mx-auto mb-4 flex justify-center">
-        <Image
-          src="/mascot/coach-puck.png"
-          alt=""
-          width={128}
-          height={128}
-          className="h-20 w-20 object-contain opacity-90 drop-shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
-        />
+    <div className="flex flex-col items-center justify-center p-8 max-w-sm mx-auto text-center animate-in fade-in duration-700">
+      {/* Sleek, minimalistic Apple-style spinning loader */}
+      <div className="relative mb-6 flex h-12 w-12 items-center justify-center">
+        {/* Outer track */}
+        <div className="absolute inset-0 rounded-full border-[2.5px] border-zinc-800" />
+        {/* Spinning indicator */}
+        <div className="absolute inset-0 rounded-full border-[2.5px] border-t-zinc-400 border-r-transparent border-b-transparent border-l-transparent animate-spin duration-[1100ms] ease-linear" />
       </div>
-      <div className="text-lg font-semibold text-white">Hockey IQ Practice</div>
-      <div className="mt-2 text-sm text-zinc-400">
-        Coach Buddy is lining up your first scenario — listen for the question and watch this space.
-      </div>
+
+      <h3 className="text-xl font-medium tracking-tight text-white/95">
+        Hockey IQ Practice
+      </h3>
+
+      <p className="mt-2 text-sm font-normal text-zinc-400 leading-relaxed max-w-[280px]">
+        Coach Buddy is preparing your first tactical scenario. Watch this space and listen for instructions.
+      </p>
     </div>
   );
 
@@ -473,7 +475,8 @@ export function CoachPageClient() {
                 <WarmupTimerBridge
                   sessionId={live.sessionId}
                   commands={live.commands}
-                  enabled={currentPhase === "warmup"}
+                  enabled={currentPhase === "warmup" || currentPhase === "scored_reps"}
+                  currentPhase={currentPhase}
                   onTranscript={handleTranscript}
                   onActiveChange={handleWarmupTimerActiveChange}
                 />

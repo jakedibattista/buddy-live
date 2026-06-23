@@ -7,11 +7,11 @@ import { cn } from "@/lib/utils";
 interface CountdownOverlayProps {
   active: boolean;
   remainingMs: number;
-  variant: "recording" | "warmup";
+  variant: "recording" | "warmup" | "cooldown";
   label?: string;
   onStop?: () => void;
   className?: string;
-  /** Warm-up only: "leadin" shows the 3-2-1 count-in before the timer. */
+  /** Warm-up/Cooldown only: "leadin" shows the 3-2-1 count-in before the timer. */
   phase?: "leadin" | "running";
   leadInRemainingMs?: number;
 }
@@ -77,6 +77,50 @@ export function CountdownOverlay({
             Stop &amp; upload
           </button>
         )}
+      </div>
+    );
+  }
+
+  if (variant === "cooldown") {
+    if (phase === "leadin") {
+      const leadInNum = Math.max(1, Math.ceil(leadInRemainingMs / 1000));
+      return (
+        <div
+          className={cn(
+            "pointer-events-none absolute bottom-24 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-1 rounded-2xl border border-cyan-400/40 bg-black/75 px-6 py-4 text-white shadow-xl backdrop-blur",
+            className,
+          )}
+        >
+          <span className="text-[10px] font-semibold uppercase tracking-widest text-cyan-200/90">
+            Get ready{label ? ` · ${label}` : ""}
+          </span>
+          <span
+            key={leadInNum}
+            className="animate-in zoom-in-50 fade-in text-6xl font-black tabular-nums text-cyan-300 duration-200"
+          >
+            {leadInNum}
+          </span>
+        </div>
+      );
+    }
+
+    return (
+      <div
+        className={cn(
+          "pointer-events-none absolute bottom-24 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-1 rounded-2xl border border-cyan-400/40 bg-black/75 px-5 py-3 text-white shadow-xl backdrop-blur",
+          className,
+        )}
+      >
+        <span className="text-[10px] font-semibold uppercase tracking-widest text-cyan-200/90">
+          Cool-down
+        </span>
+        <span className="flex items-center gap-2 text-lg font-semibold tabular-nums">
+          <span className={`h-2 w-2 rounded-full bg-cyan-400 ${urgent ? "animate-pulse" : ""}`} />
+          {label ?? "Active recovery"}
+        </span>
+        <span className={cn("text-2xl font-bold tabular-nums", urgent && "text-cyan-300")}>
+          {countdown}
+        </span>
       </div>
     );
   }

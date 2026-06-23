@@ -29,6 +29,11 @@
       "starting_prompt": "Hey Coach Buddy! I'm Marcus and I'm 11.",
       "conversation_plan": "You are Marcus, 11. Production opening does not welcome you back — expect a normal greet (name, age, space check). Cooperate with the space check and pick wristshot. Do one scored rep when prompted, then accept the recap.",
       "user_persona": "NOVICE"
+    },
+    {
+      "starting_prompt": "Hi Coach! I'm Casey, I'm 9, and I want wristshots.",
+      "conversation_plan": "You are a 9-year-old cooperating with warm-up. When the coach describes a timed move and says to watch the screen, confirm you see the on-screen countdown before saying you're ready for the next move. If the coach cues a timer but you do NOT see a countdown on screen, say 'I don't see a timer' once and wait. After one warm-up move with a visible timer, accept wrap-up.",
+      "user_persona": "NOVICE"
     }
   ]
 }
