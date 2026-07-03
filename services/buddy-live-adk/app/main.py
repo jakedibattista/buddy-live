@@ -402,9 +402,11 @@ async def chat_completions(payload: ChatCompletionRequest, request: Request) -> 
         _logger.info("skipping silence filler session=%s", session_id)
 
         async def empty_stream():
+            # Role + stop only — an empty-string content chunk is an unusual
+            # completion shape under the ElevenLabs Custom LLM contract and a
+            # suspected trigger for malformed agent error events.
             response_id = f"chatcmpl-{uuid.uuid4().hex[:12]}"
             yield sse_chunk(response_id, {"role": "assistant"})
-            yield sse_chunk(response_id, {"content": ""})
             yield sse_chunk(response_id, {}, finish_reason="stop")
             yield sse_done()
 
@@ -446,7 +448,6 @@ async def chat_completions(payload: ChatCompletionRequest, request: Request) -> 
 
     async def event_stream():
         response_id = f"chatcmpl-{uuid.uuid4().hex[:12]}"
-        sent_role = False
         full_text_parts: list[str] = []
         # Top-level span for the whole turn. ADK's agent / tool / LLM spans
         # become children of this one so Cloud Trace shows the full
@@ -457,6 +458,14 @@ async def chat_completions(payload: ChatCompletionRequest, request: Request) -> 
             span.set_attribute("buddy_live.is_reconnect", is_reconnect)
             span.set_attribute("buddy_live.session_existed", session_exists)
             iq_active = False
+            # Buffer words (ElevenLabs custom-LLM guidance): give the agent
+            # immediate bytes before the slow work — session-lock wait plus a
+            # full ADK run with tool calls can take many seconds, and a silent
+            # stream that long is when the agent side gives up and drops the
+            # room. "... " renders as a natural pause, not spoken text. The
+            # full reply is still sanitized and sent as one chunk below.
+            yield sse_chunk(response_id, {"role": "assistant"})
+            yield sse_chunk(response_id, {"content": "... "})
             try:
                 async with _session_locks[session_id]:
                     # Collapse duplicate / accumulating utterances. An open mic
@@ -486,8 +495,8 @@ async def chat_completions(payload: ChatCompletionRequest, request: Request) -> 
                             cleaned_user_text[:80],
                         )
                         span.set_attribute("buddy_live.turn_outcome", "deduped")
-                        yield sse_chunk(response_id, {"role": "assistant"})
-                        yield sse_chunk(response_id, {"content": ""})
+                        # Role + buffer chunk already sent; close without an
+                        # empty content chunk (see empty_stream note).
                         yield sse_chunk(response_id, {}, finish_reason="stop")
                         yield sse_done()
                         return
@@ -538,7 +547,6 @@ async def chat_completions(payload: ChatCompletionRequest, request: Request) -> 
                 span.set_attribute("buddy_live.response_text_len", len(coach_text))
                 span.set_attribute("buddy_live.turn_outcome", "ok")
 
-                yield sse_chunk(response_id, {"role": "assistant"})
                 yield sse_chunk(response_id, {"content": coach_text})
                 yield sse_chunk(response_id, {}, finish_reason="stop")
                 yield sse_done()
@@ -551,8 +559,6 @@ async def chat_completions(payload: ChatCompletionRequest, request: Request) -> 
                 _logger.warning("turn timed out session=%s after %ds", session_id, _TURN_TIMEOUT_SECONDS)
                 span.set_attribute("buddy_live.turn_outcome", "timeout")
                 fallback = "Hold on one sec — let me catch up. What were you saying?"
-                if not sent_role:
-                    yield sse_chunk(response_id, {"role": "assistant"})
                 yield sse_chunk(response_id, {"content": fallback})
                 yield sse_chunk(response_id, {}, finish_reason="stop")
                 yield sse_done()
@@ -564,8 +570,6 @@ async def chat_completions(payload: ChatCompletionRequest, request: Request) -> 
                 span.set_attribute("buddy_live.turn_outcome", "error")
                 span.record_exception(exc)
                 fallback = "Sorry, I glitched. Let's try that again."
-                if not sent_role:
-                    yield sse_chunk(response_id, {"role": "assistant"})
                 yield sse_chunk(response_id, {"content": fallback})
                 yield sse_chunk(response_id, {}, finish_reason="stop")
                 yield sse_done()

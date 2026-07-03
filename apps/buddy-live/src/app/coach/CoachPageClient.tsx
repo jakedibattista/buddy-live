@@ -326,13 +326,17 @@ export function CoachPageClient() {
             mobileLayout ? "p-2" : "grid gap-6 overflow-y-auto p-4 lg:grid-cols-[1fr_360px] lg:overflow-visible lg:p-6",
           )}
         >
-          {showLivePanel && (
-            <section
-              className={cn(
-                "relative flex w-full min-h-0 flex-col",
-                mobileLayout ? "flex-1 gap-0" : "h-[60vh] gap-4 lg:h-[calc(100vh-3rem)]",
-              )}
-            >
+          {/* Always mounted (CSS-hidden on other mobile tabs): unmounting this
+              section killed the voice keepalive, reconnect handlers, and
+              warm-up timer bridge whenever the app auto-switched to the
+              Session tab, leaving WebRTC drops unhandled mid-review. */}
+          <section
+            className={cn(
+              "relative flex w-full min-h-0 flex-col",
+              mobileLayout ? "flex-1 gap-0" : "h-[60vh] gap-4 lg:h-[calc(100vh-3rem)]",
+              !showLivePanel && "hidden",
+            )}
+          >
               <div
                 className={cn(
                   "relative w-full min-h-0",
@@ -488,7 +492,7 @@ export function CoachPageClient() {
                 )}
               </div>
 
-              {mobileLayout && mobileTab === "live" && (
+              {mobileLayout && (
                 <div className="shrink-0 border-t border-white/[0.08] bg-zinc-950/95 px-2 pb-1 pt-2 backdrop-blur-md">
                   {!inIqPractice && (
                     <VoiceQuickPrompts
@@ -511,8 +515,7 @@ export function CoachPageClient() {
                   />
                 </div>
               )}
-            </section>
-          )}
+          </section>
 
           {showSessionPanel && mobileLayout && (
             <div className="min-h-0 flex-1 overflow-y-auto">
