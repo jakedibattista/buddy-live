@@ -8,7 +8,6 @@
     :root {
       --ink: #142033;
       --muted: #4a5568;
-      --rule: #c9d2df;
       --accent: #0b3d5c;
     }
     * { box-sizing: border-box; }
@@ -18,109 +17,85 @@
       color: var(--ink);
       background: #fff;
       font-family: "Source Sans 3", "Segoe UI", Helvetica, Arial, sans-serif;
-      font-size: 10.5pt;
-      line-height: 1.35;
+      font-size: 9.6pt;
+      line-height: 1.28;
     }
-    @page { size: Letter; margin: 0.55in 0.6in; }
+    @page { size: Letter; margin: 0.45in 0.5in; }
     .page {
       max-width: 8.5in;
       margin: 0 auto;
-      padding: 0.55in 0.6in;
+      padding: 0.45in 0.5in;
     }
     h1 {
-      margin: 0 0 2px;
-      font-size: 22pt;
+      margin: 0;
+      font-size: 18.5pt;
       font-weight: 700;
       letter-spacing: -0.02em;
       color: var(--accent);
-      line-height: 1.1;
+      line-height: 1.05;
     }
     .headline {
-      margin: 0 0 6px;
-      font-size: 11pt;
+      margin: 1px 0 4px;
+      font-size: 10pt;
       font-weight: 600;
-      color: var(--ink);
     }
     .contact {
       display: flex;
       flex-wrap: wrap;
-      gap: 0 12px;
-      margin: 0 0 10px;
+      gap: 0 10px;
+      margin: 0 0 7px;
       color: var(--muted);
-      font-size: 9.5pt;
+      font-size: 8.8pt;
     }
     .contact a { color: var(--accent); text-decoration: none; }
-    .summary {
-      margin: 0 0 12px;
-      color: var(--ink);
-    }
+    .summary { margin: 0 0 8px; }
     h2 {
-      margin: 12px 0 6px;
-      padding-bottom: 2px;
-      border-bottom: 1.5px solid var(--accent);
-      font-size: 10pt;
+      margin: 8px 0 4px;
+      padding-bottom: 1px;
+      border-bottom: 1.25px solid var(--accent);
+      font-size: 9pt;
       font-weight: 700;
-      letter-spacing: 0.06em;
+      letter-spacing: 0.07em;
       text-transform: uppercase;
       color: var(--accent);
     }
-    .skills {
-      margin: 0;
-      padding: 0;
-      list-style: none;
-    }
-    .skills li {
-      margin: 0 0 3px;
-    }
+    .skills { margin: 0; padding: 0; list-style: none; }
+    .skills li { margin: 0 0 1px; }
     .skills strong {
       display: inline-block;
-      min-width: 7.2rem;
-      color: var(--ink);
+      min-width: 6.4rem;
     }
-    .job { margin: 0 0 10px; }
+    .job { margin: 0 0 6px; }
     .job-header {
       display: flex;
       justify-content: space-between;
-      gap: 12px;
+      gap: 10px;
       align-items: baseline;
     }
-    .role {
-      font-weight: 700;
-      color: var(--ink);
-    }
+    .role { font-weight: 700; }
     .company { font-weight: 600; }
     .meta {
       color: var(--muted);
-      font-size: 9.5pt;
+      font-size: 8.8pt;
       white-space: nowrap;
     }
     .sub {
-      margin: 1px 0 4px;
+      margin: 0 0 2px;
       color: var(--muted);
-      font-size: 9.5pt;
+      font-size: 8.7pt;
       font-style: italic;
     }
-    ul {
-      margin: 0;
-      padding-left: 1.1rem;
-    }
-    li { margin: 0 0 3px; }
-    .edu-row, .award-row {
+    ul { margin: 0; padding-left: 1rem; }
+    li { margin: 0 0 1.5px; }
+    .row {
       display: flex;
       justify-content: space-between;
-      gap: 12px;
-      margin: 0 0 4px;
-    }
-    .edu-row strong, .award-row strong { font-weight: 700; }
-    .note {
-      margin-top: 14px;
-      font-size: 8.5pt;
-      color: var(--muted);
+      gap: 10px;
+      margin: 0 0 2px;
     }
     @media print {
       .page { padding: 0; max-width: none; }
       a { color: inherit; text-decoration: none; }
-      .note { display: none; }
     }
   </style>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -132,7 +107,7 @@
     <h1>Jake DiBattista</h1>
     <p class="headline">Fullstack Engineer · React / TypeScript · Real-time &amp; Video Product UIs</p>
     <p class="contact">
-      <span>St. Petersburg, FL · Open to Remote (USA)</span>
+      <span>St. Petersburg, FL · Remote (USA)</span>
       <a href="mailto:jake.a.dibattista@gmail.com">jake.a.dibattista@gmail.com</a>
       <a href="https://www.linkedin.com/in/jakedibattista/">linkedin.com/in/jakedibattista</a>
       <a href="https://github.com/jakedibattista">github.com/jakedibattista</a>
@@ -140,19 +115,16 @@
     </p>
 
     <p class="summary">
-      Fullstack engineer and product founder who ships production React/TypeScript web apps with live media,
-      realtime clients, and clean APIs. Recent work centers on interactive video capture UIs, WebRTC voice sessions,
-      signed-URL video uploads, and performant client–server flows on containerized cloud backends—built end-to-end
-      as Founder &amp; Lead Engineer of Buddy Sports Tech.
+      Fullstack engineer and product founder shipping production React/TypeScript apps with live media,
+      realtime clients, and clean APIs. Recent work: interactive video capture UIs, WebRTC sessions,
+      signed-URL uploads, and containerized cloud backends as Founder &amp; Lead Engineer at Buddy Sports Tech.
     </p>
 
     <h2>Core Skills</h2>
     <ul class="skills">
-      <li><strong>Frontend</strong> React, TypeScript, Next.js (App Router), React Native / Expo, Tailwind CSS, responsive UI</li>
-      <li><strong>Realtime / Video</strong> WebRTC sessions, MediaRecorder webcam capture, Firestore listeners, video upload pipelines</li>
-      <li><strong>APIs &amp; Backend</strong> Node.js route handlers, Python/FastAPI services, REST design, Firebase Auth/Storage</li>
-      <li><strong>Cloud &amp; Ops</strong> GCP (Cloud Run, Firebase), Docker, Vercel; AWS Certified Cloud Practitioner &amp; AI Practitioner</li>
-      <li><strong>Product delivery</strong> Cross-functional ownership from UX research → architecture → ship → production hardening</li>
+      <li><strong>Frontend</strong> React, TypeScript, Next.js (App Router), React Native / Expo, Tailwind CSS</li>
+      <li><strong>Realtime / Video</strong> WebRTC, MediaRecorder webcam capture, Firestore listeners, video upload pipelines</li>
+      <li><strong>APIs &amp; Cloud</strong> Node.js handlers, Python/FastAPI, REST, Firebase; GCP Cloud Run + Docker; AWS Cloud Practitioner &amp; AI Practitioner</li>
     </ul>
 
     <h2>Experience</h2>
@@ -162,14 +134,13 @@
         <div><span class="role">Founder &amp; Lead Engineer</span> · <span class="company">Buddy Sports Tech</span></div>
         <div class="meta">Sep 2025 – Present</div>
       </div>
-      <div class="sub">Architected and shipped Puck Buddy (iOS/Android), Buddy Live (web), coaches dashboard, and marketing site</div>
+      <div class="sub">Puck Buddy (iOS/Android), Buddy Live (web), coaches dashboard, marketing site — end-to-end ownership</div>
       <ul>
-        <li>Built <strong>Buddy Live</strong> in React/TypeScript (Next.js): live coaching UI with webcam capture (MediaRecorder), ElevenLabs <strong>WebRTC</strong> voice, Firestore realtime session state, auto-reconnect (up to 5 attempts), and scorecard dashboards.</li>
-        <li>Designed client–server video APIs: browser mints short-lived <strong>signed PUT URLs</strong> and uploads clips directly to cloud storage, bypassing serverless body limits that previously caused 413 failures on multi-MB video.</li>
-        <li>Shipped containerized Python services on <strong>Google Cloud Run (Docker)</strong> with SSE streaming to the web client; hardened production reliability (reconnect context, instance pinning for in-memory session continuity, Sentry/Cloud Trace).</li>
-        <li>Led frontend for the <strong>Puck Buddy</strong> React Native (Expo) app and <strong>Next.js coaches dashboard</strong> (TypeScript, Firebase Auth session cookies, charts/stats)—same Firestore backend across mobile + web.</li>
-        <li>Optimized video UX under device constraints: Android client-side compression to ~720p H.264 (~20 MB from multi-hundred-MB 4K clips) before upload, preserving motion detail for analysis.</li>
-        <li>Grew Puck Buddy to <strong>1,000+ downloads</strong> with a sustained baseline of ~20 daily active users (Jan 2026), owning product, engineering, and release cycles.</li>
+        <li>Built <strong>Buddy Live</strong> (React/TypeScript, Next.js): live coaching UI with webcam <strong>MediaRecorder</strong> capture, ElevenLabs <strong>WebRTC</strong> voice, Firestore realtime session state, auto-reconnect (5 attempts), and scorecard dashboards.</li>
+        <li>Designed video upload APIs: browser mints short-lived <strong>signed PUT URLs</strong> and uploads directly to cloud storage, fixing 413 failures from multi-MB clips hitting serverless body limits.</li>
+        <li>Shipped Dockerized services on <strong>Google Cloud Run</strong> with SSE to the web client; hardened production (reconnect context, instance pinning for session continuity, Sentry/Cloud Trace).</li>
+        <li>Led <strong>Puck Buddy</strong> React Native (Expo/TS) app and <strong>Next.js coaches dashboard</strong> on a shared Firebase backend; Android client compression (~720p H.264, ~20 MB from multi-hundred-MB 4K) before upload.</li>
+        <li>Grew Puck Buddy to <strong>1,000+ downloads</strong> with ~20 daily active users (Jan 2026).</li>
       </ul>
     </section>
 
@@ -179,9 +150,8 @@
         <div class="meta">Feb 2022 – Jun 2025</div>
       </div>
       <ul>
-        <li>Partnered with product and engineering on in-club and online experiences; facilitated design-thinking workshops that shaped product roadmaps.</li>
-        <li>Engineered the latest iteration of Sam’s Club’s <strong>generative AI customer support</strong> experience, rolled out to 1% of members.</li>
-        <li>Designed an in-club tablet experience for navigation/product discovery; identified Scan &amp; Go churn indicators used by the business in FY2024.</li>
+        <li>Partnered with product and engineering on in-club/online experiences; facilitated workshops that shaped roadmaps.</li>
+        <li>Engineered the latest iteration of Sam’s Club’s <strong>generative AI customer support</strong> experience, rolled out to 1% of members; designed an in-club tablet navigation/discovery experience.</li>
       </ul>
     </section>
 
@@ -191,47 +161,44 @@
         <div class="meta">Nov 2021 – Jan 2023</div>
       </div>
       <ul>
-        <li>Led a team of 9 (engineering, design, marketing) building a React (Remix) web app integrating ChatGPT and blockchain APIs; deployed at 5 universities.</li>
-        <li>Owned front-end design/engineering and company operations; Department of Labor XPU showcase finalist (presented in Washington, DC).</li>
+        <li>Led a team of 9 building a React (Remix) web app with ChatGPT APIs; shipped at 5 universities; DoL XPU showcase finalist.</li>
       </ul>
     </section>
 
     <section class="job">
       <div class="job-header">
-        <div><span class="role">Earlier roles</span> · UX Research &amp; Product (Softrams, SuperDVille, drchrono, SimpleVisit)</div>
+        <div><span class="role">Earlier</span> · UX Research &amp; Product (Softrams, SuperDVille, drchrono, SimpleVisit)</div>
         <div class="meta">2016 – 2022</div>
       </div>
       <ul>
-        <li>Led UX research and product specialist work across healthcare SaaS and education products—stakeholder discovery, accessible design, demos, and launch support that still shapes how I build operator-facing UIs.</li>
+        <li>UX research and product specialist work across healthcare SaaS and education—discovery, accessible design, demos, and launches.</li>
       </ul>
     </section>
 
     <h2>Selected Projects</h2>
     <ul>
-      <li><strong>Buddy Live</strong> — Real-time voice + video coaching web app (React/TS, WebRTC, Cloud Run). Demo: buddy-live-indol.vercel.app/coach · github.com/jakedibattista/buddy-live</li>
-      <li><strong>Puck Buddy</strong> — AI hockey video analysis on iOS/Android (React Native/Expo, TypeScript, Firebase, Cloud Run).</li>
-      <li><strong>Scout</strong> — Next.js lacrosse scouting MVP with signed-URL video upload to GCS and Gemini analysis agents.</li>
+      <li><strong>Buddy Live</strong> — Real-time voice + video coaching web app (React/TS, WebRTC, Cloud Run) · github.com/jakedibattista/buddy-live</li>
+      <li><strong>Puck Buddy</strong> — AI hockey video analysis (React Native/Expo, TypeScript, Firebase, Cloud Run) · buddysports.app</li>
+      <li><strong>Scout</strong> — Next.js lacrosse scouting MVP with signed-URL GCS video upload and Gemini agents</li>
     </ul>
 
     <h2>Education</h2>
-    <div class="edu-row">
+    <div class="row">
       <div><strong>B.S., Computer Science</strong> — University of Maryland, Baltimore County (UMBC)</div>
       <div class="meta">2011 – 2015</div>
     </div>
-    <div class="edu-row">
-      <div><strong>M.A., Design Leadership</strong> — Maryland Institute College of Art (MICA), with Johns Hopkins Carey Business School</div>
+    <div class="row">
+      <div><strong>M.A., Design Leadership</strong> — MICA (with Johns Hopkins Carey Business School)</div>
       <div class="meta">2020 – 2022</div>
     </div>
 
     <h2>Awards &amp; Certifications</h2>
-    <div class="award-row">
-      <div><strong>Grand Prize</strong> — Google Cloud × MLB Hackathon (Pitcher Mechanics Scorecard); demoed live at Google Cloud Next 2025 Developer Keynote</div>
+    <div class="row">
+      <div><strong>Grand Prize</strong>, Google Cloud × MLB Hackathon — demoed at Google Cloud Next 2025 Developer Keynote</div>
     </div>
-    <div class="award-row">
+    <div class="row">
       <div>AWS Certified Cloud Practitioner (Dec 2024) · AWS Certified AI Practitioner (Feb 2025)</div>
     </div>
-
-    <p class="note">Print to PDF: File → Print → Save as PDF (Letter, default margins). Tailored for Flock Safety — Senior Software Engineer, Fullstack (Cloud Video).</p>
   </main>
 </body>
 </html>
