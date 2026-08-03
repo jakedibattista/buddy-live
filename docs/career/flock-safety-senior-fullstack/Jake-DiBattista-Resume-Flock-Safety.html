@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Jake DiBattista — Resume (Flock Safety)</title>
+  <style>
+    :root {
+      --ink: #142033;
+      --muted: #4a5568;
+      --rule: #c9d2df;
+      --accent: #0b3d5c;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      color: var(--ink);
+      background: #fff;
+      font-family: "Source Sans 3", "Segoe UI", Helvetica, Arial, sans-serif;
+      font-size: 10.5pt;
+      line-height: 1.35;
+    }
+    @page { size: Letter; margin: 0.55in 0.6in; }
+    .page {
+      max-width: 8.5in;
+      margin: 0 auto;
+      padding: 0.55in 0.6in;
+    }
+    h1 {
+      margin: 0 0 2px;
+      font-size: 22pt;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--accent);
+      line-height: 1.1;
+    }
+    .headline {
+      margin: 0 0 6px;
+      font-size: 11pt;
+      font-weight: 600;
+      color: var(--ink);
+    }
+    .contact {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0 12px;
+      margin: 0 0 10px;
+      color: var(--muted);
+      font-size: 9.5pt;
+    }
+    .contact a { color: var(--accent); text-decoration: none; }
+    .summary {
+      margin: 0 0 12px;
+      color: var(--ink);
+    }
+    h2 {
+      margin: 12px 0 6px;
+      padding-bottom: 2px;
+      border-bottom: 1.5px solid var(--accent);
+      font-size: 10pt;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+    .skills {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    .skills li {
+      margin: 0 0 3px;
+    }
+    .skills strong {
+      display: inline-block;
+      min-width: 7.2rem;
+      color: var(--ink);
+    }
+    .job { margin: 0 0 10px; }
+    .job-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: baseline;
+    }
+    .role {
+      font-weight: 700;
+      color: var(--ink);
+    }
+    .company { font-weight: 600; }
+    .meta {
+      color: var(--muted);
+      font-size: 9.5pt;
+      white-space: nowrap;
+    }
+    .sub {
+      margin: 1px 0 4px;
+      color: var(--muted);
+      font-size: 9.5pt;
+      font-style: italic;
+    }
+    ul {
+      margin: 0;
+      padding-left: 1.1rem;
+    }
+    li { margin: 0 0 3px; }
+    .edu-row, .award-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 0 0 4px;
+    }
+    .edu-row strong, .award-row strong { font-weight: 700; }
+    .note {
+      margin-top: 14px;
+      font-size: 8.5pt;
+      color: var(--muted);
+    }
+    @media print {
+      .page { padding: 0; max-width: none; }
+      a { color: inherit; text-decoration: none; }
+      .note { display: none; }
+    }
+  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <main class="page">
+    <h1>Jake DiBattista</h1>
+    <p class="headline">Fullstack Engineer · React / TypeScript · Real-time &amp; Video Product UIs</p>
+    <p class="contact">
+      <span>St. Petersburg, FL · Open to Remote (USA)</span>
+      <a href="mailto:jake.a.dibattista@gmail.com">jake.a.dibattista@gmail.com</a>
+      <a href="https://www.linkedin.com/in/jakedibattista/">linkedin.com/in/jakedibattista</a>
+      <a href="https://github.com/jakedibattista">github.com/jakedibattista</a>
+      <a href="https://buddysports.app">buddysports.app</a>
+    </p>
+
+    <p class="summary">
+      Fullstack engineer and product founder who ships production React/TypeScript web apps with live media,
+      realtime clients, and clean APIs. Recent work centers on interactive video capture UIs, WebRTC voice sessions,
+      signed-URL video uploads, and performant client–server flows on containerized cloud backends—built end-to-end
+      as Founder &amp; Lead Engineer of Buddy Sports Tech.
+    </p>
+
+    <h2>Core Skills</h2>
+    <ul class="skills">
+      <li><strong>Frontend</strong> React, TypeScript, Next.js (App Router), React Native / Expo, Tailwind CSS, responsive UI</li>
+      <li><strong>Realtime / Video</strong> WebRTC sessions, MediaRecorder webcam capture, Firestore listeners, video upload pipelines</li>
+      <li><strong>APIs &amp; Backend</strong> Node.js route handlers, Python/FastAPI services, REST design, Firebase Auth/Storage</li>
+      <li><strong>Cloud &amp; Ops</strong> GCP (Cloud Run, Firebase), Docker, Vercel; AWS Certified Cloud Practitioner &amp; AI Practitioner</li>
+      <li><strong>Product delivery</strong> Cross-functional ownership from UX research → architecture → ship → production hardening</li>
+    </ul>
+
+    <h2>Experience</h2>
+
+    <section class="job">
+      <div class="job-header">
+        <div><span class="role">Founder &amp; Lead Engineer</span> · <span class="company">Buddy Sports Tech</span></div>
+        <div class="meta">Sep 2025 – Present</div>
+      </div>
+      <div class="sub">Architected and shipped Puck Buddy (iOS/Android), Buddy Live (web), coaches dashboard, and marketing site</div>
+      <ul>
+        <li>Built <strong>Buddy Live</strong> in React/TypeScript (Next.js): live coaching UI with webcam capture (MediaRecorder), ElevenLabs <strong>WebRTC</strong> voice, Firestore realtime session state, auto-reconnect (up to 5 attempts), and scorecard dashboards.</li>
+        <li>Designed client–server video APIs: browser mints short-lived <strong>signed PUT URLs</strong> and uploads clips directly to cloud storage, bypassing serverless body limits that previously caused 413 failures on multi-MB video.</li>
+        <li>Shipped containerized Python services on <strong>Google Cloud Run (Docker)</strong> with SSE streaming to the web client; hardened production reliability (reconnect context, instance pinning for in-memory session continuity, Sentry/Cloud Trace).</li>
+        <li>Led frontend for the <strong>Puck Buddy</strong> React Native (Expo) app and <strong>Next.js coaches dashboard</strong> (TypeScript, Firebase Auth session cookies, charts/stats)—same Firestore backend across mobile + web.</li>
+        <li>Optimized video UX under device constraints: Android client-side compression to ~720p H.264 (~20 MB from multi-hundred-MB 4K clips) before upload, preserving motion detail for analysis.</li>
+        <li>Grew Puck Buddy to <strong>1,000+ downloads</strong> with a sustained baseline of ~20 daily active users (Jan 2026), owning product, engineering, and release cycles.</li>
+      </ul>
+    </section>
+
+    <section class="job">
+      <div class="job-header">
+        <div><span class="role">Design Researcher</span> · <span class="company">Sam’s Club (Walmart)</span></div>
+        <div class="meta">Feb 2022 – Jun 2025</div>
+      </div>
+      <ul>
+        <li>Partnered with product and engineering on in-club and online experiences; facilitated design-thinking workshops that shaped product roadmaps.</li>
+        <li>Engineered the latest iteration of Sam’s Club’s <strong>generative AI customer support</strong> experience, rolled out to 1% of members.</li>
+        <li>Designed an in-club tablet experience for navigation/product discovery; identified Scan &amp; Go churn indicators used by the business in FY2024.</li>
+      </ul>
+    </section>
+
+    <section class="job">
+      <div class="job-header">
+        <div><span class="role">CEO &amp; Front-End Lead</span> · <span class="company">Youni</span></div>
+        <div class="meta">Nov 2021 – Jan 2023</div>
+      </div>
+      <ul>
+        <li>Led a team of 9 (engineering, design, marketing) building a React (Remix) web app integrating ChatGPT and blockchain APIs; deployed at 5 universities.</li>
+        <li>Owned front-end design/engineering and company operations; Department of Labor XPU showcase finalist (presented in Washington, DC).</li>
+      </ul>
+    </section>
+
+    <section class="job">
+      <div class="job-header">
+        <div><span class="role">Earlier roles</span> · UX Research &amp; Product (Softrams, SuperDVille, drchrono, SimpleVisit)</div>
+        <div class="meta">2016 – 2022</div>
+      </div>
+      <ul>
+        <li>Led UX research and product specialist work across healthcare SaaS and education products—stakeholder discovery, accessible design, demos, and launch support that still shapes how I build operator-facing UIs.</li>
+      </ul>
+    </section>
+
+    <h2>Selected Projects</h2>
+    <ul>
+      <li><strong>Buddy Live</strong> — Real-time voice + video coaching web app (React/TS, WebRTC, Cloud Run). Demo: buddy-live-indol.vercel.app/coach · github.com/jakedibattista/buddy-live</li>
+      <li><strong>Puck Buddy</strong> — AI hockey video analysis on iOS/Android (React Native/Expo, TypeScript, Firebase, Cloud Run).</li>
+      <li><strong>Scout</strong> — Next.js lacrosse scouting MVP with signed-URL video upload to GCS and Gemini analysis agents.</li>
+    </ul>
+
+    <h2>Education</h2>
+    <div class="edu-row">
+      <div><strong>B.S., Computer Science</strong> — University of Maryland, Baltimore County (UMBC)</div>
+      <div class="meta">2011 – 2015</div>
+    </div>
+    <div class="edu-row">
+      <div><strong>M.A., Design Leadership</strong> — Maryland Institute College of Art (MICA), with Johns Hopkins Carey Business School</div>
+      <div class="meta">2020 – 2022</div>
+    </div>
+
+    <h2>Awards &amp; Certifications</h2>
+    <div class="award-row">
+      <div><strong>Grand Prize</strong> — Google Cloud × MLB Hackathon (Pitcher Mechanics Scorecard); demoed live at Google Cloud Next 2025 Developer Keynote</div>
+    </div>
+    <div class="award-row">
+      <div>AWS Certified Cloud Practitioner (Dec 2024) · AWS Certified AI Practitioner (Feb 2025)</div>
+    </div>
+
+    <p class="note">Print to PDF: File → Print → Save as PDF (Letter, default margins). Tailored for Flock Safety — Senior Software Engineer, Fullstack (Cloud Video).</p>
+  </main>
+</body>
+</html>
